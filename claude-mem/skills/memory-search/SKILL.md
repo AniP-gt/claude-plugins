@@ -86,9 +86,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py by-type "<type>" [--limit
 # 最近のコンテキスト
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py recent [--project NAME] [--limit N]
 
-# セッション・プロンプト取得
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py session <ID>
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py prompt <ID>
+# セッション・プロンプト取得（IDは数値のみ。タイムライン表示の「S440」→「440」）
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py session <数値ID>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/memory-search.py prompt <数値ID>
 ```
 
 ## 出力形式
