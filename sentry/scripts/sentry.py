@@ -201,6 +201,63 @@ def whoami():
     return call_mcp_tool("whoami", {})
 
 
+def get_stats(organization, project=None, period="14d", group_by="day", limit=30):
+    """エラー統計を取得"""
+    GROUP_BY_MAP = {
+        "day": {
+            "fields": ["count()", "timestamp.to_day"],
+            "sort": "timestamp.to_day"
+        },
+        "error-type": {
+            "fields": ["count()", "error.type"],
+            "sort": "-count()"
+        },
+        "title": {
+            "fields": ["count()", "title"],
+            "sort": "-count()"
+        }
+    }
+    config = GROUP_BY_MAP.get(group_by, GROUP_BY_MAP["day"])
+
+    args = {
+        "organizationSlug": organization,
+        "dataset": "errors",
+        "fields": config["fields"],
+        "sort": config["sort"],
+        "statsPeriod": period,
+        "limit": limit
+    }
+    if project:
+        args["projectSlug"] = project
+
+    print(f"Getting error stats: org={organization}, group_by={group_by}, period={period}")
+    if project:
+        print(f"   Project: {project}")
+    print()
+
+    return call_mcp_tool("list_events", args)
+
+
+def get_top_issues(organization, project=None, sort="freq", query="is:unresolved", limit=10):
+    """頻出イシューランキングを取得"""
+    args = {
+        "organizationSlug": organization,
+        "sort": sort,
+        "query": query,
+        "limit": limit
+    }
+    if project:
+        args["projectSlugOrId"] = project
+
+    print(f"Getting top issues: org={organization}, sort={sort}")
+    if project:
+        print(f"   Project: {project}")
+    print(f"   Query: {query}")
+    print()
+
+    return call_mcp_tool("list_issues", args)
+
+
 def update_issue(issue_id, status=None, assignee=None):
     """イシューを更新"""
     print(f"Updating issue: {issue_id}")
@@ -252,6 +309,30 @@ def main():
     # whoami コマンド
     subparsers.add_parser("whoami", help="Get authenticated user info")
 
+    # stats コマンド
+    stats_parser = subparsers.add_parser("stats", help="Error statistics and trends")
+    stats_parser.add_argument("organization", type=str, help="Organization slug")
+    stats_parser.add_argument("--project", "-p", type=str, help="Project slug")
+    stats_parser.add_argument("--period", "-t", type=str, default="14d",
+                              help="Time period (1h, 24h, 7d, 14d, 30d)")
+    stats_parser.add_argument("--group-by", "-g", type=str, default="day",
+                              choices=["day", "error-type", "title"],
+                              help="Aggregation axis")
+    stats_parser.add_argument("--limit", "-l", type=int, default=30,
+                              help="Max results")
+
+    # top-issues コマンド
+    top_parser = subparsers.add_parser("top-issues", help="Top issues ranking")
+    top_parser.add_argument("organization", type=str, help="Organization slug")
+    top_parser.add_argument("--project", "-p", type=str, help="Project slug")
+    top_parser.add_argument("--sort", "-s", type=str, default="freq",
+                            choices=["freq", "date", "new"],
+                            help="Sort order")
+    top_parser.add_argument("--query", "-q", type=str, default="is:unresolved",
+                            help="Sentry search query")
+    top_parser.add_argument("--limit", "-l", type=int, default=10,
+                            help="Max results")
+
     # update コマンド
     update_parser = subparsers.add_parser("update", help="Update issue")
     update_parser.add_argument("issue_id", type=str, help="Issue ID")
@@ -277,6 +358,22 @@ def main():
             result = find_organizations()
         elif args.command == "whoami":
             result = whoami()
+        elif args.command == "stats":
+            result = get_stats(
+                args.organization,
+                project=args.project,
+                period=args.period,
+                group_by=getattr(args, 'group_by', 'day'),
+                limit=args.limit
+            )
+        elif args.command == "top-issues":
+            result = get_top_issues(
+                args.organization,
+                project=args.project,
+                sort=args.sort,
+                query=args.query,
+                limit=args.limit
+            )
         elif args.command == "update":
             result = update_issue(
                 args.issue_id,
