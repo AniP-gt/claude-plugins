@@ -67,6 +67,12 @@
       "version": "0.3.1",
       "source": "./slack",
       "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでSlack MCPツールを実行する。"
+    },
+    {
+      "name": "todoist",
+      "version": "0.1.0",
+      "source": "./todoist",
+      "description": "Todoistタスク管理プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでTodoist MCPツールを実行する。"
     }
   ]
 }
