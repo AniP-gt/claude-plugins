@@ -12,13 +12,13 @@ skills:
 ## ワークフロー
 
 1. **出力形式を判定**:
-   - 画像出力（PNG/SVG）が必要 → `render` / `render-file` コマンド
+   - .drawioファイル出力 → `export` / `export-file` コマンド
    - ブラウザで編集したい → `xml` / `mermaid` / `csv` コマンド
 2. **入力形式を判定**:
    - draw.io XML → `xml` コマンド
    - CSV データ → `csv` コマンド
-   - Mermaid 構文 → `mermaid` コマンド（または `render` で画像出力）
-   - テキスト説明のみ → Mermaid構文を生成してから `render` コマンド
+   - Mermaid 構文 → `mermaid` コマンド
+   - テキスト説明のみ → Mermaid構文を生成してから `mermaid` コマンド
 3. **コマンド実行**: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/drawio.py <subcommand> [options]`
 4. **結果の報告**
 

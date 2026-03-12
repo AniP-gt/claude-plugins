@@ -82,9 +82,15 @@
     },
     {
       "name": "drawio",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./drawio",
       "description": "draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。"
+    },
+    {
+      "name": "mermaid",
+      "version": "0.1.0",
+      "source": "./mermaid",
+      "description": "Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。"
     }
   ]
 }

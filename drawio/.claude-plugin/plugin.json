@@ -1,6 +1,6 @@
 {
   "name": "drawio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。",
   "author": { "name": "miya" },
   "keywords": ["drawio", "diagram", "mcp", "mermaid", "csv"]

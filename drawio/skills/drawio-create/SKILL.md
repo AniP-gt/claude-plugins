@@ -30,8 +30,6 @@ agent: general-purpose
 
 | コマンド | 引数 | 説明 |
 |---|---|---|
-| `render <content> -o <path>` | `content`: Mermaid.js構文（必須）, `-o`: 出力パス（必須、.png/.svg） | Mermaid → PNG/SVG画像 |
-| `render-file <file_path> -o <path>` | `file_path`: Mermaidファイル（必須）, `-o`: 出力パス（必須、.png/.svg） | Mermaidファイル → 画像 |
 | `export <content> -o <path>` | `content`: Mermaid.js構文（必須）, `-o`: 出力パス（必須、.drawio） | Mermaid → .drawioファイル |
 | `export-file <file_path> -o <path>` | `file_path`: Mermaidファイル（必須）, `-o`: 出力パス（必須、.drawio） | Mermaidファイル → .drawioファイル |
 
@@ -56,15 +54,6 @@ agent: general-purpose
 ## 使用例
 
 ```bash
-# Mermaid構文からPNG画像を生成
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/drawio.py render "graph TD; A-->B; B-->C;" -o output.png
-
-# Mermaid構文からSVG画像を生成
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/drawio.py render "graph TD; A-->B; B-->C;" -o output.svg
-
-# Mermaidファイルから画像を生成
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/drawio.py render-file diagram.mmd -o output.png
-
 # Mermaid構文から.drawioファイルを生成
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/drawio.py export "graph TD; A-->B; B-->C;" -o output.drawio
 

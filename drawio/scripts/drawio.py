@@ -25,7 +25,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 
 
 def call_mcp_tool(tool_name, arguments=None):
@@ -136,42 +135,6 @@ def open_csv(content, lightbox=False, dark="auto"):
     return call_mcp_tool("open_drawio_csv", args)
 
 
-def render_mermaid(content, output_path, fmt="png"):
-    """Mermaid構文をPNG/SVGに変換して出力"""
-    print(f"Rendering Mermaid to {fmt.upper()}: {output_path}\n")
-    print(f"Input:\n{content}\n")
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".mmd", delete=False, encoding="utf-8") as f:
-        f.write(content)
-        tmp_path = f.name
-
-    try:
-        result = subprocess.run(
-            ["npx", "-y", "@mermaid-js/mermaid-cli", "-i", tmp_path, "-o", output_path],
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-
-        if result.returncode != 0:
-            return {"error": True, "message": result.stderr.strip() or "mmdc failed"}
-
-        if os.path.exists(output_path):
-            size = os.path.getsize(output_path)
-            return {"output": output_path, "format": fmt, "size_bytes": size}
-        else:
-            return {"error": True, "message": f"Output file not created: {output_path}"}
-
-    except subprocess.TimeoutExpired:
-        return {"error": True, "message": "mmdc timeout (120s)"}
-    except FileNotFoundError:
-        return {"error": True, "message": "npx not found. Please install Node.js"}
-    except Exception as e:
-        return {"error": True, "message": str(e)}
-    finally:
-        os.unlink(tmp_path)
-
-
 def mermaid_to_drawio_xml(mermaid_content):
     """Mermaid構文をdraw.io XMLに変換（MermaidをmxGraphXMLとして埋め込む）"""
     from xml.sax.saxutils import escape
@@ -276,16 +239,6 @@ def main():
     export_file_parser.add_argument("file_path", type=str, help="Path to Mermaid file")
     export_file_parser.add_argument("-o", "--output", type=str, required=True, help="Output file path (.drawio)")
 
-    # render コマンド
-    render_parser = subparsers.add_parser("render", help="Render Mermaid to PNG/SVG image")
-    render_parser.add_argument("content", type=str, help="Mermaid.js syntax")
-    render_parser.add_argument("-o", "--output", type=str, required=True, help="Output file path (.png or .svg)")
-
-    # render-file コマンド
-    render_file_parser = subparsers.add_parser("render-file", help="Render Mermaid file to PNG/SVG image")
-    render_file_parser.add_argument("file_path", type=str, help="Path to Mermaid file")
-    render_file_parser.add_argument("-o", "--output", type=str, required=True, help="Output file path (.png or .svg)")
-
     args = parser.parse_args()
 
     if not args.command:
@@ -301,13 +254,6 @@ def main():
         elif args.command == "export-file":
             content = read_file_content(args.file_path)
             result = export_drawio(content, args.output, source_format="mermaid")
-        elif args.command == "render":
-            fmt = "svg" if args.output.endswith(".svg") else "png"
-            result = render_mermaid(args.content, args.output, fmt=fmt)
-        elif args.command == "render-file":
-            content = read_file_content(args.file_path)
-            fmt = "svg" if args.output.endswith(".svg") else "png"
-            result = render_mermaid(content, args.output, fmt=fmt)
         elif args.command == "xml":
             result = open_xml(args.content, lightbox=lightbox, dark=dark)
         elif args.command == "mermaid":

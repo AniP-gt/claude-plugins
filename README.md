@@ -26,6 +26,7 @@ Custom Claude Code plugins by miya.
 /plugin install todoist@hidetsugu-miya
 /plugin install atlassian@hidetsugu-miya
 /plugin install drawio@hidetsugu-miya
+/plugin install mermaid@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -109,3 +110,9 @@ Node.js v18+が必要です。初回は `/atlassian-login` でログインし（
 draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。
 
 Node.js 20以上が必要です。使い方は `/drawio-create` を実行してください。
+
+### mermaid
+
+Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。
+
+Node.js 20以上が必要です。使い方は `/mermaid-render` を実行してください。
