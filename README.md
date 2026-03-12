@@ -25,6 +25,7 @@ Custom Claude Code plugins by miya.
 /plugin install slack@hidetsugu-miya
 /plugin install todoist@hidetsugu-miya
 /plugin install atlassian@hidetsugu-miya
+/plugin install drawio@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -102,3 +103,9 @@ Todoistタスク管理プラグイン。OAuth PKCEでブラウザ認証し、Str
 Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。mcp-remoteプロキシ経由でOAuth 2.1認証し、Jira・Confluenceツールを実行する。
 
 Node.js v18+が必要です。初回は `/atlassian-login` でログインし（ブラウザが開く）、その後 `/atlassian-run` でツールを実行してください。
+
+### drawio
+
+draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。
+
+Node.js 20以上が必要です。使い方は `/drawio-create` を実行してください。
