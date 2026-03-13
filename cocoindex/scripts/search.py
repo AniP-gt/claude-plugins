@@ -14,6 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 import psycopg2
+from psycopg2 import sql
 
 CONFIG_DIR = Path.home() / ".config" / "cocoindex"
 load_dotenv(dotenv_path=CONFIG_DIR / ".env")
@@ -65,13 +66,13 @@ def main():
     embedding = get_query_embedding(args.query)
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
 
-    cur.execute(f"""
+    cur.execute(sql.SQL("""
         SELECT DISTINCT ON (filename) filename,
                1 - (embedding::halfvec <=> %s::halfvec) AS similarity,
                chunk_text
-        FROM {table_name}
+        FROM {}
         ORDER BY filename, embedding::halfvec <=> %s::halfvec
-    """, (vec_str, vec_str))
+    """).format(sql.Identifier(table_name)), (vec_str, vec_str))
     rows = cur.fetchall()
     rows.sort(key=lambda r: r[1], reverse=True)
 
