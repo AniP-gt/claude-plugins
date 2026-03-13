@@ -42,7 +42,7 @@ echo "" >> "$LOG_FILE"
 # mcp-proxy経由でchrome-devtools-mcpをHTTPモードで起動
 # --isolated: 独立したブラウザプロファイル
 # --no-usage-statistics: 使用統計を無効化
-npx mcp-proxy --port "$SELECTED_PORT" -- npx -y chrome-devtools-mcp@latest --isolated --no-usage-statistics >> "$LOG_FILE" 2>&1 &
+npx mcp-proxy@6.4.2 --port "$SELECTED_PORT" -- npx -y chrome-devtools-mcp@0.20.0 --isolated --no-usage-statistics >> "$LOG_FILE" 2>&1 &
 echo $! > "${PID_DIR}/server.pid"
 echo "$SELECTED_PORT" > "${PID_DIR}/server.port"
 
