@@ -1,6 +1,6 @@
 {
   "name": "cocoindex",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndexを使って自然言語クエリで関連コードのエントリーポイントを発見する。",
   "author": { "name": "miya" },
   "keywords": ["cocoindex", "vector-search", "code-search", "embedding"]

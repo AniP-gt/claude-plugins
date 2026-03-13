@@ -63,7 +63,7 @@ fi
 
 # --- 3. 二重起動防止 ---
 # 一次チェック: プロセス名パターンで既存プロセスを検出
-if pgrep -f "main.py.*--name ${PROJECT_NAME} --live" >/dev/null 2>&1; then
+if pgrep -f "main.py.*--name ${SANITIZED} --live" >/dev/null 2>&1; then
   exit 0
 fi
 

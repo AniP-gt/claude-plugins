@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "cocoindex",
-      "version": "0.12.1",
+      "version": "0.12.2",
       "source": "./cocoindex",
       "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndexを使って自然言語クエリで関連コードのエントリーポイントを発見する。"
     },
