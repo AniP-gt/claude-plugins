@@ -78,7 +78,7 @@ def call_mcp_tool(tool_name, arguments=None, sentry_host=None):
         if sentry_host:
             env["SENTRY_HOST"] = sentry_host
         result = subprocess.run(
-            ["npx", "-y", "@sentry/mcp-server@latest"],
+            ["npx", "-y", "@sentry/mcp-server@0.29.0"],
             input=messages,
             capture_output=True,
             text=True,
