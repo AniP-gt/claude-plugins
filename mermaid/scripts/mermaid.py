@@ -35,7 +35,7 @@ def render_mermaid(content, output_path, fmt="png"):
 
     try:
         result = subprocess.run(
-            ["npx", "-y", "@mermaid-js/mermaid-cli", "-i", tmp_path, "-o", output_path],
+            ["npx", "-y", "@mermaid-js/mermaid-cli@11.12.0", "-i", tmp_path, "-o", output_path],
             capture_output=True,
             text=True,
             timeout=120

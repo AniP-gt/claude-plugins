@@ -88,7 +88,7 @@
     },
     {
       "name": "mermaid",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./mermaid",
       "description": "Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。"
     }
