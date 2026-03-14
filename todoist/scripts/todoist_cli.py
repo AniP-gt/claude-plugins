@@ -20,7 +20,7 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(__file__))
 from token_store import TokenStore, TokenStoreError
-from oauth import login, OAuthError
+from oauth import login, login_url_only, login_with_code, OAuthError
 from todoist_client import TodoistMCPClient, TodoistMCPError
 
 
@@ -58,7 +58,12 @@ def parse_arg_value(value_str: str):
 
 def cmd_login(args):
     """OAuth PKCEフローでログイン"""
-    login()
+    if args.url_only:
+        login_url_only()
+    elif args.code:
+        login_with_code(args.code)
+    else:
+        login()
 
 
 def cmd_logout(args):
@@ -168,7 +173,11 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # login
-    subparsers.add_parser("login", help="OAuth PKCEフローでログイン")
+    p_login = subparsers.add_parser("login", help="OAuth PKCEフローでログイン")
+    p_login.add_argument("--url-only", action="store_true",
+                         help="認証URLのみ出力して終了（ヘッドレス環境用ステップ1）")
+    p_login.add_argument("--code", metavar="CALLBACK_URL",
+                         help="コールバックURLでトークン取得（ヘッドレス環境用ステップ2）")
 
     # logout
     subparsers.add_parser("logout", help="認証トークンを削除")
