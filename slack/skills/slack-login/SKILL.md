@@ -17,9 +17,21 @@ $ARGUMENTS
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py login
 ```
 
-**ブラウザが開きます。ユーザーにSlackワークスペースの認証を依頼してください。**
+**通常環境:** ブラウザが自動で開きます。ユーザーにSlackワークスペースの認証を依頼してください。
 
-スクリプトがブラウザを起動し、Slackの認証ページを表示します。ユーザーがワークスペースを選択して認証を完了すると、トークンが自動保存されます。
+**ヘッドレス環境（Docker等）:** 2ステップで認証します:
+
+```bash
+# ステップ1: 認証URLを取得（即終了）
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py login --url-only
+```
+
+出力されたURLをユーザーにホスト側ブラウザで開くよう依頼してください。認証後、ブラウザのアドレスバーに `localhost:3118/callback?code=...` のURLが表示されます。
+
+```bash
+# ステップ2: コールバックURLでトークン取得（即終了）
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py login --code "http://localhost:3118/callback?code=...&state=..."
+```
 
 ### 2. ログイン確認
 

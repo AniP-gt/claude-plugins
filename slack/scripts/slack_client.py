@@ -111,8 +111,9 @@ class SlackMCPClient:
             headers["mcp-session-id"] = self.session_id
         return headers
 
-    def _parse_sse(self, sse_text: str) -> Dict[str, Any]:
-        """SSE形式のレスポンスをパース"""
+    def _parse_sse(self, response_bytes: bytes) -> Dict[str, Any]:
+        """SSE形式のレスポンスをパース（UTF-8でデコード）"""
+        sse_text = response_bytes.decode("utf-8")
         lines = sse_text.strip().split("\n")
         for line in lines:
             if line.startswith("data: "):
@@ -151,7 +152,7 @@ class SlackMCPClient:
 
         content_type = response.headers.get("content-type", "")
         if "text/event-stream" in content_type:
-            response_data = self._parse_sse(response.text)
+            response_data = self._parse_sse(response.content)
         else:
             response_data = response.json()
 

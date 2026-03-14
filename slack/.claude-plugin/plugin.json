@@ -1,6 +1,6 @@
 {
   "name": "slack",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでSlack MCPツールを実行する。",
   "author": { "name": "miya" },
   "keywords": ["slack", "mcp", "oauth", "messaging", "search"]
