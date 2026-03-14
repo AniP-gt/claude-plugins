@@ -16,6 +16,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import select
 import subprocess
 import sys
@@ -25,7 +26,18 @@ import time
 MCP_SERVER_URL = "https://mcp.atlassian.com/v1/mcp"
 
 
-def _run_mcp(requests, timeout=120, show_stderr=False):
+def _is_headless() -> bool:
+    """ブラウザが使えない環境かを判定"""
+    if os.path.exists("/.dockerenv"):
+        return True
+    if os.environ.get("CONTAINER") or os.environ.get("container"):
+        return True
+    if sys.platform == "linux" and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        return True
+    return False
+
+
+def _run_mcp(requests, timeout=120, show_stderr=False, capture_stderr=False):
     """
     mcp-remote経由でMCPリクエストを実行（Popenベース）
 
@@ -36,21 +48,55 @@ def _run_mcp(requests, timeout=120, show_stderr=False):
         requests: 送信するJSON-RPCリクエストのリスト [{"method": ..., "id": ...}, ...]
         timeout: タイムアウト秒数
         show_stderr: stderrをターミナルに直接表示するか
+        capture_stderr: stderrをキャプチャしてURL抽出に使うか（ヘッドレスモード用）
 
     Returns:
         (responses_dict, error_message)
         responses_dict: {request_id: response_data} のマッピング
     """
+    env = os.environ.copy()
+    if capture_stderr:
+        env["BROWSER"] = "echo"
+
+    if capture_stderr:
+        stderr_mode = subprocess.PIPE
+    elif show_stderr:
+        stderr_mode = None
+    else:
+        stderr_mode = subprocess.DEVNULL
+
     try:
         proc = subprocess.Popen(
             ["npx", "-y", "mcp-remote", MCP_SERVER_URL],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=None if show_stderr else subprocess.DEVNULL,
+            stderr=stderr_mode,
+            env=env,
             text=True,
         )
     except FileNotFoundError:
         return None, "npx not found. Please install Node.js (v18+)"
+
+    stderr_lines = []
+
+    def _read_stderr_thread():
+        """stderrを読み取るスレッド（capture_stderrモード用）"""
+        try:
+            for line in proc.stderr:
+                stderr_lines.append(line.rstrip())
+                stripped = line.strip()
+                if stripped.startswith("http://") or stripped.startswith("https://"):
+                    print(f"\n認証URL:\n{stripped}\n")
+                    print("上記URLをブラウザで開いて認証してください。")
+                elif stripped:
+                    print(f"[mcp-remote] {stripped}", file=sys.stderr)
+        except Exception:
+            pass
+
+    if capture_stderr:
+        import threading
+        stderr_thread = threading.Thread(target=_read_stderr_thread, daemon=True)
+        stderr_thread.start()
 
     def _read_response(deadline):
         """stdoutから1つのJSON-RPCレスポンスを読む"""
@@ -147,10 +193,19 @@ def _init_request():
 
 def cmd_login(args):
     """OAuth 2.1認証を実行（mcp-remoteが自動でブラウザを開く）"""
-    print("Atlassian MCPサーバーに接続中...")
-    print("初回はブラウザが開きます。Atlassianアカウントで認証してください。\n")
+    headless = _is_headless()
 
-    responses, error = _run_mcp([_init_request()], timeout=180, show_stderr=True)
+    print("Atlassian MCPサーバーに接続中...")
+    if headless:
+        print("ヘッドレス環境を検出しました。認証URLが表示されるのでブラウザで開いてください。\n")
+    else:
+        print("初回はブラウザが開きます。Atlassianアカウントで認証してください。\n")
+
+    responses, error = _run_mcp(
+        [_init_request()], timeout=180,
+        show_stderr=not headless,
+        capture_stderr=headless,
+    )
 
     if responses is None:
         print(f"Error: {error}", file=sys.stderr)
