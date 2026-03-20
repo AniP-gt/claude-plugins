@@ -52,11 +52,20 @@ DEFAULT_EXCLUDES = [
 ]
 
 
+def get_host_prefix() -> str:
+    """ホスト名プレフィックスを取得（テーブル名の衝突回避用）"""
+    import socket
+    return re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
+
+
 def get_project_name(name: str | None, source_path: str) -> str:
-    """プロジェクト名を取得（--name 指定時はそれを使用、未指定時は source_path の親ディレクトリ名）"""
-    if name:
-        return name
-    return Path(source_path).resolve().parent.name
+    """プロジェクト名を取得（hostnameプレフィックス付き）"""
+    host_prefix = get_host_prefix()
+    base_name = name if name else Path(source_path).resolve().parent.name
+    # 既にhostnameプレフィックスが付いている場合はそのまま返す
+    if base_name.startswith(f"{host_prefix}_"):
+        return base_name
+    return f"{host_prefix}_{base_name}"
 
 
 def derive_flow_name(name: str) -> str:
