@@ -28,7 +28,9 @@ DB_URL="${COCOINDEX_DATABASE_URL:-postgres://postgres:postgres@localhost:15432/p
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-SANITIZED=$(echo "$PROJECT_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
+HOST_PREFIX=$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
+INDEX_NAME="${HOST_PREFIX}_${PROJECT_NAME}"
+SANITIZED=$(echo "$INDEX_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
 TABLE_NAME="codeindex_${SANITIZED}__code_chunks"
 TABLE_NAME=$(echo "$TABLE_NAME" | tr '[:upper:]' '[:lower:]')
 

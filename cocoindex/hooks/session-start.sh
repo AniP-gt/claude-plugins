@@ -23,12 +23,14 @@ LOG_FILE="/tmp/cocoindex-live-updater.log"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-SANITIZED=$(echo "$PROJECT_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
+HOST_PREFIX=$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
+INDEX_NAME="${HOST_PREFIX}_${PROJECT_NAME}"
+SANITIZED=$(echo "$INDEX_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
 TABLE_NAME="codeindex_${SANITIZED}__code_chunks"
 TABLE_NAME=$(echo "$TABLE_NAME" | tr '[:upper:]' '[:lower:]')
 
 mkdir -p "$PID_DIR"
-PID_FILE="${PID_DIR}/.pid_${SANITIZED}"
+PID_FILE="${PID_DIR}/.pid_cocoindex_${SANITIZED}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
@@ -66,7 +68,7 @@ if [[ "$EXISTS" != "t" ]]; then
 fi
 
 # --- 3. 二重起動防止 ---
-if pgrep -f "main.py.*--name ${PROJECT_NAME} --live" >/dev/null 2>&1; then
+if pgrep -f "main.py.*--name ${SANITIZED} --live" >/dev/null 2>&1; then
   exit 0
 fi
 
@@ -80,8 +82,8 @@ fi
 
 # --- 4. LiveUpdater バックグラウンド起動 ---
 cd "$SCRIPTS_DIR"
-nohup uv run python main.py "$PROJECT_DIR" --name "$PROJECT_NAME" --live >> "$LOG_FILE" 2>&1 &
+nohup uv run python main.py "$PROJECT_DIR" --name "$SANITIZED" --live >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
-log "Started live updater: project=$PROJECT_NAME PID=$!"
+log "Started live updater: index=$SANITIZED PID=$!"
 
 exit 0

@@ -13,9 +13,11 @@ DB_URL="${COCOINDEX_DATABASE_URL:-postgres://postgres:postgres@localhost:15432/p
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-SANITIZED=$(echo "$PROJECT_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
+HOST_PREFIX=$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
+INDEX_NAME="${HOST_PREFIX}_${PROJECT_NAME}"
+SANITIZED=$(echo "$INDEX_NAME" | sed 's/[^a-zA-Z0-9]/_/g')
 
-PID_FILE="${PID_DIR}/.pid_${SANITIZED}"
+PID_FILE="${PID_DIR}/.pid_cocoindex_${SANITIZED}"
 
 # --- PIDファイルベースの停止 ---
 if [[ -f "$PID_FILE" ]]; then
@@ -27,7 +29,7 @@ if [[ -f "$PID_FILE" ]]; then
 fi
 
 # --- pgrep フォールバック ---
-PGREP_PIDS=$(pgrep -f "main.py.*--name ${PROJECT_NAME} --live" 2>/dev/null || true)
+PGREP_PIDS=$(pgrep -f "main.py.*--name ${SANITIZED} --live" 2>/dev/null || true)
 if [[ -n "$PGREP_PIDS" ]]; then
   echo "$PGREP_PIDS" | xargs kill 2>/dev/null || true
 fi

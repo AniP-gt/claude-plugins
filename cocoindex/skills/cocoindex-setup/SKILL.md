@@ -9,37 +9,37 @@ user-invocable: false
 ## 共通情報
 
 - **スクリプト**: `${CLAUDE_PLUGIN_ROOT}/scripts/`
-- **ユーザー設定**: `~/.config/cocoindex/`（`.env`, `compose.yml`）
-- **DB**: `cocoindex` コンテナ（ポート15432）
+- **ユーザー設定**: `~/.config/cocoindex/.env`
+- **DB**: OrbStack VM内の `cocoindex` コンテナ（ポート15432、`restart: unless-stopped`で自動起動）
 
 ## 初回セットアップ
 
-`~/.config/cocoindex/` の設定ファイルは、セッション開始時およびヘルスチェック実行時にテンプレートから自動コピーされる。
+`~/.config/cocoindex/.env` は、セッション開始時およびヘルスチェック実行時にテンプレートから自動コピーされる。
 
 手動セットアップが必要な場合:
 
 ```bash
-mkdir -p ~/.config/cocoindex && cp ${CLAUDE_PLUGIN_ROOT}/templates/.env.example ~/.config/cocoindex/.env && cp ${CLAUDE_PLUGIN_ROOT}/templates/compose.yml ~/.config/cocoindex/compose.yml
+mkdir -p ~/.config/cocoindex && cp ${CLAUDE_PLUGIN_ROOT}/templates/.env.example ~/.config/cocoindex/.env
 ```
 
-自動・手動いずれの場合も、`~/.config/cocoindex/.env` の `VOYAGE_API_KEY` を設定すること。
+`~/.config/cocoindex/.env` の `VOYAGE_API_KEY` を設定すること。
 
-## DB起動
+## DB起動（VM内でのみ実行）
 
 ```bash
 cd ~/.config/cocoindex && docker compose up -d
 ```
 
-## インデックス構築・再構築
+`compose.yml` はVM側（`/root/.config/cocoindex/`）にのみ配置。Mac側には配置しない。
 
-```bash
-cd ${CLAUDE_PLUGIN_ROOT}/scripts && uv run python main.py <source_path> [--patterns "**/*.ts,**/*.tsx"] [--exclude "**/tmp/**"] [--name <project_name>]
-```
+## テーブル名の規則
 
-**オプション:**
-- `source_path`（必須）: インデックス対象ディレクトリの絶対パス（例: `/root/wonder/wonder-front`）
-- `--patterns`: 対象ファイルパターン（カンマ区切り、デフォルト: `**/*.rb`）。プロジェクトの言語に合わせて変更すること
-- `--exclude`: 追加除外パターン（カンマ区切り）
-- `--name`: プロジェクト名（省略時は `source_path` の親ディレクトリ名から自動推定）
+テーブル名には `hostname` プレフィックスが付く:
+- VM: `codeindex_dev_<project>__code_chunks`
+- Mac: `codeindex_macbookpro_local_<project>__code_chunks`
 
-再構築する場合も同じコマンドを再実行すればインデックスが更新される。
+これにより同一DBをMac/VMで共有しても競合しない。
+
+## インデックス再構築
+
+同じ構築コマンドを再実行すればインデックスが更新される。

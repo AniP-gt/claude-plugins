@@ -21,9 +21,12 @@ load_dotenv(dotenv_path=CONFIG_DIR / ".env")
 
 
 def get_table_name(project_dir: str) -> str:
-    """プロジェクトディレクトリからテーブル名を計算"""
+    """プロジェクトディレクトリからテーブル名を計算（hostname prefix付き）"""
+    import socket
+    host_prefix = re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
     name = Path(project_dir).name
-    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", name)
+    index_name = f"{host_prefix}_{name}"
+    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name)
     return f"codeindex_{sanitized}__code_chunks".lower()
 
 
