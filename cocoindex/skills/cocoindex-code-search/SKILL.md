@@ -12,7 +12,14 @@ $ARGUMENTS
 
 ## ワークフロー
 
-### 1. ヘルスチェック（PostgreSQL + インデックス確認）
+### 1. Ollama起動（EMBEDDING_PROVIDER=ollama のときのみ）
+
+```bash
+source ~/.config/cocoindex/.env 2>/dev/null || true
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/ollama.sh start
+```
+
+### 2. ヘルスチェック（PostgreSQL + インデックス確認）
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/check.sh
@@ -22,7 +29,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check.sh
 - PostgreSQL接続
 - 現プロジェクトのインデックステーブルの存在とチャンク数
 
-### 2. 結果に応じて実行
+### 3. 結果に応じて実行
 
 #### 全てOK → 検索を実行
 
@@ -68,6 +75,12 @@ docker compose -f ~/.config/cocoindex/compose.yml up -d
 ```
 
 **重要**: スクリプトは `uv run` 経由で実行すること。`python3` で直接実行すると依存パッケージが見つからずエラーになる。
+
+### 4. Ollama停止（このスクリプトが起動した場合のみ）
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/ollama.sh stop
+```
 
 ## サブエージェント
 
