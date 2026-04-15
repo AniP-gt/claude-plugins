@@ -1,16 +1,16 @@
 {
-  "name": "hidetsugu-miya",
+  "name": "AniP-gt",
   "owner": {
     "name": "miya"
   },
   "metadata": {
     "description": "Custom Claude Code plugins by miya",
-    "homepage": "https://github.com/hidetsugu-miya/claude-plugins"
+    "homepage": "https://github.com/AniP-gt/claude-plugins"
   },
   "plugins": [
     {
       "name": "cocoindex",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "source": "./cocoindex",
       "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndexを使って自然言語クエリで関連コードのエントリーポイントを発見する。"
     },
@@ -91,6 +91,12 @@
       "version": "0.1.1",
       "source": "./mermaid",
       "description": "Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。"
+    },
+    {
+      "name": "ticktick",
+      "version": "0.1.0",
+      "source": "./ticktick",
+      "description": "TickTickタスク管理プラグイン。OAuth 2.0でブラウザ認証し、TickTick Open API v1でタスク・プロジェクト操作を行う。"
     }
   ]
 }
