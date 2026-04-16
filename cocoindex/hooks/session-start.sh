@@ -36,8 +36,9 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
-# --- 1. PostgreSQL 接続確認 ---
-PG_CHECK=$(cd "$SCRIPTS_DIR" && uv run python -c "
+# --- 1. PostgreSQL 接続確認（未起動なら自動起動してリトライ）---
+pg_check() {
+  cd "$SCRIPTS_DIR" && uv run python -c "
 import psycopg2
 try:
     conn = psycopg2.connect('$DB_URL', connect_timeout=3)
@@ -45,10 +46,30 @@ try:
     print('ok')
 except Exception:
     print('fail')
-" 2>/dev/null)
+" 2>/dev/null
+}
+
+PG_CHECK=$(pg_check)
 
 if [[ "$PG_CHECK" != "ok" ]]; then
-  log "SKIP($PROJECT_NAME): PostgreSQL unreachable"
+  log "INFO($PROJECT_NAME): PostgreSQL unreachable. Attempting docker compose up..."
+  if docker compose -f "$CONFIG_DIR/compose.yml" up -d 2>/dev/null; then
+    log "INFO($PROJECT_NAME): docker compose up succeeded. Waiting for PostgreSQL..."
+    for i in 1 2 3 4 5; do
+      sleep 2
+      PG_CHECK=$(pg_check)
+      if [[ "$PG_CHECK" == "ok" ]]; then
+        log "INFO($PROJECT_NAME): PostgreSQL ready (attempt $i)"
+        break
+      fi
+    done
+  else
+    log "WARN($PROJECT_NAME): docker compose up failed (Docker not running?)"
+  fi
+fi
+
+if [[ "$PG_CHECK" != "ok" ]]; then
+  log "SKIP($PROJECT_NAME): PostgreSQL unreachable after auto-start attempt"
   echo "⚠️ CocoIndex: PostgreSQL unreachable at localhost:15432. コードベース検索は利用できません。起動: docker compose -f ~/.config/cocoindex/compose.yml up -d"
   exit 0
 fi
