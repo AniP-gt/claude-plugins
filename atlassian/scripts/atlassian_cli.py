@@ -25,9 +25,15 @@ import time
 
 MCP_SERVER_URL = "https://mcp.atlassian.com/v1/mcp"
 
+# OrbStack Linux VM はホストmacOSのブラウザを呼び出せる
+ORBSTACK_OPEN = "/opt/orbstack-guest/bin/open"
+
 
 def _is_headless() -> bool:
     """ブラウザが使えない環境かを判定"""
+    # OrbStack Linux VM はホストmacOSのブラウザが使えるので非ヘッドレス扱い
+    if os.path.exists(ORBSTACK_OPEN):
+        return False
     if os.path.exists("/.dockerenv"):
         return True
     if os.environ.get("CONTAINER") or os.environ.get("container"):
@@ -57,6 +63,9 @@ def _run_mcp(requests, timeout=120, show_stderr=False, capture_stderr=False):
     env = os.environ.copy()
     if capture_stderr:
         env["BROWSER"] = "echo"
+    elif os.path.exists(ORBSTACK_OPEN) and not env.get("BROWSER"):
+        # OrbStack Linux VM ではホストmacOSの open を明示指定して mcp-remote に使わせる
+        env["BROWSER"] = ORBSTACK_OPEN
 
     if capture_stderr:
         stderr_mode = subprocess.PIPE
