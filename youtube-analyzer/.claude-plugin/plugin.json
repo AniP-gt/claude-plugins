@@ -1,0 +1,7 @@
+{
+  "name": "youtube-analyzer",
+  "version": "0.1.0",
+  "description": "YouTube チャンネル分析とトレンド検索プラグイン。YouTube Analytics API と YouTube Data API v3 を使い、チャンネル統計取得とキーワードトレンド検索を行う。",
+  "author": { "name": "AniP-gt" },
+  "keywords": ["youtube", "analytics", "trending", "google"]
+}

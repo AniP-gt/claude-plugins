@@ -2,6 +2,6 @@
   "name": "claude-mem",
   "version": "1.6.3",
   "description": "claude-mem永続メモリの検索・取得プラグイン。Worker HTTP API経由で過去のセッション情報、観察、タイムラインを参照する。",
-  "author": { "name": "miya" },
+  "author": { "name": "AniP-gt" },
   "keywords": ["claude-mem", "memory", "search", "timeline", "observation"]
 }

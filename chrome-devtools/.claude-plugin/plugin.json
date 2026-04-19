@@ -2,6 +2,6 @@
   "name": "chrome-devtools",
   "version": "0.2.1",
   "description": "Chrome DevTools MCPを使ったブラウザ自動化・デバッグプラグイン。DOMスナップショット、スクリーンショット、コンソールログ、ネットワーク監視、パフォーマンス分析などをHTTPサーバーモードで実行する。",
-  "author": { "name": "miya" },
+  "author": { "name": "AniP-gt" },
   "keywords": ["chrome", "devtools", "browser", "debugging", "mcp", "performance"]
 }
