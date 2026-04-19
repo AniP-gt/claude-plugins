@@ -70,9 +70,9 @@
     },
     {
       "name": "todoist",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "./todoist",
-      "description": "Todoistタスク管理プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでTodoist MCPツールを実行する。"
+      "description": "Todoistタスク管理プラグイン。mcp-remoteプロキシ経由でOAuth 2.1認証し、Todoist MCPツールを実行する。"
     },
     {
       "name": "atlassian",

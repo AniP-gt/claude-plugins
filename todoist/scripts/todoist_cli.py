@@ -2,30 +2,150 @@
 """
 Todoist MCP CLI
 
-Todoist MCPクライアントのCLIエントリーポイント。
-OAuth認証、認証管理、Todoistツール実行を行う。
+mcp-remote プロキシ経由で Todoist MCP サーバーに接続し、
+Todoistツール（タスク管理・プロジェクト操作等）を実行するCLI。
+
+OAuth 2.1認証は mcp-remote が自動で処理する（初回はブラウザが開く）。
 
 Usage:
     python todoist_cli.py login
-    python todoist_cli.py logout
-    python todoist_cli.py status
     python todoist_cli.py tools
     python todoist_cli.py call <tool_name> --arg key=value
 """
 
-import sys
-import os
-import json
 import argparse
+import json
+import os
+import select
+import subprocess
+import sys
+import time
 
-sys.path.insert(0, os.path.dirname(__file__))
-from token_store import TokenStore, TokenStoreError
-from oauth import login, login_url_only, login_with_code, OAuthError
-from todoist_client import TodoistMCPClient, TodoistMCPError
+
+MCP_SERVER_URL = "https://ai.todoist.net/mcp"
 
 
-def extract_text(content: list) -> str:
+def _is_headless() -> bool:
+    """ブラウザが使えない環境かを判定"""
+    if os.path.exists("/.dockerenv"):
+        return True
+    if os.environ.get("CONTAINER") or os.environ.get("container"):
+        return True
+    if sys.platform == "linux" and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        return True
+    return False
+
+
+def _run_mcp(requests, timeout=120, show_stderr=False, capture_stderr=False):
+    """
+    mcp-remote経由でMCPリクエストを実行（Popenベース）
+
+    mcp-remoteはstdinが閉じると即シャットダウンするため、
+    Popenでstdinを開いたままレスポンスを読み取る。
+
+    Args:
+        requests: 送信するJSON-RPCリクエストのリスト [{"method": ..., "id": ...}, ...]
+        timeout: タイムアウト秒数
+        show_stderr: stderrをターミナルに直接表示するか
+        capture_stderr: stderrをキャプチャしてURL抽出に使うか（ヘッドレスモード用）
+
+    Returns:
+        (responses_dict, error_message)
+        responses_dict: {request_id: response_data} のマッピング
+    """
+    env = os.environ.copy()
+    if capture_stderr:
+        env["BROWSER"] = "echo"
+
+    if capture_stderr:
+        stderr_mode = subprocess.PIPE
+    elif show_stderr:
+        stderr_mode = None
+    else:
+        stderr_mode = subprocess.DEVNULL
+
+    try:
+        proc = subprocess.Popen(
+            ["npx", "-y", "mcp-remote@0.1.38", MCP_SERVER_URL],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=stderr_mode,
+            env=env,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None, "npx not found. Please install Node.js (v18+)"
+
+    stderr_lines = []
+
+    def _read_stderr_thread():
+        """stderrを読み取るスレッド（capture_stderrモード用）"""
+        try:
+            for line in proc.stderr:
+                stderr_lines.append(line.rstrip())
+                stripped = line.strip()
+                if stripped.startswith("http://") or stripped.startswith("https://"):
+                    print(f"\n認証URL:\n{stripped}\n")
+                    print("上記URLをブラウザで開いて認証してください。")
+                elif stripped:
+                    print(f"[mcp-remote] {stripped}", file=sys.stderr)
+        except Exception:
+            pass
+
+    if capture_stderr:
+        import threading
+        stderr_thread = threading.Thread(target=_read_stderr_thread, daemon=True)
+        stderr_thread.start()
+
+    def _read_response(deadline):
+        """stdoutから1つのJSON-RPCレスポンスを読む"""
+        while time.time() < deadline:
+            ready, _, _ = select.select([proc.stdout], [], [], 1.0)
+            if ready:
+                line = proc.stdout.readline()
+                if not line:
+                    return None
+                line = line.strip()
+                if line:
+                    try:
+                        return json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+            if proc.poll() is not None:
+                return None
+        return None
+
+    try:
+        responses = {}
+        deadline = time.time() + timeout
+
+        # リクエストを1つずつ送信し、レスポンスを待ってから次を送る
+        for req in requests:
+            proc.stdin.write(json.dumps(req) + "\n")
+            proc.stdin.flush()
+
+            if "id" in req:
+                resp = _read_response(deadline)
+                if resp and "id" in resp:
+                    responses[resp["id"]] = resp
+
+        return responses, None
+
+    except Exception as e:
+        return None, str(e)
+    finally:
+        proc.stdin.close()
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+
+
+def extract_text(content):
     """MCPレスポンスのcontentリストからテキストを抽出"""
+    if not isinstance(content, list):
+        return json.dumps(content, ensure_ascii=False, indent=2)
     parts = []
     for item in content:
         if isinstance(item, dict) and item.get("type") == "text":
@@ -35,8 +155,8 @@ def extract_text(content: list) -> str:
     return "\n".join(parts) if parts else json.dumps(content, ensure_ascii=False, indent=2)
 
 
-def parse_arg_value(value_str: str):
-    """引数値を適切な型に変換（数値・bool・JSON）"""
+def parse_arg_value(value_str):
+    """引数値を適切な型に変換"""
     if value_str.lower() == "true":
         return True
     if value_str.lower() == "false":
@@ -56,69 +176,93 @@ def parse_arg_value(value_str: str):
     return value_str
 
 
+def _init_request():
+    """initializeリクエストを生成"""
+    return {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "todoist-mcp-cli", "version": "1.0.0"}
+        },
+        "id": 1
+    }
+
+
 def cmd_login(args):
-    """OAuth PKCEフローでログイン"""
-    if args.url_only:
-        login_url_only()
-    elif args.code:
-        login_with_code(args.code)
+    """OAuth 2.1認証を実行（mcp-remoteが自動でブラウザを開く）"""
+    headless = _is_headless()
+
+    print("Todoist MCPサーバーに接続中...")
+    if headless:
+        print("ヘッドレス環境を検出しました。認証URLが表示されるのでブラウザで開いてください。\n")
     else:
-        login()
+        print("初回はブラウザが開きます。Todoistアカウントで認証してください。\n")
 
+    responses, error = _run_mcp(
+        [_init_request()], timeout=180,
+        show_stderr=not headless,
+        capture_stderr=headless,
+    )
 
-def cmd_logout(args):
-    """認証トークンを削除"""
-    store = TokenStore()
-    if store.is_authenticated():
-        store.remove_auth()
-        print("Logged out successfully.")
+    if responses is None:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    resp = responses.get(1)
+    if resp and "result" in resp:
+        server_info = resp["result"].get("serverInfo", {})
+        print("\nLogin successful!")
+        print(f"  Server: {server_info.get('name', 'N/A')}")
+        print(f"  Version: {server_info.get('version', 'N/A')}")
+    elif resp and "error" in resp:
+        print(f"\nError: {resp['error'].get('message', resp['error'])}", file=sys.stderr)
+        sys.exit(1)
     else:
-        print("Not currently authenticated.")
-
-
-def cmd_status(args):
-    """認証状態を表示"""
-    store = TokenStore()
-    auth = store.get_auth()
-    creds = store.get_client_credentials()
-
-    if not auth or not auth.get("access_token"):
-        print("Status: Not authenticated")
-        print("Run 'login' to authenticate with Todoist.")
-        return
-
-    import time
-    authenticated_at = auth.get("authenticated_at", 0)
-    elapsed_days = (int(time.time()) - authenticated_at) // 86400
-
-    print("Status: Authenticated")
-    print(f"  Scope: {auth.get('scope', 'N/A')}")
-    print(f"  Authenticated: {elapsed_days} days ago")
-    if creds:
-        print(f"  Client ID: {creds['client_id'][:16]}...")
+        print("\nError: No response from MCP server (timeout or auth failed)", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_tools(args):
     """利用可能なTodoist MCPツール一覧を表示"""
-    with TodoistMCPClient(debug=args.debug) as client:
-        tools = client.list_tools()
-        for tool in tools:
-            name = tool.get("name", "?")
-            desc = tool.get("description", "")
-            print(f"  {name}")
-            if desc:
-                first_line = desc.strip().split("\n")[0]
-                print(f"    {first_line}")
-            schema = tool.get("inputSchema", {})
-            props = schema.get("properties", {})
-            required = schema.get("required", [])
-            if props:
-                for pname, pinfo in props.items():
-                    req_mark = "*" if pname in required else " "
-                    ptype = pinfo.get("type", "")
-                    pdesc = pinfo.get("description", "")
-                    print(f"    {req_mark} {pname} ({ptype}): {pdesc}")
-            print()
+    requests = [
+        _init_request(),
+        {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2},
+    ]
+    responses, error = _run_mcp(requests)
+
+    if responses is None:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    resp = responses.get(2)
+    if not resp:
+        print("Error: No tools/list response", file=sys.stderr)
+        sys.exit(1)
+
+    if "error" in resp:
+        print(f"Error: {resp['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    tools = resp.get("result", {}).get("tools", [])
+    for tool in tools:
+        name = tool.get("name", "?")
+        desc = tool.get("description", "")
+        print(f"  {name}")
+        if desc:
+            first_line = desc.strip().split("\n")[0]
+            print(f"    {first_line}")
+        schema = tool.get("inputSchema", {})
+        props = schema.get("properties", {})
+        required = schema.get("required", [])
+        if props:
+            for pname, pinfo in props.items():
+                req_mark = "*" if pname in required else " "
+                ptype = pinfo.get("type", "")
+                pdesc = pinfo.get("description", "")
+                print(f"    {req_mark} {pname} ({ptype}): {pdesc}")
+        print()
 
 
 def cmd_call(args):
@@ -132,22 +276,43 @@ def cmd_call(args):
             key, value = item.split("=", 1)
             arguments[key] = parse_arg_value(value)
 
-    with TodoistMCPClient(debug=args.debug) as client:
-        result = client.call_tool(args.tool_name, arguments)
-        print(extract_text(result))
+    requests = [
+        _init_request(),
+        {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": args.tool_name, "arguments": arguments},
+            "id": 2,
+        },
+    ]
+    responses, error = _run_mcp(requests)
+
+    if responses is None:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    resp = responses.get(2)
+    if not resp:
+        print("Error: No tool response", file=sys.stderr)
+        sys.exit(1)
+
+    if "error" in resp:
+        err = resp["error"]
+        print(f"Error: {err.get('message', err)}", file=sys.stderr)
+        sys.exit(1)
+
+    content = resp.get("result", {}).get("content", [])
+    print(extract_text(content))
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Todoist MCP CLI - タスク管理・プロジェクト操作",
+        description="Todoist MCP CLI - タスク管理・プロジェクト操作（mcp-remote経由）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # ログイン（初回はクライアント登録も実行）
+  # ログイン（初回はブラウザが開く）
   %(prog)s login
-
-  # 認証状態確認
-  %(prog)s status
 
   # ツール一覧
   %(prog)s tools
@@ -163,27 +328,13 @@ Examples:
 
   # タスク検索
   %(prog)s call find-tasks --arg query="today"
-
-  # ログアウト
-  %(prog)s logout
         """
     )
-    parser.add_argument("--debug", action="store_true", help="デバッグログを出力")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # login
-    p_login = subparsers.add_parser("login", help="OAuth PKCEフローでログイン")
-    p_login.add_argument("--url-only", action="store_true",
-                         help="認証URLのみ出力して終了（ヘッドレス環境用ステップ1）")
-    p_login.add_argument("--code", metavar="CALLBACK_URL",
-                         help="コールバックURLでトークン取得（ヘッドレス環境用ステップ2）")
-
-    # logout
-    subparsers.add_parser("logout", help="認証トークンを削除")
-
-    # status
-    subparsers.add_parser("status", help="認証状態を表示")
+    subparsers.add_parser("login", help="OAuth 2.1認証を実行")
 
     # tools
     subparsers.add_parser("tools", help="利用可能なTodoist MCPツール一覧")
@@ -197,17 +348,12 @@ Examples:
 
     commands = {
         "login": cmd_login,
-        "logout": cmd_logout,
-        "status": cmd_status,
         "tools": cmd_tools,
         "call": cmd_call,
     }
 
     try:
         commands[args.command](args)
-    except (TokenStoreError, OAuthError, TodoistMCPError) as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(130)

@@ -1,6 +1,6 @@
 ---
 name: todoist-login
-description: Todoist MCPへのOAuth認証手順。ブラウザでTodoistアカウントを認証し、トークンを保存する。
+description: Todoist MCPへのOAuth 2.1認証手順。mcp-remote経由でブラウザ認証し、トークンを保存する。
 ---
 
 # Todoist MCP ログイン
@@ -11,42 +11,39 @@ $ARGUMENTS
 
 ## 手順
 
-### 1. 認証URLを取得
+### 1. ログイン実行
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/todoist_cli.py login --url-only
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/todoist_cli.py login
 ```
 
-初回はクライアント登録も自動で実行される。
+ヘッドレス環境では、mcp-remoteが出力する認証URLが標準出力に表示される。
 
-### 2. ユーザーに認証を依頼
-
-コマンドの出力（認証URL）を **省略せず全文** ユーザーに提示し、以下を依頼する:
+コマンド出力に認証URLが含まれる場合、そのURLを **省略せず全文** ユーザーに提示し、以下を依頼する:
 
 1. このURLをブラウザで開いてTodoistアカウントで認証してください
-2. 認証後、ブラウザのアドレスバーに `localhost:3120/callback?code=...&state=...` というURLが表示されます（ページ自体はエラーになります）
-3. そのURLをコピーして貼り付けてください
+2. 認証が完了するとmcp-remoteが自動でトークンを取得します
 
-**ユーザーからコールバックURLを受け取るまで次に進まないこと。**
+**ユーザーに認証URLを提示し、認証完了を待つこと。**
 
-### 3. コールバックURLでトークン取得
+mcp-remoteがOAuth 2.1認証を処理し、トークンを `~/.mcp-auth/` に自動保存する。
 
-ユーザーから受け取ったURLを使って実行:
+### 2. ログイン確認
+
+「Login successful!」と表示されれば認証完了。
+
+### トラブルシューティング
+
+認証エラーが発生した場合:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/todoist_cli.py login --code "<ユーザーが貼り付けたURL>"
+# 認証キャッシュをクリアして再認証
+rm -rf ~/.mcp-auth/
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/todoist_cli.py login
 ```
-
-### 4. ログイン確認
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/todoist_cli.py status
-```
-
-「Status: Authenticated」と表示されれば認証完了。
 
 ## 出力
 
 認証結果を報告する:
 - 認証状態（成功/失敗）
-- スコープ情報
+- サーバー情報
