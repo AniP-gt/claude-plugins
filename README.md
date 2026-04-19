@@ -7,27 +7,28 @@ Custom Claude Code plugins by miya.
 マーケットプレイスを登録:
 
 ```text
-/plugin marketplace add hidetsugu-miya/claude-plugins
+/plugin marketplace add AniP-gt/claude-plugins
 ```
 
 使いたいプラグインをインストール:
 
 ```text
-/plugin install cocoindex@hidetsugu-miya
-/plugin install context7@hidetsugu-miya
-/plugin install rollbar@hidetsugu-miya
-/plugin install sentry@hidetsugu-miya
-/plugin install figma@hidetsugu-miya
-/plugin install playwright@hidetsugu-miya
-/plugin install claude-mem@hidetsugu-miya
-/plugin install devin@hidetsugu-miya
-/plugin install chrome-devtools@hidetsugu-miya
-/plugin install slack@hidetsugu-miya
-/plugin install todoist@hidetsugu-miya
-/plugin install atlassian@hidetsugu-miya
-/plugin install drawio@hidetsugu-miya
-/plugin install mermaid@hidetsugu-miya
-/plugin install ticktick@hidetsugu-miya
+/plugin install cocoindex@AniP-gt
+/plugin install context7@AniP-gt
+/plugin install rollbar@AniP-gt
+/plugin install sentry@AniP-gt
+/plugin install figma@AniP-gt
+/plugin install playwright@AniP-gt
+/plugin install claude-mem@AniP-gt
+/plugin install devin@AniP-gt
+/plugin install chrome-devtools@AniP-gt
+/plugin install slack@AniP-gt
+/plugin install todoist@AniP-gt
+/plugin install atlassian@AniP-gt
+/plugin install drawio@AniP-gt
+/plugin install mermaid@AniP-gt
+/plugin install ticktick@AniP-gt
+/plugin install ga4@AniP-gt
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -123,3 +124,9 @@ Node.js 20以上が必要です。使い方は `/mermaid-render` を実行して
 TickTickタスク管理プラグイン。OAuth 2.0でブラウザ認証し、TickTick Open API v1でタスク・プロジェクト操作を行う。
 
 [developer.ticktick.com](https://developer.ticktick.com/) でアプリ登録（Redirect URI: `http://localhost:3121/callback`）が必要です。初回は `/ticktick-login` でログインし、その後 `/ticktick-run` でツールを実行してください。
+
+### ga4
+
+Google Analytics 4 データ取得プラグイン。google-analytics-data SDK を使ってアカウント・プロパティ・レポートを Claude Code から参照する。複数プロパティを名前で管理できる。
+
+gcloud ADC または Service Account JSON での認証が必要です。使い方は `/ga4-run` を実行してください。
