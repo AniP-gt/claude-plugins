@@ -1,7 +1,7 @@
 {
   "name": "todoist",
-  "version": "0.2.0",
-  "description": "Todoistタスク管理プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでTodoist MCPツールを実行する。",
-  "author": { "name": "AniP-gt" },
+  "version": "0.4.1",
+  "description": "Todoistタスク管理プラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でTodoist MCPツールを実行する。",
+  "author": { "name": "miya" },
   "keywords": ["todoist", "task", "mcp", "productivity"]
 }

@@ -6,6 +6,11 @@ context: fork
 
 # Slack MCP ツール実行
 
+## 前提条件
+
+- Python 3.10 以上 と `pip3 install 'mcp>=1.13' httpx`
+- `slack-login` で認証済みのワークスペースが 1 つ以上存在すること
+
 ## 入力
 
 $ARGUMENTS
@@ -59,14 +64,18 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py tools
 
 | オプション | 説明 | デフォルト |
 |---|---|---|
-| `--workspace` | ワークスペースキー | デフォルトワークスペース |
-| `--debug` | デバッグログを出力 | off |
+| `--workspace` | ワークスペースキー | `~/.config/slack-mcp/default.txt` のキー |
 
 ワークスペース指定例:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py call <tool_name> --workspace <workspace_key> --arg key=value
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/slack_cli.py --workspace <workspace_key> call <tool_name> --arg key=value
 ```
+
+## トークン保存先
+
+- `~/.config/slack-mcp/<workspace_key>/tokens.json` (0600)
+- 有効期限切れ時は公式 MCP Python SDK が自動リフレッシュ
 
 ## サブエージェント
 

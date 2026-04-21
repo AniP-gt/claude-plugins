@@ -1,6 +1,6 @@
 ---
 name: atlassian-run
-description: Atlassian MCPツール（Jira・Confluence）を実行する。イシュー検索・作成・更新、ページ検索・取得などを行い結果を返す。
+description: Atlassian MCPツール（Jira・Confluence）を実行する。公式MCP Python SDK経由でイシュー検索・作成・更新、ページ検索・取得などを行い結果を返す。
 context: fork
 ---
 
@@ -9,6 +9,12 @@ context: fork
 ## 入力
 
 $ARGUMENTS
+
+## 前提
+
+- Python 3.10 以上
+- `mcp` と `httpx` パッケージ（初回は `pip3 install mcp httpx` で導入）
+- `/atlassian-login` でログイン済みであること
 
 ## 手順
 
@@ -50,7 +56,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/atlassian_cli.py call <tool_name> --arg ke
 
 ## 注意事項
 
-- 初回利用時は `login` でOAuth認証が必要（ブラウザが開く）
-- 認証トークンは `~/.mcp-auth/` にキャッシュされる
-- トークン期限切れ時は再度 `login` を実行
+- 初回利用時は `login` でOAuth 2.1認証が必要（ブラウザが開く）
+- 認証トークンとクライアント情報は `~/.config/atlassian-mcp/` にキャッシュされる
+- トークン期限切れ時は公式SDKが refresh_token で自動更新する
 - データアクセスはAtlassian Cloud上のユーザー権限に従う

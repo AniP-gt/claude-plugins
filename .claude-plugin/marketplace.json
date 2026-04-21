@@ -64,21 +64,21 @@
     },
     {
       "name": "slack",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "source": "./slack",
-      "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでSlack MCPツールを実行する。"
+      "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。公式MCP Python SDKでOAuth認証し、Streamable HTTP経由でSlack MCPツールを実行する（複数ワークスペース対応）。"
     },
     {
       "name": "todoist",
-      "version": "0.2.0",
+      "version": "0.4.1",
       "source": "./todoist",
-      "description": "Todoistタスク管理プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでTodoist MCPツールを実行する。"
+      "description": "Todoistタスク管理プラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でTodoist MCPツールを実行する。"
     },
     {
       "name": "atlassian",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "source": "./atlassian",
-      "description": "Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。mcp-remoteプロキシ経由でOAuth 2.1認証し、Jira・Confluenceツールを実行する。"
+      "description": "Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でJira・Confluenceツールを実行する。"
     },
     {
       "name": "drawio",
