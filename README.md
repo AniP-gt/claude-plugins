@@ -71,7 +71,7 @@ Playwright MCPを使ったブラウザ自動化プラグイン。Webページの
 
 ### claude-mem
 
-claude-mem永続メモリの検索・取得プラグイン。Worker HTTP API（localhost:37777）経由で過去のセッション情報、観察、タイムラインを参照する。
+claude-mem永続メモリの検索・取得プラグイン。Worker HTTP API経由で過去のセッション情報、観察、タイムラインを参照する。接続先は環境変数 `CLAUDE_MEM_WORKER_HOST` / `CLAUDE_MEM_WORKER_PORT`、`~/.claude-mem/settings.json`、デフォルト（`127.0.0.1:37700 + UID % 100`）の順で自動解決する。
 
 claude-mem Workerが起動していることが前提です。使い方は `/claude-mem-step` を実行してください。
 
