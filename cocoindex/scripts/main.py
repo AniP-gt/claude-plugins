@@ -59,9 +59,14 @@ def get_host_prefix() -> str:
 
 
 def get_project_name(name: str | None, source_path: str) -> str:
-    """プロジェクト名を取得（hostnameプレフィックス付き）"""
+    """プロジェクト名を取得（hostnameプレフィックス付き）
+
+    未指定時は source_path 自身のベース名を使う。
+    これにより check.sh / search.py のテーブル名計算ロジック
+    （`Path(project_dir).name` ベース）と整合する。
+    """
     host_prefix = get_host_prefix()
-    base_name = name if name else Path(source_path).resolve().parent.name
+    base_name = name if name else Path(source_path).resolve().name
     # 既にhostnameプレフィックスが付いている場合はそのまま返す
     if base_name.startswith(f"{host_prefix}_"):
         return base_name
@@ -147,7 +152,7 @@ def main():
     parser.add_argument("--patterns", default="**/*.rb", help="対象ファイルパターン（カンマ区切り）")
     parser.add_argument("--exclude", default="", help="追加除外パターン（カンマ区切り）")
     parser.add_argument("--no-default-excludes", action="store_true", help="デフォルト除外パターンを無効化")
-    parser.add_argument("--name", default=None, help="プロジェクト名（未指定時は source_path の親ディレクトリ名）")
+    parser.add_argument("--name", default=None, help="プロジェクト名（未指定時は source_path のベース名）")
     parser.add_argument("--live", action="store_true", help="FlowLiveUpdater で常駐モード起動")
     args = parser.parse_args()
 
