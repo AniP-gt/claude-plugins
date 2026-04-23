@@ -103,6 +103,12 @@
       "version": "0.1.1",
       "source": "./youtube-analyzer",
       "description": "YouTube チャンネル分析とトレンド検索プラグイン。YouTube Analytics API と YouTube Data API v3 を使い、チャンネル統計取得とキーワードトレンド検索を行う。"
+    },
+    {
+      "name": "ga4",
+      "version": "0.1.1",
+      "source": "./ga4",
+      "description": "Google Analytics 4 データ取得プラグイン。google-analytics-data SDKを使ってアカウント・プロパティ・レポートをClaude Codeから参照する。複数プロパティを名前で管理できる。"
     }
   ]
 }
