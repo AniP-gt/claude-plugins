@@ -170,18 +170,28 @@ def cmd_auth_login(_config: dict, args: argparse.Namespace) -> None:
     flow = InstalledAppFlow.from_client_secrets_file(
         str(creds_path),
         scopes=OAUTH_SCOPES,
-        redirect_uri="http://localhost:8080/",
+        redirect_uri="http://localhost",
     )
 
     state_path = CONFIG_DIR / ".oauth_state"
+    verifier_path = CONFIG_DIR / ".oauth_verifier"
 
     if args.url_only:
+        import base64
+        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode()
+        import hashlib
+        code_challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode()).digest()
+        ).rstrip(b"=").decode()
         auth_url, state = flow.authorization_url(
             access_type="offline",
             include_granted_scopes="true",
             prompt="consent",
+            code_challenge=code_challenge,
+            code_challenge_method="S256",
         )
         _atomic_write_file(state_path, state)
+        _atomic_write_file(verifier_path, code_verifier)
         print(auth_url)
         return
 
@@ -215,7 +225,15 @@ def cmd_auth_login(_config: dict, args: argparse.Namespace) -> None:
             )
             sys.exit(1)
 
-        flow.fetch_token(code=code)
+        try:
+            code_verifier = verifier_path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            code_verifier = None
+
+        flow.fetch_token(code=code, code_verifier=code_verifier)
+
+        if verifier_path.exists():
+            verifier_path.unlink()
         creds = flow.credentials
 
         _atomic_write_file(token_path, creds.to_json())
