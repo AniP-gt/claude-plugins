@@ -1,6 +1,6 @@
 {
   "name": "ga4",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Google Analytics 4 データ取得プラグイン。google-analytics-data SDKを使ってアカウント・プロパティ・レポートをClaude Codeから参照する。複数プロパティを名前で管理できる。",
   "author": { "name": "AniP-gt" },
   "keywords": ["ga4", "google-analytics", "analytics"]
