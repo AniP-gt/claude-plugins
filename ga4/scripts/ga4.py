@@ -119,7 +119,7 @@ _MAX_LIST_RESULTS = 100
 def cmd_accounts(config: dict, _args: argparse.Namespace) -> None:
     client = get_admin_client(config)
     results = []
-    for summary in client.list_account_summaries(page_size=_MAX_LIST_RESULTS, timeout=30.0):
+    for summary in client.list_account_summaries(timeout=30.0):
         account_entry = {
             "account": summary.account,
             "display_name": summary.display_name,
@@ -172,14 +172,18 @@ def cmd_ads_links(config: dict, args: argparse.Namespace) -> None:
 
 
 def build_report_request(property_id: str, args: argparse.Namespace):
-    from google.analytics.data_v1beta.types import Dimension, Metric, RunReportRequest
+    from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
 
     metric_names = parse_names(args.metrics, "メトリクス")
     metrics = [Metric(name=m) for m in metric_names]
 
+    start_date = getattr(args, "start_date", None) or "30daysAgo"
+    end_date = getattr(args, "end_date", None) or "today"
+
     kwargs = {
         "property": format_property_name(property_id),
         "metrics": metrics,
+        "date_ranges": [DateRange(start_date=start_date, end_date=end_date)],
         "limit": args.limit,
     }
     if args.dimensions:
@@ -312,6 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--property", default=None, help="プロパティ名またはID")
     p_report.add_argument("--metrics", required=True, help="メトリクス (カンマ区切り)")
     p_report.add_argument("--dimensions", default=None, help="ディメンション (カンマ区切り)")
+    p_report.add_argument("--start-date", default=None, dest="start_date", help="開始日 (例: 2024-01-01 or 30daysAgo)")
+    p_report.add_argument("--end-date", default=None, dest="end_date", help="終了日 (例: 2024-01-31 or today)")
     p_report.add_argument("--limit", type=int, default=100, help="取得件数上限")
 
     p_rt = sub.add_parser("realtime", help="リアルタイムレポートを取得")
