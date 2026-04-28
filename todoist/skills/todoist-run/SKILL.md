@@ -2,6 +2,7 @@
 name: todoist-run
 description: Todoist MCPツールを実行する。公式MCP Python SDK経由でタスク管理・プロジェクト操作等を行う。
 context: fork
+effort: low
 ---
 
 # Todoist MCPツール実行

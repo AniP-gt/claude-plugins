@@ -3,6 +3,7 @@ name: atlassian-runner
 description: Atlassian MCPツール（Jira・Confluence）を実行する。イシュー検索・作成・更新、ページ検索・取得などを行い結果を返すときに使用。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - atlassian-run
 ---

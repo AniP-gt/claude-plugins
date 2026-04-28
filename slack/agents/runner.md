@@ -3,6 +3,7 @@ name: slack-runner
 description: Slack MCPツールを実行する。メッセージ検索・送信・チャンネル読み取りが必要なときに使用。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - slack-run
   - slack-troubleshooting

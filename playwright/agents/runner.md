@@ -3,6 +3,7 @@ name: playwright-runner
 description: Playwrightでブラウザ操作を自律的に実行する。Webページのナビゲート、スナップショット取得、要素操作などを行い結果を返すときに使用。
 tools: Bash
 model: sonnet
+effort: medium
 skills:
   - playwright-step
   - playwright-reference

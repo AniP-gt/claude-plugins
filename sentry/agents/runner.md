@@ -3,6 +3,7 @@ name: sentry-runner
 description: Sentryエラートラッキングの調査を実行する。URL取得からイシュー詳細、プロジェクト・組織情報の確認、エラー統計・推移分析まで。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - sentry-investigate
 ---

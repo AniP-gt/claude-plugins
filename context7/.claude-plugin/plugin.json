@@ -1,6 +1,6 @@
 {
   "name": "context7",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "ライブラリの最新ドキュメントを取得するプラグイン。Context7 MCPサーバーを使ってパッケージ名からIDを解決し、バージョン固有のドキュメントを参照する。",
   "author": { "name": "miya" },
   "keywords": ["context7", "documentation", "library-docs", "mcp"]

@@ -3,6 +3,7 @@ name: context7-runner
 description: ライブラリの最新ドキュメントを取得する。パッケージ名からIDを解決し、バージョン固有のドキュメントを参照するときに使用。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - context7-step
   - context7-reference

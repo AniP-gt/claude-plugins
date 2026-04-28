@@ -2,6 +2,7 @@
 name: devin-deepwiki-step
 description: DeepWiki CLIでGitHubリポジトリのドキュメント構造取得・内容取得・質問応答を行う手順。
 context: fork
+effort: low
 ---
 
 # DeepWiki CLI 利用手順

@@ -3,6 +3,7 @@ name: chrome-devtools-runner
 description: Chrome DevToolsでブラウザ操作・デバッグを自律的に実行する。DOM操作、スクリーンショット、コンソールログ、ネットワーク監視、パフォーマンス分析を行い結果を返すときに使用。
 tools: Bash, Read
 model: sonnet
+effort: medium
 skills:
   - chrome-devtools-step
   - chrome-devtools-reference

@@ -3,6 +3,7 @@ name: cocoindex-runner
 description: コードベースのベクトル検索を実行する。自然言語クエリで関連ファイルのエントリーポイントを発見するときに使用。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - cocoindex-code-search
   - cocoindex-setup

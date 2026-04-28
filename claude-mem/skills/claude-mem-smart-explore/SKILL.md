@@ -2,6 +2,7 @@
 name: claude-mem-smart-explore
 description: tree-sitter AST構造解析によるトークン効率の高いコード探索。ファイル全体を読む代わりにシンボル単位で構造を把握する。
 context: fork
+effort: low
 ---
 
 # Smart Explore

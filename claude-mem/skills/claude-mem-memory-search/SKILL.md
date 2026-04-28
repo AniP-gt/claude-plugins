@@ -2,6 +2,7 @@
 name: claude-mem-memory-search
 description: 永続メモリの検索・取得。3レイヤーワークフローで過去のセッション情報、観察、タイムラインを参照する。
 context: fork
+effort: low
 ---
 
 # claude-mem 利用手順

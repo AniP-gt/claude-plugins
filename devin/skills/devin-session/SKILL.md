@@ -2,6 +2,7 @@
 name: devin-session-step
 description: Devin Session APIでタスクを委任・管理する手順。
 context: fork
+effort: low
 ---
 
 # Devin Session API 利用手順

@@ -2,6 +2,7 @@
 name: cocoindex-code-search
 description: コードベースのベクトル検索を実行する。ヘルスチェックから検索・インデックス構築までを一貫して行う。
 context: fork
+effort: low
 ---
 
 # CocoIndex ベクトル検索
