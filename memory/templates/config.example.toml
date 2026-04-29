@@ -36,3 +36,22 @@ mount_canary_filename = ".mount-canary"
 # ホスト名 SHA-1 hex の先頭何文字をファイル名に埋め込むか（衝突確率の調整）。
 # 既定 8 文字（マシン跨ぎでの衝突確率 ~1/2^32）。範囲 4-40。
 hostname_hash_length = 8
+
+# ============================================================================
+# 以下は環境変数で上書きする項目。本ファイルでは説明のみ（TOML パーサからは無視される）。
+# 設定したい場合は ~/.zshrc / ~/.bashrc などに export してください。
+# ============================================================================
+
+# kind 別 Codex モデル（wiki-runner.sh が参照）。
+#   export CODEX_MEMORY_WIKI_MODEL_SESSION="gpt-5.4"
+#   export CODEX_MEMORY_WIKI_MODEL_WEB="gpt-5.4-mini"
+#   export CODEX_MEMORY_WIKI_MODEL_MINUTES="gpt-5.4-mini"
+# 後方互換: CODEX_MEMORY_WIKI_MODEL を設定すると全 kind の既定値を上書きします。
+
+# trashbox 自動削除（wiki-runner.sh 起動時に mtime ベースで実行）。
+#   export MEMORIES_TRASHBOX_RETAIN_DAYS=30   # 保持日数（既定 30、0 で無効化）
+#   export MEMORIES_TRASHBOX_DRY_RUN=1        # 1 で削除せずログのみ
+
+# /tmp/memories/*.log のローテーション（各 runner 起動時に閾値超過なら gzip 退避）。
+#   export MEMORIES_LOG_ROTATE_BYTES=5242880  # 既定 5MB
+#   export MEMORIES_LOG_ROTATE_KEEP=3         # 保持世代数

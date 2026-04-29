@@ -24,6 +24,14 @@ LOG_DIR_LOCAL="/tmp/memories"
 LOG_FILE="$LOG_DIR_LOCAL/recording-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
+# ログ肥大化を防ぐため、起動直後に rotate を試みる（best effort）。
+LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
+if [[ -f "$LOG_ROTATE_LIB" ]]; then
+    # shellcheck source=../lib/log_rotate.sh
+    source "$LOG_ROTATE_LIB"
+    rotate_log_if_needed "$LOG_FILE" || true
+fi
+
 # ANSI色コード（Terminal表示用）
 readonly C_CYAN=$'\033[1;36m'
 readonly C_YELLOW=$'\033[1;33m'

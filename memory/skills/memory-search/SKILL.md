@@ -1,7 +1,7 @@
 ---
 name: memory-search
 description: エピソード記憶（memories/raw/{session,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
-argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown]
+argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe]
 ---
 
 # Memory Search Skill
@@ -22,6 +22,7 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 - **インデックスは recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
+- **既定で同一ファイル内の chunk dedupe**: cocoindex は chunk 単位で返すため、同一ファイル内の異なる chunk が top N を埋めて候補多様性が失われる。既定では filename ベースで dedupe し、最高スコアの chunk のみ採用する。`--no-dedupe` で旧挙動（chunk 単位）に戻せる
 
 ## 完了条件
 
@@ -35,10 +36,11 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 | 引数 | 必須 | 既定 | 説明 |
 |---|---|---|---|
 | `<query>` | ✓ | — | 自然言語クエリ |
-| `--top N` | | 10 | 返す件数 |
+| `--top N` | | 10 | 返す件数（ファイル単位、dedupe 後） |
 | `--scope session\|web\|minutes\|wiki\|all` | | all | 検索対象を絞る |
 | `--include-superseded` | | (false) | superseded/deprecated レポートも含める |
 | `--format json\|markdown` | | markdown | 出力形式 |
+| `--no-dedupe` | | (false) | 同一ファイル内の異なる chunk も全て返す（chunk 単位） |
 
 環境変数（任意）:
 

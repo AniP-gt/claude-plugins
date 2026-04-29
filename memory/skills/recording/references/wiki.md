@@ -25,9 +25,14 @@
 - **Raw は immutable**: Wiki 統合中も Raw は読み取りのみ。書き換えない
 - **Wiki は mutable**: Codex が再生成・上書きする。バージョン管理は Wiki ファイル自体の `updated_at` フロントマターで追う
 - **排他制御必須**: `mkdir .state/lock.d` で原子的にロックを取得した1プロセスだけが Wiki を更新する（macOS に flock がないため mkdir 方式）。ロックが取れなければ即終了（後発は降りる）。プロセス異常終了でロックが残った場合は次回起動時に PID 生存確認で自動奪取
-- **キュー駆動**: 処理対象は `~/.local/share/recording/state/ingest-queue.jsonl` の `status: pending` エントリのみ。処理済みは `ingest-archive.jsonl` に追い出す
+- **キュー駆動**: 処理対象は `~/.local/share/recording/state/ingest-queue.jsonl` の `status: pending` エントリのみ。処理済みは queue から削除する（永続アーカイブは持たない）
 - **state 永続化**: `~/.local/share/recording/state/` 配下に置く（OS 再起動でも pending を保持）。旧 `/tmp/memories/state/` は wiki-runner.sh 起動時に自動マージ
-- **Codex 上位モデル使用**: 概念抽出・既存 Wiki との統合判断が必要なため、`gpt-5.4`（既定）を使う。`CODEX_MEMORY_WIKI_MODEL` で上書き可
+- **kind 別 Codex モデル**: 統合難易度が kind ごとに異なるため、既定値を分離している:
+    - `session`: `gpt-5.4`（project 通史統合は重複排除・通史化が必要で推論強度高め）
+    - `web`: `gpt-5.4-mini`（要約・テーマ分類は軽量モデルで十分）
+    - `minutes`: `gpt-5.4-mini`（議事録の構造保持はテンプレ寄り）
+  - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES`
+  - 後方互換: `CODEX_MEMORY_WIKI_MODEL` を設定すれば全 kind の既定値を一括上書き
 - **kind 別リンク相対パス**:
     - `wiki/projects/<project>.md` → session へは `../../raw/session/YYYY-MM-DD/file.md`（2 階層上る）
     - `wiki/references.md` → web へは `../raw/web/YYYY-MM-DD/file.md`（1 階層上る）
@@ -37,7 +42,7 @@
 ## 完了条件
 
 - `ingest-queue.jsonl` の `status: pending` エントリが 0 件、もしくは Codex 失敗による pending 残のみ
-- 処理済みエントリは `ingest-archive.jsonl` に追加されている
+- 処理済みエントリは queue から削除されている（永続的な archive は保持しない）
 - `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Decisions Log）で再生成されている
 - 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/decisions.md`）が Codex により更新されている
 
@@ -51,7 +56,14 @@
 環境変数:
 
 - `MEMORIES_DIR`: memories ルート
-- `CODEX_MEMORY_WIKI_MODEL`: Codex モデル（既定 `gpt-5.4`）
+- `CODEX_MEMORY_WIKI_MODEL_SESSION`: session 統合用 Codex モデル（既定 `gpt-5.4`）
+- `CODEX_MEMORY_WIKI_MODEL_WEB`: web 統合用 Codex モデル（既定 `gpt-5.4-mini`）
+- `CODEX_MEMORY_WIKI_MODEL_MINUTES`: minutes 統合用 Codex モデル（既定 `gpt-5.4-mini`）
+- `CODEX_MEMORY_WIKI_MODEL`: 後方互換。設定すると全 kind の既定値を上書き
+- `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
+- `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
+- `MEMORIES_LOG_ROTATE_BYTES`: `/tmp/memories/*.log` ローテーション閾値（既定 5242880）
+- `MEMORIES_LOG_ROTATE_KEEP`: 同上の保持世代数（既定 3）
 
 ## ファイル配置
 
@@ -69,7 +81,6 @@
 
 ~/.local/share/recording/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending エントリ、kind 含む）
-├── ingest-archive.jsonl                                   # 処理済みアーカイブ
 └── lock.d/                                                # 排他ロック（mkdir 方式、中に pid ファイル）
 
 /tmp/memories/                                             # ローカル揮発（OS 再起動で消える）
@@ -100,31 +111,32 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
    - `kind: web`: → `wiki/references.md`（`codex-instruction-web.md`）
    - `kind: minutes`: → `wiki/decisions.md`（`codex-instruction-minutes.md`）
 5. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Decisions Log**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
-6. 処理済みエントリを `ingest-archive.jsonl` に移し、queue を空に
+6. 処理済みエントリを queue から削除して queue を空に（永続 archive は持たない）
 7. `PROCESSED_COUNT > 0` なら **`scripts/lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
 
-任意のタイミングで全件再処理:
+任意のタイミングで全件再処理する場合、`raw/{session,web,minutes}` 配下のファイルを直接 enqueue する:
 
 ```bash
-# キューを再構築（archive を queue に戻す）
-STATE_DIR="$HOME/.local/share/recording/state"
-mv "$STATE_DIR/ingest-archive.jsonl"{,.bak}
-python3 -c "
-import json, os
-from pathlib import Path
-state = Path(os.environ['STATE_DIR'])
-arc = state / 'ingest-archive.jsonl.bak'
-queue = state / 'ingest-queue.jsonl'
-with queue.open('a') as f:
-    for line in arc.read_text().splitlines():
-        d = json.loads(line)
-        d['status'] = 'pending'
-        f.write(json.dumps(d, ensure_ascii=False) + '\n')
-"
+MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
+ENQUEUE="${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py"
+
+# kind 別に raw を再投入（隠しファイル・AppleDouble は除外）
+for kind in session web minutes; do
+    find "$MEMORIES_DIR/raw/$kind" -type f -name '*.md' ! -name '.*' ! -name '._*' -print0 \
+        | xargs -0 -I{} python3 "$ENQUEUE" "{}" --kind "$kind"
+done
 
 # 実行
+"${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh"
+```
+
+特定 1 ファイルのみの再処理:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
+    "/Volumes/memory/raw/web/2026-04-29/HHMMSS_xxx.md" --kind web
 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh"
 ```
 
@@ -132,7 +144,7 @@ with queue.open('a') as f:
 
 - 実行ログ: `/tmp/memories/memory-wiki-runner.log`
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/recording/state/lock.d`
-- Codex 失敗で pending が残る: log を確認し、`--no-codex` でキューだけ消化するか、手動で archive に移す
+- Codex 失敗で pending が残る: log を確認し、`--no-codex` でキューだけ消化するか、queue から該当エントリを手動で削除する（`jq` または `python3` で `raw_path` 一致行をフィルタ）
 - 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `decisions.md`）を一度削除して再構築する
 - `references.md` / `decisions.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
 - index.md に AppleDouble (`._*`) が混入: 解消済（v0.4.0 以降）。古い index.md が残っている場合は wiki-runner.sh 再実行で上書きされる

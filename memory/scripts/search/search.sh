@@ -40,15 +40,18 @@ TOP=10
 SCOPE="all"
 INCLUDE_SUPERSEDED=0
 FORMAT="markdown"
+NO_DEDUPE=0
 
 usage() {
     cat <<EOF >&2
 Usage: $0 <query> [options]
 Options:
-  --top N                                 返す件数（既定: 10）
+  --top N                                 返す件数（既定: 10、ファイル単位）
   --scope session|web|minutes|wiki|all    検索対象（既定: all）
   --include-superseded                    superseded/deprecated も含める
   --format json|markdown                  出力形式（既定: markdown）
+  --no-dedupe                             同一ファイル内の異なる chunk も全て返す
+                                          （既定では最高スコア chunk のみ採用）
 EOF
     exit 2
 }
@@ -59,6 +62,7 @@ while [[ $# -gt 0 ]]; do
         --scope) SCOPE="$2"; shift 2 ;;
         --include-superseded) INCLUDE_SUPERSEDED=1; shift ;;
         --format) FORMAT="$2"; shift 2 ;;
+        --no-dedupe) NO_DEDUPE=1; shift ;;
         -h|--help) usage ;;
         --) shift; break ;;
         -*) echo "unknown option: $1" >&2; usage ;;
@@ -125,10 +129,13 @@ fi
 
 INCLUDE_FLAG=""
 [[ $INCLUDE_SUPERSEDED -eq 1 ]] && INCLUDE_FLAG="--include-superseded"
+NO_DEDUPE_FLAG=""
+[[ $NO_DEDUPE -eq 1 ]] && NO_DEDUPE_FLAG="--no-dedupe"
 
 printf '%s\n' "$RAW_OUTPUT" | python3 "$FORMATTER" \
     --memories-dir "$MEMORIES_DIR" \
     --scope "$SCOPE" \
     --top "$TOP" \
     --format "$FORMAT" \
-    $INCLUDE_FLAG
+    $INCLUDE_FLAG \
+    $NO_DEDUPE_FLAG

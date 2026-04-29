@@ -152,22 +152,36 @@ def main() -> int:
     p.add_argument("--top", type=int, default=10)
     p.add_argument("--include-superseded", action="store_true")
     p.add_argument("--format", default="markdown", choices=("markdown", "json"))
+    p.add_argument(
+        "--no-dedupe",
+        action="store_true",
+        help="同一ファイル内の異なる chunk を全て返す（旧挙動）。"
+        "既定では最高スコアの chunk のみ採用し、上位 N ファイル分を返す。",
+    )
     args = p.parse_args()
 
     raw = sys.stdin.read()
     hits = parse_search_output(raw)
 
+    # cocoindex の出力は chunk 単位。同一ファイル内の異なる chunk が top N を埋めると
+    # 候補多様性が失われるため、既定で filename dedupe（最高スコア chunk のみ採用）する。
+    # search.sh が --top を 3 倍 oversampling しているので、dedupe 後も十分な候補が残る。
+    seen_paths: set[str] = set()
     filtered: list[dict[str, Any]] = []
     for h in hits:
         if not filter_scope(h, args.memories_dir, args.scope):
             continue
         abs_path = absolutize(h["path"], args.memories_dir)
+        abs_path_str = str(abs_path)
+        if not args.no_dedupe and abs_path_str in seen_paths:
+            continue
         fm = parse_frontmatter(abs_path)
         if not filter_status(fm, args.include_superseded):
             continue
-        h["path"] = str(abs_path)
+        h["path"] = abs_path_str
         h["frontmatter"] = fm
         filtered.append(h)
+        seen_paths.add(abs_path_str)
         if len(filtered) >= args.top:
             break
 

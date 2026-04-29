@@ -9,17 +9,32 @@
 # 制御機構:
 # - mkdir で .state/lock.d を排他取得し、同時に1プロセスだけが Wiki を更新する。
 # - ロックが取れなければ即終了（後発は「やる仕事がない」を確認して降りる）。
-# - 処理済みエントリは ingest-archive.jsonl に追い出し、queue は pending のみに保つ。
+# - 処理済みエントリは queue から削除する（永続アーカイブは持たない。再構築が必要なら
+#   raw/{session,web,minutes} のファイルから enqueue.py を再実行する）。
 #
 # Usage:
 #   wiki-runner.sh [--memories-dir PATH] [--no-codex]
 #
 # --no-codex: Codex 呼び出しをスキップ（キュー処理のみ。デバッグ用）
+#
+# Codex モデル選択（kind 別）:
+#   CODEX_MEMORY_WIKI_MODEL_SESSION  既定 gpt-5.4    （project 通史統合は推論強度高め）
+#   CODEX_MEMORY_WIKI_MODEL_WEB      既定 gpt-5.4-mini（要約・テーマ分類は軽量で十分）
+#   CODEX_MEMORY_WIKI_MODEL_MINUTES  既定 gpt-5.4-mini（議事録の構造保持はテンプレ寄り）
+#   CODEX_MEMORY_WIKI_MODEL          後方互換: 設定されていれば全 kind の既定を上書き
+#
+# 運用 housekeeping:
+#   MEMORIES_TRASHBOX_RETAIN_DAYS  trashbox 配下の保持日数（既定 30、0 で無効化）
+#   MEMORIES_TRASHBOX_DRY_RUN      1 で削除せずログのみ出力（初回検証用）
 set -u
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 SKIP_CODEX=0
-MODEL="${CODEX_MEMORY_WIKI_MODEL:-gpt-5.4}"
+# kind 別 Codex モデル。CODEX_MEMORY_WIKI_MODEL があれば全 kind に適用（後方互換）。
+MODEL_FALLBACK="${CODEX_MEMORY_WIKI_MODEL:-}"
+MODEL_SESSION="${CODEX_MEMORY_WIKI_MODEL_SESSION:-${MODEL_FALLBACK:-gpt-5.4}}"
+MODEL_WEB="${CODEX_MEMORY_WIKI_MODEL_WEB:-${MODEL_FALLBACK:-gpt-5.4-mini}}"
+MODEL_MINUTES="${CODEX_MEMORY_WIKI_MODEL_MINUTES:-${MODEL_FALLBACK:-gpt-5.4-mini}}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,16 +51,27 @@ done
 STATE_DIR="${HOME}/.local/share/recording/state"
 LEGACY_STATE_DIR="/tmp/memories/state"
 QUEUE="$STATE_DIR/ingest-queue.jsonl"
-ARCHIVE="$STATE_DIR/ingest-archive.jsonl"
 LOCK_DIR="$STATE_DIR/lock.d"
 LOG_FILE="/tmp/memories/memory-wiki-runner.log"
 WIKI_DIR="$MEMORIES_DIR/wiki"
+TRASHBOX_DIR="$MEMORIES_DIR/trashbox"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
+LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
 INSTRUCTION_SESSION="$SCRIPT_DIR/codex-instruction.md"
 INSTRUCTION_WEB="$SCRIPT_DIR/codex-instruction-web.md"
 INSTRUCTION_MINUTES="$SCRIPT_DIR/codex-instruction-minutes.md"
 
 mkdir -p "$STATE_DIR" "$WIKI_DIR/projects" "$(dirname "$LOG_FILE")"
+
+# log ファイル肥大化を防ぐため、起動直後に rotate を試みる。
+# wiki-runner と cocoindex update は同じ /tmp/memories/ に書き込むので両方を見る。
+if [[ -f "$LOG_ROTATE_LIB" ]]; then
+    # shellcheck source=../lib/log_rotate.sh
+    source "$LOG_ROTATE_LIB"
+    rotate_log_if_needed "$LOG_FILE" || true
+    rotate_log_if_needed "$(dirname "$LOG_FILE")/cocoindex-memories-update.log" || true
+fi
 
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"
@@ -60,6 +86,37 @@ migrate_legacy_state() {
     mv "$legacy_queue" "${legacy_queue}.migrated.$(date +%s)" 2>/dev/null || true
 }
 migrate_legacy_state
+
+# trashbox 配下の保持期間切れエントリを削除する（mtime ベース）。
+# 0 を指定すると無効化。
+cleanup_trashbox() {
+    local retain_days="${MEMORIES_TRASHBOX_RETAIN_DAYS:-30}"
+    [[ "$retain_days" == "0" ]] && return 0
+    [[ ! -d "$TRASHBOX_DIR" ]] && return 0
+    if ! [[ "$retain_days" =~ ^[0-9]+$ ]]; then
+        log "trashbox cleanup: invalid MEMORIES_TRASHBOX_RETAIN_DAYS='$retain_days'; skipping"
+        return 0
+    fi
+    local dry_run="${MEMORIES_TRASHBOX_DRY_RUN:-0}"
+    local removed=0
+    while IFS= read -r -d '' path; do
+        if [[ "$dry_run" == "1" ]]; then
+            log "trashbox cleanup (dry-run): would remove $path (older than ${retain_days}d)"
+        else
+            log "trashbox cleanup: removing $path (older than ${retain_days}d)"
+            rm -rf "$path"
+        fi
+        removed=$((removed + 1))
+    done < <(find "$TRASHBOX_DIR" -mindepth 1 -maxdepth 1 -mtime +"$retain_days" -print0 2>/dev/null)
+    if [[ $removed -gt 0 ]]; then
+        if [[ "$dry_run" == "1" ]]; then
+            log "trashbox cleanup (dry-run): $removed entr(y|ies) would be removed"
+        else
+            log "trashbox cleanup: removed=$removed"
+        fi
+    fi
+}
+cleanup_trashbox
 
 _escape_for_osascript() {
     # osascript 文字列リテラル用に " と \ をエスケープし、改行を空白に置換する。
@@ -189,17 +246,28 @@ build_combined_prompt() {
 }
 
 # 共通: codex 呼び出し（書き込み先親ディレクトリを CWD にして workspace-write を限定）
+# 第3引数 model: kind 別に解決された Codex モデル名
 invoke_codex() {
-    local combined="$1" wiki_target="$2"
+    local combined="$1" wiki_target="$2" model="$3"
     local cwd_dir
     cwd_dir="$(dirname "$wiki_target")"
     mkdir -p "$cwd_dir"
     (
         cd "$cwd_dir" 2>/dev/null \
             && codex exec --skip-git-repo-check --sandbox workspace-write \
-                -m "$MODEL" \
+                -m "$model" \
                 < "$combined" >> "$LOG_FILE" 2>&1
     )
+}
+
+# kind から使用する Codex モデルを返す
+resolve_model_for_kind() {
+    case "$1" in
+        session) printf '%s' "$MODEL_SESSION" ;;
+        web)     printf '%s' "$MODEL_WEB" ;;
+        minutes) printf '%s' "$MODEL_MINUTES" ;;
+        *)       printf '%s' "$MODEL_SESSION" ;;
+    esac
 }
 
 while IFS=$'\t' read -r RAW_PATH KIND; do
@@ -248,7 +316,8 @@ while IFS=$'\t' read -r RAW_PATH KIND; do
             ;;
     esac
 
-    log "processing: kind=$KIND $RAW_PATH -> $WIKI_TARGET"
+    KIND_MODEL="$(resolve_model_for_kind "$KIND")"
+    log "processing: kind=$KIND model=$KIND_MODEL $RAW_PATH -> $WIKI_TARGET"
 
     if [[ $SKIP_CODEX -eq 1 ]]; then
         log "  --no-codex: skipped Codex invocation"
@@ -267,7 +336,7 @@ while IFS=$'\t' read -r RAW_PATH KIND; do
     COMBINED=$(mktemp -t memory-wiki.XXXXXX.md)
     build_combined_prompt "$INSTRUCTION" "$RAW_PATH" "$WIKI_TARGET" "$PROJECT" "$COMBINED"
 
-    if invoke_codex "$COMBINED" "$WIKI_TARGET"; then
+    if invoke_codex "$COMBINED" "$WIKI_TARGET" "$KIND_MODEL"; then
         log "  codex success"
         PROCESSED_COUNT=$((PROCESSED_COUNT + 1))
         PROCESSED_PROJECTS+=("$LABEL")
@@ -302,6 +371,44 @@ def count_md_files(dir_path: Path) -> int:
 
 web_count = count_md_files(memories / 'raw' / 'web')
 minutes_count = count_md_files(memories / 'raw' / 'minutes')
+
+def enforce_source_count(target: Path, expected: int) -> None:
+    """Codex が source_count を更新し損ねた場合の二重保険として、
+    frontmatter の source_count フィールドを Raw 実数で上書きする。
+    フィールドが無ければ追加し、frontmatter 自体が無ければ何もしない。
+    """
+    if not target.exists():
+        return
+    try:
+        text = target.read_text(encoding='utf-8')
+    except OSError:
+        return
+    if not text.startswith('---\n'):
+        return
+    end = text.find('\n---', 4)
+    if end == -1:
+        return
+    fm_block = text[4:end]
+    body = text[end:]
+    fm_lines = fm_block.split('\n')
+    found = False
+    new_lines = []
+    for ln in fm_lines:
+        m = re.match(r'^(source_count\s*:\s*)(.*)$', ln)
+        if m:
+            new_lines.append(f'{m.group(1)}{expected}')
+            found = True
+        else:
+            new_lines.append(ln)
+    if not found:
+        new_lines.append(f'source_count: {expected}')
+    new_fm = '\n'.join(new_lines)
+    target.write_text(f'---\n{new_fm}{body}', encoding='utf-8')
+
+# Codex が source_count を更新し損ねた場合の二重保険。
+# Raw 実数（status による絞り込みなし、すべてカウント）で上書きする。
+enforce_source_count(wiki / 'references.md', web_count)
+enforce_source_count(wiki / 'decisions.md', minutes_count)
 
 now = datetime.now().astimezone().isoformat(timespec='seconds')
 lines = ['---', 'title: Wiki Index', f'updated_at: {now}', 'status: active', '---', '', '# Wiki Index', '']
@@ -344,8 +451,10 @@ lines.append('')
 (wiki / 'index.md').write_text('\n'.join(lines), encoding='utf-8')
 PY
 
-# 処理済みエントリのみを archive へ移す。
+# 処理済みエントリを queue から削除する。
 # ループ実行中に他プロセスが追記した pending エントリは queue に残し、次回ランナーで処理する。
+# 永続的なアーカイブは持たない（再構築が必要なら raw/{session,web,minutes} のファイルから
+# enqueue.py を再実行する）。
 PROCESSED_PATHS_TMP=$(mktemp -t memory-wiki-processed.XXXXXX)
 printf '%s\n' "$PENDING_ENTRIES" | awk -F'\t' '{print $1}' > "$PROCESSED_PATHS_TMP"
 
@@ -353,15 +462,12 @@ PROCESSED_PATHS_TMP="$PROCESSED_PATHS_TMP" python3 -c "
 import json
 import os
 from pathlib import Path
-from datetime import datetime
 
 q = Path('$QUEUE')
-a = Path('$ARCHIVE')
 processed_file = Path(os.environ['PROCESSED_PATHS_TMP'])
 processed_paths = {p.strip() for p in processed_file.read_text(encoding='utf-8').splitlines() if p.strip()}
 
 remaining = []
-done_ts = datetime.now().astimezone().isoformat(timespec='seconds')
 
 for line in q.read_text(encoding='utf-8').splitlines() if q.exists() else []:
     line = line.strip()
@@ -374,14 +480,11 @@ for line in q.read_text(encoding='utf-8').splitlines() if q.exists() else []:
         continue
     rp = d.get('raw_path', '')
     if d.get('status') == 'pending' and rp in processed_paths:
-        d['status'] = 'done'
-        d['processed_at'] = done_ts
-        with a.open('a', encoding='utf-8') as fa:
-            fa.write(json.dumps(d, ensure_ascii=False) + '\n')
-    else:
-        # 自分が処理していない pending（後発エントリ）はそのまま残す。
-        # 非 pending（done など）も queue に残す（通常起こらないが防御的）。
-        remaining.append(line)
+        # 処理済み: queue から削除（archive には残さない）
+        continue
+    # 自分が処理していない pending（後発エントリ）はそのまま残す。
+    # 非 pending（done など）も queue に残す（通常起こらないが防御的）。
+    remaining.append(line)
 
 q.write_text(('\n'.join(remaining) + '\n') if remaining else '', encoding='utf-8')
 "
