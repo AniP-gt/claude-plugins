@@ -50,10 +50,9 @@ notify() {
 }
 
 # 設定値（config.toml + 環境変数）を Python 経由で取得。
-# lib は本スクリプトと同階層の SCRIPTS_DIR/lib にあるため、HOME に依存させずに
-# SCRIPTS_DIR を sys.path に渡す（テスト時に HOME 上書きしても解決可能）。
+# lib は <PLUGIN_ROOT>/scripts/lib に配置されているため、scripts ディレクトリを sys.path に渡す。
 read -r MEMORIES_DIR FALLBACK_DIR MOUNT_OK <<EOF
-$(MEMREC_SCRIPTS_DIR="$SCRIPTS_DIR" python3 - <<'PY'
+$(MEMREC_SCRIPTS_DIR="${PLUGIN_ROOT}/scripts" python3 - <<'PY'
 import os, sys
 sys.path.insert(0, os.environ["MEMREC_SCRIPTS_DIR"])
 from lib import config as c

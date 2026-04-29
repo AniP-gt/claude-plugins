@@ -28,9 +28,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-SCRIPTS_DIR = Path(__file__).resolve().parent
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
+SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/record
+LIB_PARENT = SCRIPTS_DIR.parent                # <PLUGIN_ROOT>/scripts （lib が直下にある）
+if str(LIB_PARENT) not in sys.path:
+    sys.path.insert(0, str(LIB_PARENT))
 
 from lib import config as memcfg  # noqa: E402  -- 上で sys.path に追加した直後に import
 from lib import path_resolver  # noqa: E402
