@@ -91,6 +91,12 @@
       "version": "0.1.2",
       "source": "./mermaid",
       "description": "Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。"
+    },
+    {
+      "name": "jina",
+      "version": "0.1.0",
+      "source": "./jina",
+      "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。"
     }
   ]
 }
