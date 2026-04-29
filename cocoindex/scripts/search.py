@@ -12,12 +12,12 @@ import os
 import re
 from pathlib import Path
 
-from dotenv import load_dotenv
 import psycopg2
 from psycopg2 import sql
 
-CONFIG_DIR = Path.home() / ".config" / "cocoindex"
-load_dotenv(dotenv_path=CONFIG_DIR / ".env")
+from config import apply_config_to_env
+
+apply_config_to_env()
 
 
 def get_table_name(project_dir: str) -> str:
@@ -34,11 +34,16 @@ def get_query_embedding(query: str) -> list[float]:
     """環境変数に応じたプロバイダーでクエリのembeddingを生成"""
     provider = os.environ.get("EMBEDDING_PROVIDER", "voyage").lower()
     model = os.environ.get("EMBEDDING_MODEL", "voyage-code-3")
+    dim_env = os.environ.get("EMBEDDING_DIMENSION")
+    output_dim = int(dim_env) if dim_env else None
 
     if provider == "openai":
         import openai
         client = openai.Client()
-        result = client.embeddings.create(input=[query], model=model)
+        kwargs: dict = {}
+        if output_dim:
+            kwargs["dimensions"] = output_dim
+        result = client.embeddings.create(input=[query], model=model, **kwargs)
         return result.data[0].embedding
     elif provider == "ollama":
         import requests
@@ -49,7 +54,10 @@ def get_query_embedding(query: str) -> list[float]:
     else:
         import voyageai
         client = voyageai.Client()
-        result = client.embed([query], model=model, input_type="query")
+        kwargs = {"input_type": "query"}
+        if output_dim:
+            kwargs["output_dimension"] = output_dim
+        result = client.embed([query], model=model, **kwargs)
         return result.embeddings[0]
 
 

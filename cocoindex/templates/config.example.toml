@@ -1,0 +1,37 @@
+# CocoIndex プラグイン設定
+#
+# このファイルは ~/.config/cocoindex/config.toml に自動コピーされます。
+# 既存の config.toml は上書きしないので、自由に編集してください。
+#
+# 優先順位（強い順）: 環境変数 > config.toml > デフォルト
+# 環境変数キーは各項目のコメント参照（例: COCOINDEX_DATABASE_URL, EMBEDDING_MODEL）。
+
+[database]
+# 環境変数: COCOINDEX_DATABASE_URL（cocoindex 1.0 では COCOINDEX_DB に内部展開されます）
+url = "postgres://postgres:postgres@localhost:15432/postgres"
+
+[embedding]
+# 環境変数: EMBEDDING_PROVIDER（voyage | openai | ollama）
+provider = "voyage"
+# 環境変数: EMBEDDING_MODEL
+# voyage-code-3: コード検索用、voyage-3-large: 自然文書用
+model = "voyage-code-3"
+# 環境変数: EMBEDDING_DIMENSION（Matryoshka 対応モデルのみ。voyage-3-large は 256/512/1024/2048）
+# 未指定なら provider 既定値（多くは 1024）
+# dimension = 1024
+# 環境変数: EMBEDDING_ADDRESS（ollama 用）
+# address = "http://localhost:11434"
+
+[chunk]
+# 環境変数: CHUNK_SIZE / CHUNK_OVERLAP
+# memory（要約レポート）系は 1200/300、コードは 800/200 が目安
+size = 800
+overlap = 200
+
+[live]
+# 環境変数: LIVE_UPDATE_INTERVAL（秒）
+update_interval_seconds = 60
+
+# memory-record スキル（agents repo 側）の cocoindex 設定は別ファイル管理:
+#   ~/.config/memory/cocoindex.toml
+# （memory-record スキルが初回起動時にテンプレートを auto-provision する）

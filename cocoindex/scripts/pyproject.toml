@@ -1,10 +1,13 @@
 [project]
 name = "mdb-cocoindex"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.12"
 dependencies = [
-    "cocoindex",
-    "openai>=2.16.0",
+    "cocoindex[postgres,litellm]>=1.0.1",
+    "asyncpg>=0.30",
+    "pgvector>=0.4.1",
+    "litellm>=1.50",
+    "numpy",
     "psycopg2-binary>=2.9.11",
     "python-dotenv",
     "voyageai>=0.3.7",

@@ -8,3 +8,6 @@ __pycache__/
 
 # uv lock (regenerate with `uv sync`)
 scripts/uv.lock
+
+# cocoindex 1.0 LMDB cache（DB URL がパスとしても展開され `postgres:/` ディレクトリが作られる）
+scripts/postgres:/

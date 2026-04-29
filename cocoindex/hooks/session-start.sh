@@ -6,15 +6,21 @@
 CONFIG_DIR="$HOME/.config/cocoindex"
 SCRIPTS_DIR="${CLAUDE_PLUGIN_ROOT}/scripts"
 TEMPLATES_DIR="${CLAUDE_PLUGIN_ROOT}/templates"
-# --- 0. Auto-provision .env ---
+# --- 0. Auto-provision config files (既存ファイルは上書きしない) ---
 mkdir -p "$CONFIG_DIR"
-if [[ ! -f "$CONFIG_DIR/.env" ]] && [[ -f "$TEMPLATES_DIR/.env.example" ]]; then
-  cp "$TEMPLATES_DIR/.env.example" "$CONFIG_DIR/.env"
+if [[ ! -f "$CONFIG_DIR/secrets.env" ]] && [[ -f "$TEMPLATES_DIR/secrets.example.env" ]]; then
+  cp "$TEMPLATES_DIR/secrets.example.env" "$CONFIG_DIR/secrets.env"
+fi
+if [[ ! -f "$CONFIG_DIR/config.toml" ]] && [[ -f "$TEMPLATES_DIR/config.example.toml" ]]; then
+  cp "$TEMPLATES_DIR/config.example.toml" "$CONFIG_DIR/config.toml"
 fi
 
-# 環境変数を優先、未設定なら.envから読み込み
+# 環境変数を優先、未設定なら secrets.env / 旧 .env から読み込み（DB URL のみ hooks で使う）
 if [[ -z "$COCOINDEX_DATABASE_URL" ]]; then
-  source "$CONFIG_DIR/.env" 2>/dev/null
+  source "$CONFIG_DIR/secrets.env" 2>/dev/null
+fi
+if [[ -z "$COCOINDEX_DATABASE_URL" ]]; then
+  source "$CONFIG_DIR/.env" 2>/dev/null  # 後方互換
 fi
 DB_URL="${COCOINDEX_DATABASE_URL:-postgres://postgres:postgres@localhost:15432/postgres}"
 
@@ -37,10 +43,12 @@ log() {
 }
 
 # --- 1. PostgreSQL 接続確認 ---
-PG_CHECK=$(cd "$SCRIPTS_DIR" && uv run python -c "
-import psycopg2
+# DB URL/TABLE NAME はシェル展開でインライン挿入せず env var で安全に渡す
+PG_CHECK=$(cd "$SCRIPTS_DIR" && \
+  COCOINDEX_DATABASE_URL="$DB_URL" uv run python -c "
+import os, psycopg2
 try:
-    conn = psycopg2.connect('$DB_URL', connect_timeout=3)
+    conn = psycopg2.connect(os.environ['COCOINDEX_DATABASE_URL'], connect_timeout=3)
     conn.close()
     print('ok')
 except Exception:
@@ -54,11 +62,13 @@ if [[ "$PG_CHECK" != "ok" ]]; then
 fi
 
 # --- 2. インデックステーブル存在確認 ---
-EXISTS=$(cd "$SCRIPTS_DIR" && uv run python -c "
-import psycopg2
-conn = psycopg2.connect('$DB_URL', connect_timeout=3)
+EXISTS=$(cd "$SCRIPTS_DIR" && \
+  COCOINDEX_DATABASE_URL="$DB_URL" COCOINDEX_TABLE_NAME="$TABLE_NAME" \
+  uv run python -c "
+import os, psycopg2
+conn = psycopg2.connect(os.environ['COCOINDEX_DATABASE_URL'], connect_timeout=3)
 cur = conn.cursor()
-cur.execute(\"SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = '${TABLE_NAME}')\")
+cur.execute('SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = %s)', (os.environ['COCOINDEX_TABLE_NAME'],))
 print('t' if cur.fetchone()[0] else 'f')
 conn.close()
 " 2>/dev/null || echo "f")

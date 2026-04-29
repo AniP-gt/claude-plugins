@@ -1,188 +1,234 @@
-"""汎用コードベースインデクサー
+"""汎用コードベースインデクサー (cocoindex 1.0)
 
-使い方:
-  uv run python main.py <source_path> [--patterns "**/*.rb,**/*.py"] [--exclude "**/tmp/**"]
-  uv run python main.py <source_path> --live  # 常駐モード（FlowLiveUpdater）
+cocoindex 1.0 CLI で起動する想定:
 
-プロジェクト名は --name で指定する。
-共通設定は ~/.config/cocoindex/.env で管理:
+  cocoindex update <path/to/main.py>:app          # batch
+  cocoindex update -L <path/to/main.py>:app       # live mode
+
+設定は環境変数で渡す（旧 CLI 引数の置き換え）:
+  SOURCE_PATH         (必須) インデックス対象ディレクトリ
+  INDEX_NAME          (任意) プロジェクト名。未指定時は SOURCE_PATH のベース名
+  PATTERNS            (任意, csv) 対象ファイルパターン（既定: "**/*.rb"）
+  EXCLUDE             (任意, csv) 追加除外パターン
+  NO_DEFAULT_EXCLUDES (任意) 真値ならデフォルト除外を無効化
+  CHUNK_SIZE          (任意) 既定 800
+  CHUNK_OVERLAP       (任意) 既定 200
+  EMBEDDING_PROVIDER  voyage|openai|ollama (既定 voyage)
+  EMBEDDING_MODEL     既定 voyage-code-3
+  EMBEDDING_DIMENSION 出力次元（Matryoshka 対応モデル用）
+
+DB / API キーは ~/.config/cocoindex/.env で集中管理:
   COCOINDEX_DATABASE_URL, VOYAGE_API_KEY
 """
-import argparse
-import datetime
+from __future__ import annotations
+
 import os
+import pathlib
 import re
-import signal
-from pathlib import Path
+import socket
+from dataclasses import dataclass
+from typing import Annotated, AsyncIterator
 
-from dotenv import load_dotenv
-import cocoindex
+import asyncpg
+import cocoindex as coco
+from cocoindex.connectors import localfs, postgres
+from cocoindex.connectors.postgres import PgType
+from cocoindex.connectors.postgres._target import _vector_encoder
+from cocoindex.ops.litellm import LiteLLMEmbedder
+from cocoindex.ops.text import RecursiveSplitter
+from cocoindex.resources.chunk import Chunk
+from cocoindex.resources.file import FileLike, PatternFilePathMatcher
+from cocoindex.resources.id import IdGenerator
+from numpy.typing import NDArray
 
-CONFIG_DIR = Path.home() / ".config" / "cocoindex"
-load_dotenv(dotenv_path=CONFIG_DIR / ".env")
+from config import apply_config_to_env
 
-PROVIDER_MAP = {
-    "voyage": cocoindex.LlmApiType.VOYAGE,
-    "openai": cocoindex.LlmApiType.OPENAI,
-    "ollama": cocoindex.LlmApiType.OLLAMA,
-}
+apply_config_to_env()
 
 DEFAULT_EXCLUDES = [
-    # === 共通 ===
-    "**/.*",              # 隠しファイル・ディレクトリ (.git, .idea, .env 等)
-    "**/log/**",          # ログ
-    "**/tmp/**",          # 一時ファイル
-    "**/coverage/**",     # カバレッジレポート
-
-    # === Ruby/Rails ===
-    "**/vendor/bundle/**",  # Bundlerの依存
-    "**/.gem_rbs_collection/**",  # RBS collection
-
-    # === Node.js ===
-    "**/node_modules/**",  # npm/yarn依存
-    "**/dist/**",          # ビルド成果物
-    "**/build/**",         # ビルド成果物
-
-    # === Python ===
-    "**/.venv/**",         # 仮想環境
-    "**/__pycache__/**",   # バイトコードキャッシュ
-
-    # === Rust ===
-    "**/target/**",        # Cargoビルド出力
+    "**/.*",
+    "**/log/**",
+    "**/tmp/**",
+    "**/coverage/**",
+    "**/vendor/bundle/**",
+    "**/.gem_rbs_collection/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.venv/**",
+    "**/__pycache__/**",
+    "**/target/**",
 ]
 
 
-def get_host_prefix() -> str:
-    """ホスト名プレフィックスを取得（テーブル名の衝突回避用）"""
-    import socket
+def _bool_env(name: str) -> bool:
+    return os.environ.get(name, "").lower() in ("1", "true", "yes")
+
+
+def _csv(name: str, default: str = "") -> list[str]:
+    return [s.strip() for s in os.environ.get(name, default).split(",") if s.strip()]
+
+
+def _host_prefix() -> str:
     return re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
 
 
-def get_project_name(name: str | None, source_path: str) -> str:
-    """プロジェクト名を取得（hostnameプレフィックス付き）
-
-    未指定時は source_path 自身のベース名を使う。
-    これにより check.sh / search.py のテーブル名計算ロジック
-    （`Path(project_dir).name` ベース）と整合する。
-    """
-    host_prefix = get_host_prefix()
-    base_name = name if name else Path(source_path).resolve().name
-    # 既にhostnameプレフィックスが付いている場合はそのまま返す
-    if base_name.startswith(f"{host_prefix}_"):
-        return base_name
-    return f"{host_prefix}_{base_name}"
+def _index_name() -> str:
+    raw = os.environ.get("INDEX_NAME") or pathlib.Path(SOURCE_PATH).resolve().name
+    host = _host_prefix()
+    return raw if raw.startswith(f"{host}_") else f"{host}_{raw}"
 
 
-def derive_flow_name(name: str) -> str:
-    """インデックス名からフロー名を生成"""
-    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", name)
+def _table_name(index_name: str) -> str:
+    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name).lower()
+    return f"codeindex_{sanitized}__code_chunks"
+
+
+def _app_name(index_name: str) -> str:
+    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name)
     return f"CodeIndex_{sanitized}"
 
 
-def create_flow(source_path: str, index_name: str, included_patterns: list[str], excluded_patterns: list[str], *, live: bool = False):
-    flow_name = derive_flow_name(index_name)
+SOURCE_PATH = os.environ.get("SOURCE_PATH")
+if not SOURCE_PATH:
+    raise RuntimeError("SOURCE_PATH 環境変数が必要です")
 
-    provider_name = os.environ.get("EMBEDDING_PROVIDER", "voyage").lower()
-    api_type = PROVIDER_MAP.get(provider_name, cocoindex.LlmApiType.VOYAGE)
+INCLUDED = _csv("PATTERNS", default="**/*.rb")
+EXCLUDED = ([] if _bool_env("NO_DEFAULT_EXCLUDES") else list(DEFAULT_EXCLUDES))
+EXCLUDED.extend(_csv("EXCLUDE"))
+
+CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "800"))
+CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "200"))
+
+# halfvec を使えば pgvector の 4000dim 上限まで HNSW index が利用できる。
+# 1024 dim では vector でも問題ないが halfvec で容量半分・精度同等。
+_DIM_ENV = os.environ.get("EMBEDDING_DIMENSION")
+EMBEDDING_DIMENSION = int(_DIM_ENV) if _DIM_ENV else 1024
+HALFVEC_PG_TYPE = PgType(f"halfvec({EMBEDDING_DIMENSION})", encoder=_vector_encoder)
+
+INDEX = _index_name()
+TABLE = _table_name(INDEX)
+APP = _app_name(INDEX)
+
+DATABASE_URL = os.environ.get(
+    "COCOINDEX_DATABASE_URL",
+    "postgres://postgres:postgres@localhost:15432/postgres",
+)
+
+
+def _build_embedder() -> LiteLLMEmbedder:
+    provider = os.environ.get("EMBEDDING_PROVIDER", "voyage").lower()
     model = os.environ.get("EMBEDDING_MODEL", "voyage-code-3")
-    address = os.environ.get("EMBEDDING_ADDRESS")
-
-    embed_opts: dict = {"api_type": api_type, "model": model, "task_type": "document"}
-    if address:
-        embed_opts["address"] = address
-
-    interval = int(os.environ.get("LIVE_UPDATE_INTERVAL", "60"))
-
-    @cocoindex.flow_def(name=flow_name)
-    def code_index_flow(flow_builder: cocoindex.FlowBuilder, data_scope: cocoindex.DataScope):
-        source_opts = {"path": source_path, "included_patterns": included_patterns}
-        if excluded_patterns:
-            source_opts["excluded_patterns"] = excluded_patterns
-
-        data_scope["files"] = flow_builder.add_source(
-            cocoindex.sources.LocalFile(**source_opts),
-            refresh_interval=datetime.timedelta(seconds=interval) if live else None,
-        )
-
-        code_chunks_collector = data_scope.add_collector()
-
-        with data_scope["files"].row() as file:
-            file["language"] = file["filename"].transform(
-                cocoindex.functions.DetectProgrammingLanguage()
-            )
-            file["chunks"] = file["content"].transform(
-                cocoindex.functions.SplitRecursively(),
-                chunk_size=800,
-                chunk_overlap=200,
-            )
-            with file["chunks"].row() as chunk:
-                chunk["embedding"] = chunk["text"].transform(
-                    cocoindex.functions.EmbedText(**embed_opts)
-                )
-                code_chunks_collector.collect(
-                    filename=file["filename"],
-                    language=file["language"],
-                    chunk_text=chunk["text"],
-                    embedding=chunk["embedding"],
-                    generated_id=cocoindex.GeneratedField.UUID,
-                )
-
-        code_chunks_collector.export(
-            "code_chunks",
-            cocoindex.targets.Postgres(
-                column_options={
-                    "embedding": cocoindex.targets.PostgresColumnOptions(type="halfvec"),
-                },
-            ),
-            primary_key_fields=["generated_id"],
-            vector_indexes=[
-                cocoindex.VectorIndexDef(
-                    field_name="embedding",
-                    metric=cocoindex.VectorSimilarityMetric.COSINE_SIMILARITY,
-                )
-            ],
-        )
-
-    return code_index_flow, flow_name
-
-
-def main():
-    parser = argparse.ArgumentParser(description="コードベースのベクトルインデックスを構築")
-    parser.add_argument("source_path", help="インデックス対象ディレクトリ（絶対パス）")
-    parser.add_argument("--patterns", default="**/*.rb", help="対象ファイルパターン（カンマ区切り）")
-    parser.add_argument("--exclude", default="", help="追加除外パターン（カンマ区切り）")
-    parser.add_argument("--no-default-excludes", action="store_true", help="デフォルト除外パターンを無効化")
-    parser.add_argument("--name", default=None, help="プロジェクト名（未指定時は source_path のベース名）")
-    parser.add_argument("--live", action="store_true", help="FlowLiveUpdater で常駐モード起動")
-    args = parser.parse_args()
-
-    name = get_project_name(args.name, args.source_path)
-    source_path = str(Path(args.source_path).resolve())
-    included = [p.strip() for p in args.patterns.split(",")]
-    excluded = list(DEFAULT_EXCLUDES) if not args.no_default_excludes else []
-    if args.exclude:
-        excluded.extend(p.strip() for p in args.exclude.split(",") if p.strip())
-
-    cocoindex.init()
-    flow, flow_name = create_flow(source_path, name, included, excluded, live=args.live)
-    flow.setup()
-
-    if args.live:
-        print(f"Live updater started: {flow_name} (PID: {os.getpid()})")
-        with cocoindex.FlowLiveUpdater(
-            flow,
-            cocoindex.FlowLiveUpdaterOptions(live_mode=True, print_stats=True),
-        ) as updater:
-            signal.signal(signal.SIGTERM, lambda s, f: updater.abort())
-            signal.signal(signal.SIGINT, lambda s, f: updater.abort())
-            updater.wait()
-        print(f"Live updater stopped: {flow_name}")
+    dim_env = os.environ.get("EMBEDDING_DIMENSION")
+    kwargs: dict = {"input_type": "document"}
+    if dim_env:
+        kwargs["dimensions"] = int(dim_env)
+    if provider == "voyage":
+        litellm_model = f"voyage/{model}"
+    elif provider == "openai":
+        litellm_model = model
+    elif provider == "ollama":
+        litellm_model = f"ollama/{model}"
+        addr = os.environ.get("EMBEDDING_ADDRESS")
+        if addr:
+            kwargs["api_base"] = addr
     else:
-        flow.update()
-        table_name = f"{flow_name}__code_chunks".lower()
-        print(f"Done: {flow_name}")
-        print(f"Table: {table_name}")
+        litellm_model = f"{provider}/{model}"
+    return LiteLLMEmbedder(litellm_model, **kwargs)
 
 
-if __name__ == "__main__":
-    main()
+PG_DB = coco.ContextKey[asyncpg.Pool](f"{INDEX}__db")
+EMBEDDER = coco.ContextKey[LiteLLMEmbedder](f"{INDEX}__embedder", detect_change=True)
+
+_splitter = RecursiveSplitter()
+
+
+@dataclass
+class CodeChunk:
+    id: int
+    filename: str
+    chunk_text: str
+    embedding: Annotated[NDArray, EMBEDDER, HALFVEC_PG_TYPE]
+
+
+@coco.lifespan
+async def _lifespan(builder: coco.EnvironmentBuilder) -> AsyncIterator[None]:
+    async with await asyncpg.create_pool(DATABASE_URL) as pool:
+        builder.provide(PG_DB, pool)
+        builder.provide(EMBEDDER, _build_embedder())
+        yield
+
+
+@coco.fn
+async def _process_chunk(
+    chunk: Chunk,
+    filename: pathlib.PurePath,
+    id_gen: IdGenerator,
+    table: postgres.TableTarget[CodeChunk],
+) -> None:
+    embedder = coco.use_context(EMBEDDER)
+    table.declare_row(
+        row=CodeChunk(
+            id=await id_gen.next_id(chunk.text),
+            filename=str(filename),
+            chunk_text=chunk.text,
+            embedding=await embedder.embed(chunk.text),
+        ),
+    )
+
+
+@coco.fn(memo=True)
+async def _process_file(
+    file: FileLike,
+    table: postgres.TableTarget[CodeChunk],
+) -> None:
+    text = await file.read_text()
+    chunks = _splitter.split(
+        text,
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        language="markdown",
+    )
+    id_gen = IdGenerator()
+    await coco.map(_process_chunk, chunks, file.file_path.path, id_gen, table)
+
+
+@coco.fn
+async def _app_main(sourcedir: pathlib.Path) -> None:
+    target_table = await postgres.mount_table_target(
+        PG_DB,
+        table_name=TABLE,
+        table_schema=await postgres.TableSchema.from_class(
+            CodeChunk, primary_key=["id"]
+        ),
+        pg_schema_name="public",
+    )
+    # halfvec 列に対応する operator class (`halfvec_cosine_ops`) を SQL で直接付与する。
+    # cocoindex の declare_vector_index は vector_cosine_ops 固定で halfvec に非対応。
+    # 2000dim 超は ivfflat 不可なので hnsw、それ以下も hnsw が安定（halfvec で揃える）。
+    target_table.declare_sql_command_attachment(
+        name="hnsw_embedding",
+        setup_sql=(
+            f'CREATE INDEX IF NOT EXISTS "{TABLE}__embedding_hnsw" '
+            f'ON public."{TABLE}" '
+            f'USING hnsw (embedding halfvec_cosine_ops);'
+        ),
+        teardown_sql=f'DROP INDEX IF EXISTS public."{TABLE}__embedding_hnsw";',
+    )
+
+    files = localfs.walk_dir(
+        sourcedir,
+        recursive=True,
+        path_matcher=PatternFilePathMatcher(
+            included_patterns=INCLUDED,
+            excluded_patterns=EXCLUDED if EXCLUDED else None,
+        ),
+    )
+    await coco.mount_each(_process_file, files.items(), target_table)
+
+
+app = coco.App(
+    coco.AppConfig(name=APP),
+    _app_main,
+    sourcedir=pathlib.Path(SOURCE_PATH).resolve(),
+)

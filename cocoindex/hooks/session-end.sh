@@ -7,7 +7,10 @@ CONFIG_DIR="$HOME/.config/cocoindex"
 PID_DIR="$HOME/.claude/tmp"
 
 if [[ -z "$COCOINDEX_DATABASE_URL" ]]; then
-  source "$CONFIG_DIR/.env" 2>/dev/null
+  source "$CONFIG_DIR/secrets.env" 2>/dev/null
+fi
+if [[ -z "$COCOINDEX_DATABASE_URL" ]]; then
+  source "$CONFIG_DIR/.env" 2>/dev/null  # 後方互換
 fi
 DB_URL="${COCOINDEX_DATABASE_URL:-postgres://postgres:postgres@localhost:15432/postgres}"
 
@@ -35,10 +38,12 @@ if [[ -n "$PGREP_PIDS" ]]; then
 fi
 
 # --- VACUUM 実行（bloat 防止） ---
-cd "$SCRIPTS_DIR" 2>/dev/null && uv run python -c "
-import psycopg2
+# DB URL はシェル展開でインライン挿入せず env var で渡す
+cd "$SCRIPTS_DIR" 2>/dev/null && \
+  COCOINDEX_DATABASE_URL="$DB_URL" uv run python -c "
+import os, psycopg2
 try:
-    conn = psycopg2.connect('$DB_URL', connect_timeout=3)
+    conn = psycopg2.connect(os.environ['COCOINDEX_DATABASE_URL'], connect_timeout=3)
     conn.autocommit = True
     conn.cursor().execute('VACUUM')
     conn.close()

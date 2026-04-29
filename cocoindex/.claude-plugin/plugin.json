@@ -1,7 +1,7 @@
 {
   "name": "cocoindex",
-  "version": "0.15.2",
-  "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndexを使って自然言語クエリで関連コードのエントリーポイントを発見する。",
+  "version": "1.0.0",
+  "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndex 1.0（async 設計）と pgvector halfvec/HNSW を使い、自然言語クエリで関連コードのエントリーポイントを発見する。設定は config.toml + secrets.env で分離管理。",
   "author": { "name": "miya" },
   "keywords": ["cocoindex", "vector-search", "code-search", "embedding"]
 }
