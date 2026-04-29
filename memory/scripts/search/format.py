@@ -78,6 +78,21 @@ def absolutize(hit_path: str, memories_dir: Path) -> Path:
 
 
 def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
+    """scope 別フィルタ。
+
+    パス構造:
+      memories_dir/raw/sessions/YYYY-MM-DD/...md  -> kind=session
+      memories_dir/raw/web/YYYY-MM-DD/...md       -> kind=web
+      memories_dir/raw/minutes/YYYY-MM-DD/...md   -> kind=minutes
+      memories_dir/wiki/...                        -> wiki
+
+    scope 値:
+      all      -> 全ヒット採用
+      session  -> raw/sessions/ 配下のみ
+      web      -> raw/web/ 配下のみ
+      minutes  -> raw/minutes/ 配下のみ
+      wiki     -> wiki/ 配下のみ
+    """
     if scope == "all":
         return True
     abs_path = absolutize(hit["path"], memories_dir)
@@ -88,10 +103,10 @@ def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
     parts = rel.parts
     if not parts:
         return False
-    if scope == "raw":
-        return parts[0] == "raw"
     if scope == "wiki":
         return parts[0] == "wiki"
+    if scope in ("session", "web", "minutes"):
+        return len(parts) >= 2 and parts[0] == "raw" and parts[1] == scope
     return False
 
 
@@ -127,7 +142,11 @@ def render_json(hits: list[dict[str, Any]]) -> str:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--memories-dir", required=True, type=Path)
-    p.add_argument("--scope", default="all", choices=("all", "raw", "wiki"))
+    p.add_argument(
+        "--scope",
+        default="all",
+        choices=("all", "session", "web", "minutes", "wiki"),
+    )
     p.add_argument("--top", type=int, default=10)
     p.add_argument("--include-superseded", action="store_true")
     p.add_argument("--format", default="markdown", choices=("markdown", "json"))

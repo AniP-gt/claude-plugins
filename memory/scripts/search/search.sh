@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# memory-search: memories/ 配下（Raw + Wiki）に対するベクトル検索
+# memory-search: memories/ 配下（raw/sessions + raw/web + raw/minutes + wiki）に対するベクトル検索
 #
 # Usage:
-#   search.sh <query> [--top N] [--scope raw|wiki|all] [--include-superseded] [--format json|markdown]
+#   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown]
 #
 # Defaults: --top 10, --scope all, --format markdown, status=active のみ
 #
@@ -45,10 +45,10 @@ usage() {
     cat <<EOF >&2
 Usage: $0 <query> [options]
 Options:
-  --top N                  返す件数（既定: 10）
-  --scope raw|wiki|all     検索対象（既定: all）
-  --include-superseded     superseded/deprecated も含める
-  --format json|markdown   出力形式（既定: markdown）
+  --top N                                 返す件数（既定: 10）
+  --scope session|web|minutes|wiki|all    検索対象（既定: all）
+  --include-superseded                    superseded/deprecated も含める
+  --format json|markdown                  出力形式（既定: markdown）
 EOF
     exit 2
 }

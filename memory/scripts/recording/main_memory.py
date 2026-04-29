@@ -77,7 +77,7 @@ if not _MEMORY_CONFIG.exists() and _TEMPLATE.exists():
     _MEMORY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     _MEMORY_CONFIG.write_text(_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
 
-# memory-record 用 toml -> MEMORIES_* env への展開。優先順位は MEMORIES_* env > toml > 既定値。
+# recording 用 toml -> MEMORIES_* env への展開。優先順位は MEMORIES_* env > toml > 既定値。
 _MEMORY_MAPPINGS: list[tuple[tuple[str, ...], str]] = [
     (("embedding", "provider"), "MEMORIES_EMBEDDING_PROVIDER"),
     (("embedding", "model"), "MEMORIES_EMBEDDING_MODEL"),
@@ -107,7 +107,7 @@ if _MEMORY_CONFIG.exists():
             if _cur is not None:
                 os.environ[_env_key] = str(_cur)
     except Exception as _e:
-        print(f"[memory-record] warn: failed to parse {_MEMORY_CONFIG}: {_e}", file=sys.stderr)
+        print(f"[recording] warn: failed to parse {_MEMORY_CONFIG}: {_e}", file=sys.stderr)
 
 
 # memory ドメイン向けの除外（trashbox / 下書き / 隠し）

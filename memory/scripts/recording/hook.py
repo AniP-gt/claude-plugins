@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/record
+SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/recording
 LIB_PARENT = SCRIPTS_DIR.parent                # <PLUGIN_ROOT>/scripts （lib が直下にある）
 if str(LIB_PARENT) not in sys.path:
     sys.path.insert(0, str(LIB_PARENT))
@@ -52,7 +52,7 @@ def sanitize_session_id(raw: str | None) -> str:
 HOME = Path.home()
 TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消える）
 LOG_DIR = Path("/tmp/memories")  # hook/runner のログ集約先（揮発・OS再起動で消える）
-LOG_FILE = LOG_DIR / "memory-record-hook.log"
+LOG_FILE = LOG_DIR / "recording-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
 RUNNER = SCRIPTS_DIR / "runner.sh"
 
@@ -179,6 +179,7 @@ CODEX_INSTRUCTION_TEMPLATE = """<!-- CODEX-INSTRUCTION-START -->
 
 ## セッションメタデータ（フロントマターに転記すること）
 ```yaml
+kind: session
 session_id: {session_id}
 project: {project}
 cwd: {cwd}
@@ -195,6 +196,7 @@ generated_at: {generated_at}
 ## 出力形式（保存先に書き出すファイル全体）
 ```
 ---
+kind: session
 session_id: ...
 title: "<codexが生成>"
 project: ...
@@ -383,7 +385,7 @@ def spawn_terminal(launcher: Path) -> None:
     バックグラウンドで起動するフォールバックを使う。Codex の stdout は通常通り runner.sh
     内で LOG_FILE に追記されるため、ターミナル可視化が無くてもログは残る。
     """
-    log_path = LOG_DIR / "memory-record-runner.log"
+    log_path = LOG_DIR / "recording-runner.log"
     log_fp = log_path.open("a", encoding="utf-8")
 
     if not (shutil.which("osascript") and shutil.which("open")):

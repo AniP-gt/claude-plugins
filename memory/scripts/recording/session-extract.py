@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claude Code会話履歴（JSONL）から必要な情報だけを抽出するCLI。
 
-memory-record で生成したレポートの `source_jsonl` を起点に、
+recording で生成した session レポートの `source_jsonl` を起点に、
 再調査時にコンテキスト溢れを避けながら特定情報を取得する。
 
 USAGE

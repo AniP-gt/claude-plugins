@@ -2,8 +2,8 @@
 
 設定の優先順位（先勝ち）:
   1. 環境変数（MEMORIES_DIR / MEMORIES_FALLBACK_DIR / MEMORIES_AUTO_REMOUNT 等）
-  2. ~/.config/memory-record/config.toml
-  3. 既定値（/Volumes/memory, ~/.local/share/memory-record/raw-staging）
+  2. ~/.config/recording/config.toml
+  3. 既定値（/Volumes/memory, ~/.local/share/recording/raw-staging）
 
 公開 API:
   - load_config()                  -> dict
@@ -31,14 +31,14 @@ else:  # pragma: no cover - Python 3.10 互換用フォールバック
 from .plugin_root import plugin_root
 
 
-CONFIG_PATH = Path.home() / ".config" / "memory-record" / "config.toml"
+CONFIG_PATH = Path.home() / ".config" / "recording" / "config.toml"
 
 DEFAULTS: dict[str, Any] = {
     "memories_dir": "/Volumes/memory",
-    "fallback_dir": "~/.local/share/memory-record/raw-staging",
+    "fallback_dir": "~/.local/share/recording/raw-staging",
     "auto_remount": True,
     # プラグインルート基準で動的解決（CLAUDE_PLUGIN_ROOT 環境変数が無い場合は __file__ から逆算）
-    "remount_script": str(plugin_root() / "scripts/record/mount-memory-share.sh"),
+    "remount_script": str(plugin_root() / "scripts/recording/mount-memory-share.sh"),
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
 }
@@ -119,15 +119,17 @@ def is_mount_active(memories_dir: Path | None = None) -> bool:
 
 
 def effective_raw_root() -> tuple[Path, bool]:
-    """実書き込み先となる raw ルートと staged フラグを返す。
+    """session レポートの実書き込み先 raw ルートと staged フラグを返す。
+
+    session 専用（web / minutes は別経路で保存される）。
 
     Returns:
         (raw_root, is_staged)
-        マウント成立: (memories_dir/raw, False)
+        マウント成立: (memories_dir/raw/sessions, False)
         未成立     : (fallback_dir, True)
     """
     if is_mount_active():
-        return resolve_memories_dir() / "raw", False
+        return resolve_memories_dir() / "raw" / "sessions", False
     return resolve_fallback_dir(), True
 
 

@@ -1,4 +1,4 @@
-# memory-record スキル専用 cocoindex 設定
+# recording スキル専用 cocoindex 設定
 #
 # このファイルは ~/.config/memory/cocoindex.toml に自動コピーされます。
 # 既存の cocoindex.toml は上書きされません（自由に編集してください）。

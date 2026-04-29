@@ -32,13 +32,13 @@ description: memory プラグインの初期設定手順。インストール直
 
 `/cocoindex-setup` で PostgreSQL コンテナ起動・`secrets.env` 初期化を済ませること。
 
-## 3. 設定ファイル（`~/.config/memory-record/config.toml`）
+## 3. 設定ファイル（`~/.config/recording/config.toml`）
 
 ### 雛形コピー
 
 ```bash
-mkdir -p ~/.config/memory-record
-cp "${CLAUDE_PLUGIN_ROOT}/templates/config.example.toml" ~/.config/memory-record/config.toml
+mkdir -p ~/.config/recording
+cp "${CLAUDE_PLUGIN_ROOT}/templates/config.example.toml" ~/.config/recording/config.toml
 ```
 
 `${CLAUDE_PLUGIN_ROOT}` が展開されない環境（ターミナル直打ち等）は次のいずれか:
@@ -46,7 +46,7 @@ cp "${CLAUDE_PLUGIN_ROOT}/templates/config.example.toml" ~/.config/memory-record
 ```bash
 # 絶対パス（インストールキャッシュ）
 cp ~/.claude/plugins/cache/hidetsugu-miya/memory/templates/config.example.toml \
-   ~/.config/memory-record/config.toml
+   ~/.config/recording/config.toml
 ```
 
 ### 主要オプション
@@ -54,7 +54,7 @@ cp ~/.claude/plugins/cache/hidetsugu-miya/memory/templates/config.example.toml \
 | キー | 既定値 | 推奨上書き |
 |---|---|---|
 | `memories_dir` | `/Volumes/memory` | 単一マシン運用なら `~/memory` 等 |
-| `fallback_dir` | `~/.local/share/memory-record/raw-staging` | そのままで可 |
+| `fallback_dir` | `~/.local/share/recording/raw-staging` | そのままで可 |
 | `auto_remount` | `true` | SMB を使わないなら `false` |
 | `remount_script` | プラグイン同梱の `mount-memory-share.sh` | 自前のマウントスクリプトに差し替え可能 |
 | `mount_canary_filename` | `.mount-canary` | `memories_dir` 直下に置く判定ファイル名 |
@@ -72,7 +72,7 @@ config.toml より env が優先される。一時的な切り替えに便利:
 | `MEMORIES_REMOUNT_SCRIPT` | `remount_script` |
 | `MEMORIES_MOUNT_CANARY` | `mount_canary_filename` |
 | `MEMORIES_HOSTNAME_HASH_LENGTH` | `hostname_hash_length` |
-| `CODEX_MEMORY_RECORD_MODEL` | Raw 要約モデル（既定 `gpt-5.4-mini`） |
+| `CODEX_RECORDING_MODEL` | Raw 要約モデル（既定 `gpt-5.4-mini`） |
 | `CODEX_MEMORY_WIKI_MODEL` | Wiki 統合モデル（既定 `gpt-5.4`） |
 | `MEMORIES_EMBEDDING_MODEL` | 検索用 embedding（既定 `voyage-3-large`） |
 | `MEMORIES_SEARCH_BACKEND` | 検索バックエンド（`dense` 既定 / `hybrid`） |
@@ -153,11 +153,11 @@ memory プラグイン専用設定 `~/.config/memory/cocoindex.toml` は `main_m
 任意のセッションを終了すると `SessionEnd` hook が走り、Terminal が立ち上がって codex が要約する。完了後:
 
 ```bash
-ls "$(cat ~/.config/memory-record/config.toml | grep memories_dir | head -1 | cut -d'"' -f2)/raw" 2>/dev/null \
+ls "$(cat ~/.config/recording/config.toml | grep memories_dir | head -1 | cut -d'"' -f2)/raw" 2>/dev/null \
   || ls /Volumes/memory/raw 2>/dev/null
 ```
 
-うまくいかない場合は `/tmp/memories/memory-record-{hook,runner,sync}.log` を確認。
+うまくいかない場合は `/tmp/memories/recording-{hook,runner,sync}.log` を確認。
 
 ### C. 検索の動作確認
 
@@ -167,41 +167,16 @@ ls "$(cat ~/.config/memory-record/config.toml | grep memories_dir | head -1 | cu
 
 cocoindex 側のインデックスが空なら結果ゼロが返る（エラーではない）。SessionEnd hook が走るたびに自動でインデックスが更新される。
 
-## 7. 旧 skill 構成（`~/.claude/skills/memory-{record,search,wiki}/`）からの移行
-
-旧構成を手動配置していた場合:
-
-```bash
-# 1. 設定ファイルは互換なのでそのまま据え置きで OK
-ls ~/.config/memory-record/config.toml
-
-# 2. 旧 skill を退避
-mv ~/.claude/skills/memory-record ~/.claude/skills/_memory-record.bak
-mv ~/.claude/skills/memory-search ~/.claude/skills/_memory-search.bak
-mv ~/.claude/skills/memory-wiki   ~/.claude/skills/_memory-wiki.bak
-
-# 3. ~/.claude/settings.json から旧 hook を削除
-#    - hooks.SessionStart の sync-pending.sh 行
-#    - hooks.SessionEnd の memory-record/scripts/hook.py 行
-#    （プラグイン側 hooks/hooks.json が代替するため）
-
-# 4. プラグインインストール
-/plugin install memory@hidetsugu-miya
-
-# 5. 動作確認後、退避ディレクトリを削除
-rm -rf ~/.claude/skills/_memory-*.bak
-```
-
-## 8. アンインストール
+## 7. アンインストール
 
 ```text
 /plugin uninstall memory@hidetsugu-miya
 ```
 
-`~/.config/memory-record/config.toml` と `<memories_dir>/` 配下のデータは保持される。完全削除する場合は手動で:
+`~/.config/recording/config.toml` と `<memories_dir>/` 配下のデータは保持される。完全削除する場合は手動で:
 
 ```bash
-rm -rf ~/.config/memory-record ~/.config/memory
+rm -rf ~/.config/recording ~/.config/memory
 rm -rf /tmp/memories
 # 永続データは自己責任で
 # rm -rf <memories_dir>
@@ -211,8 +186,8 @@ rm -rf /tmp/memories
 
 | 症状 | 確認先 |
 |---|---|
-| Raw が生成されない | `/tmp/memories/memory-record-runner.log`、`codex` コマンド存在 |
-| hook が呼ばれない | `/tmp/memories/memory-record-hook.log`、`/plugin status memory` |
+| Raw が生成されない | `/tmp/memories/recording-runner.log`、`codex` コマンド存在 |
+| hook が呼ばれない | `/tmp/memories/recording-hook.log`、`/plugin status memory` |
 | Terminal が起動しない（macOS 以外） | これは仕様。launcher が直接バックグラウンド実行されログ集約 |
 | マウント検出が失敗する | `<memories_dir>/.mount-canary` の実在を確認 |
 | 検索結果が空 | cocoindex 側の起動・テーブル存在・SessionEnd hook の実行履歴を確認 |
@@ -220,6 +195,6 @@ rm -rf /tmp/memories
 
 ## 関連
 
-- 詳細アーキテクチャ: `${CLAUDE_PLUGIN_ROOT}/skills/memory-record/references/architecture.md`
+- 詳細アーキテクチャ: `${CLAUDE_PLUGIN_ROOT}/skills/recording/references/architecture.md`
 - 検索の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/memory-search/SKILL.md`
 - Wiki 統合の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/memory-wiki/SKILL.md`

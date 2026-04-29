@@ -1,5 +1,5 @@
 {
-  "description": "memory-record / memory-wiki / memory-search lifecycle hooks",
+  "description": "recording / memory-wiki / memory-search lifecycle hooks",
   "hooks": {
     "SessionStart": [
       {

@@ -6,7 +6,7 @@
 #
 # Args:
 #   $1: 命令プロンプト埋め込み済みMarkdownファイル（codex入力）
-#   $2: 保存先レポートパス（マウント時は memories_dir/raw/...、staged 時は fallback_dir/...）
+#   $2: 保存先レポートパス（マウント時は memories_dir/raw/sessions/...、staged 時は fallback_dir/...）
 #   $3: "staged" or "normal"（staged の場合は wiki enqueue / cocoindex update を抑止）
 set -u
 
@@ -16,12 +16,12 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
 INPUT_MD="${1:?usage: $0 <combined_md> <report_path> <staged|normal>}"
 REPORT_PATH="${2:?usage: $0 <combined_md> <report_path> <staged|normal>}"
 STAGE_MODE="${3:-normal}"
-MODEL="${CODEX_MEMORY_RECORD_MODEL:-gpt-5.4-mini}"
+MODEL="${CODEX_RECORDING_MODEL:-gpt-5.4-mini}"
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 LOG_DIR_LOCAL="/tmp/memories"
-LOG_FILE="$LOG_DIR_LOCAL/memory-record-runner.log"
+LOG_FILE="$LOG_DIR_LOCAL/recording-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
 # ANSI色コード（Terminal表示用）
@@ -56,7 +56,7 @@ notify() {
     if [[ -n "$sound" ]]; then
         sound_clause=" sound name \"$sound\""
     fi
-    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Memory Record\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
+    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Recording\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
 }
 
 notify_success() { notify "完了" "$1" "Glass"; }
@@ -65,7 +65,7 @@ notify_failure() { notify "失敗" "$1" "Basso"; }
 
 print_banner() {
     printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
-    printf '%s  Claude Code Memory Recorder%s\n' "$C_CYAN" "$C_RESET"
+    printf '%s  Claude Code Recording%s\n' "$C_CYAN" "$C_RESET"
     printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
     printf 'Model:  %s\n' "$MODEL"
     printf 'Input:  %s\n' "$INPUT_MD"
@@ -110,7 +110,7 @@ trigger_cocoindex_update() {
     # ~/.config/cocoindex/config.toml の [memory] セクションで管理する。
     # ここでは起動に必要な動的引数（SOURCE_PATH/INDEX_NAME/PATTERNS）だけを渡す。
     local memories_dir="$MEMORIES_DIR"
-    local record_scripts="${PLUGIN_ROOT}/scripts/record"
+    local recording_scripts="${PLUGIN_ROOT}/scripts/recording"
     # cocoindex プラグインキャッシュは plugin update ごとにバージョンが変わるため動的解決する。
     local plugin_scripts
     plugin_scripts="$(python3 -c "
@@ -122,8 +122,8 @@ print(p if p else '', end='')
 ")"
     local cocoindex_log="$LOG_DIR_LOCAL/cocoindex-memories-update.log"
 
-    if [[ ! -f "$record_scripts/main_memory.py" ]]; then
-        log "cocoindex update skipped: main_memory.py not found ($record_scripts/main_memory.py)"
+    if [[ ! -f "$recording_scripts/main_memory.py" ]]; then
+        log "cocoindex update skipped: main_memory.py not found ($recording_scripts/main_memory.py)"
         return
     fi
     if [[ -z "$plugin_scripts" || ! -d "$plugin_scripts/.venv" ]]; then
@@ -150,13 +150,13 @@ print(p if p else '', end='')
         && SOURCE_PATH="$memories_dir" \
             INDEX_NAME="$index_name" \
             PATTERNS="**/*.md" \
-            nohup uv run cocoindex update -f "${record_scripts}/main_memory.py:${app_name}" \
+            nohup uv run cocoindex update -f "${recording_scripts}/main_memory.py:${app_name}" \
             >> "$cocoindex_log" 2>&1 &
     ) >/dev/null 2>&1 || true
 }
 
 if ! command -v codex >/dev/null 2>&1; then
-    log "error: codex command not found in PATH; cannot generate memory record"
+    log "error: codex command not found in PATH; cannot generate session report"
     notify_failure "codex コマンドが見つかりません。Codex CLI をインストールしてください。"
     printf '%s✗ codex コマンドが見つかりません%s\n' "$C_RED" "$C_RESET"
     exit 127
@@ -173,7 +173,7 @@ fi
 
 mkdir -p "$(dirname "$REPORT_PATH")"
 
-CODEX_LAST_MSG="$(mktemp -t codex-memory-record.XXXXXX)"
+CODEX_LAST_MSG="$(mktemp -t codex-recording.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"' EXIT
 
 print_banner

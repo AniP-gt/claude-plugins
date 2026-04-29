@@ -1,6 +1,8 @@
-"""Raw レポート保存先パス解決器。
+"""Session レポート保存先パス解決器。
 
-セッションメタから (report_path, is_staged) を返す。
+セッションメタから (report_path, is_staged) を返す。session（Claude Code セッション要約）
+専用の保存先解決を担う。web / minutes は recording skill 側のスクリプトが直接組み立てる。
+
 命名規則:
   HHMMSS_<host8>_<sid8>[__staged].md
 
@@ -9,7 +11,7 @@
   sid8    : Claude Code session_id 先頭 8 文字
   __staged: fallback_dir に書く場合のみ付与。sync 時に外して正規パスへ移送
 
-絶対衝突を防ぐためファイル名末尾の連番（旧仕様の -2, -3 ...）は廃止する。
+絶対衝突を防ぐためファイル名末尾の連番は採用しない（host8 + sid8 + HHMMSS で実質衝突ゼロ）。
 万一既存ファイルがあれば、それは命名規則上ありえない異常状態として停止する。
 """
 from __future__ import annotations
@@ -39,10 +41,10 @@ def resolve_report_path(started_at_iso: str, session_id: str) -> tuple[Path, boo
     """セッション開始 ISO8601 と session_id から (report_path, is_staged) を返す。
 
     raw_root は config.effective_raw_root() で決定:
-      - マウント成立: <memories_dir>/raw/YYYY-MM-DD/<basename>.md
+      - マウント成立: <memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md
       - 未成立      : <fallback_dir>/YYYY-MM-DD/<basename>__staged.md
 
-    マウント成立時のディレクトリ階層 raw/YYYY-MM-DD/ は memory-record が常に作成する既存仕様。
+    マウント成立時のディレクトリ階層 raw/sessions/YYYY-MM-DD/ は recording が常に作成する。
     fallback_dir 直下にも YYYY-MM-DD/ を作り、staging→正規への移送を 1:1 で対応付けやすくする。
     """
     started_dt = datetime.fromisoformat(started_at_iso.replace("Z", "+00:00")).astimezone()
@@ -58,11 +60,11 @@ def resolve_report_path(started_at_iso: str, session_id: str) -> tuple[Path, boo
 
 
 def map_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path:
-    """staging 上の絶対パスを、正規 memories_dir/raw 配下の対応パスへ写像する。
+    """staging 上の絶対パスを、正規 memories_dir/raw/sessions 配下の対応パスへ写像する。
 
     fallback_dir 配下の構造 `<fallback_dir>/YYYY-MM-DD/<basename>__staged.md` を
-    `<memories_dir>/raw/YYYY-MM-DD/<basename>.md` へ変換する。
+    `<memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md` へ変換する。
     """
     date_dir = staged_path.parent.name
     normal_basename = to_normal_basename(staged_path.name)
-    return memories_dir / "raw" / date_dir / normal_basename
+    return memories_dir / "raw" / "sessions" / date_dir / normal_basename

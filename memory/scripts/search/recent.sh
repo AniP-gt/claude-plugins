@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# memory-search/recent: memories/raw を時系列で一覧する（セマンティック検索ではない）
+# memory-search/recent: memories/raw 配下を時系列で一覧する（セマンティック検索ではない）。
+#
+# kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / all に切替可能。
 #
 # Usage:
-#   recent.sh [--top N] [--project NAME] [--days D] [--format markdown|json|paths]
+#   recent.sh [--kind session|web|minutes|all] [--top N] [--project NAME] [--days D] \
+#             [--format markdown|json|paths]
 #
-# Defaults: --top 10, --format markdown, 全プロジェクト, 全期間
+# Defaults: --kind session, --top 10, --format markdown, 全プロジェクト, 全期間
 #
 # 出力フィールド: ended_at / title / project / tags / duration / path
 # ファイル名先頭タイムスタンプ（HHMMSS）と日付ディレクトリで時系列ソートする。
@@ -14,8 +17,8 @@
 set -u
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
-RAW_DIR="$MEMORIES_DIR/raw"
 
+KIND="session"
 TOP=10
 PROJECT=""
 DAYS=""
@@ -23,10 +26,11 @@ FORMAT="markdown"
 
 usage() {
     cat <<EOF >&2
-Usage: $(basename "$0") [--top N] [--project NAME] [--days D] [--format markdown|json|paths]
+Usage: $(basename "$0") [options]
 
+  --kind KIND     session (default) | web | minutes | all
   --top N         返す件数 (default: 10)
-  --project NAME  指定 project の記録のみ抽出
+  --project NAME  指定 project の記録のみ抽出（kind=session で意味あり）
   --days D        過去 D 日以内のみ（日付ディレクトリ名で判定）
   --format        markdown (default) | json | paths
 EOF
@@ -35,6 +39,7 @@ EOF
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --kind) KIND="$2"; shift 2 ;;
         --top) TOP="$2"; shift 2 ;;
         --project) PROJECT="$2"; shift 2 ;;
         --days) DAYS="$2"; shift 2 ;;
@@ -44,12 +49,23 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+case "$KIND" in
+    session|web|minutes|all) ;;
+    *) echo "Error: invalid --kind: $KIND" >&2; usage ;;
+esac
+
+if [[ "$KIND" == "all" ]]; then
+    RAW_DIR="$MEMORIES_DIR/raw"
+else
+    RAW_DIR="$MEMORIES_DIR/raw/$KIND"
+fi
+
 if [ ! -d "$RAW_DIR" ]; then
     echo "Error: raw dir not found: $RAW_DIR" >&2
     exit 2
 fi
 
-export MEMORIES_DIR RAW_DIR TOP PROJECT DAYS FORMAT
+export MEMORIES_DIR RAW_DIR TOP PROJECT DAYS FORMAT KIND
 
 python3 - <<'PY'
 import json
@@ -97,21 +113,36 @@ def parse_frontmatter(path: Path) -> dict:
         pass
     return fm
 
-entries = []
-for date_dir in sorted(raw_dir.iterdir(), reverse=True):
-    if not date_dir.is_dir() or not DATE_RE.match(date_dir.name):
-        continue
-    try:
-        d = datetime.strptime(date_dir.name, "%Y-%m-%d").date()
-    except ValueError:
-        continue
-    if cutoff and d < cutoff:
-        continue
-    for f in date_dir.iterdir():
-        m = FILE_RE.match(f.name)
-        if not m:
+def _walk_kind_root(root: Path) -> list[tuple[str, str, Path]]:
+    """kind 別ディレクトリ root（直下に YYYY-MM-DD/）から (date, hhmmss, path) を返す。"""
+    out: list[tuple[str, str, Path]] = []
+    if not root.exists():
+        return out
+    for date_dir in sorted(root.iterdir(), reverse=True):
+        if not date_dir.is_dir() or not DATE_RE.match(date_dir.name):
             continue
-        entries.append((date_dir.name, m.group(1), f))
+        try:
+            d = datetime.strptime(date_dir.name, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if cutoff and d < cutoff:
+            continue
+        for f in date_dir.iterdir():
+            m = FILE_RE.match(f.name)
+            if not m:
+                continue
+            out.append((date_dir.name, m.group(1), f))
+    return out
+
+
+kind = os.environ.get("KIND", "session")
+entries: list[tuple[str, str, Path]] = []
+if kind == "all":
+    for sub in ("sessions", "web", "minutes"):
+        entries.extend(_walk_kind_root(raw_dir / sub))
+else:
+    # raw_dir は kind=all なら memories/raw、それ以外なら memories/raw/<kind>
+    entries = _walk_kind_root(raw_dir)
 
 entries.sort(key=lambda x: (x[0], x[1]), reverse=True)
 

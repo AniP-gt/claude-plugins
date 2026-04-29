@@ -35,8 +35,9 @@ tools = [
     {
         "name": "search_memory",
         "description": (
-            "過去の Claude Code セッション要約（Raw）と統合 Wiki ページを"
-            "ベクトル検索する。自然言語クエリで関連する作業記録を発見できる。"
+            "過去の Claude Code セッション要約（kind: session）・URL アーカイブ（kind: web）・"
+            "議事録（kind: minutes）・統合 Wiki ページをベクトル検索する。"
+            "自然言語クエリで関連する作業記録を発見できる。"
         ),
         "input_schema": {
             "type": "object",
@@ -45,7 +46,7 @@ tools = [
                 "top": {"type": "integer", "default": 10},
                 "scope": {
                     "type": "string",
-                    "enum": ["raw", "wiki", "all"],
+                    "enum": ["session", "web", "minutes", "wiki", "all"],
                     "default": "all",
                 },
                 "include_superseded": {"type": "boolean", "default": False},
@@ -115,9 +116,10 @@ def execute_tool_remote(args: dict) -> str:
 [
   {
     "score": 0.842,
-    "path": "/Volumes/memory/raw/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
+    "path": "/Volumes/memory/raw/sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
     "snippet": "...（本文冒頭のスニペット）...",
     "frontmatter": {
+      "kind": "session",
       "title": "<タイトル>",
       "status": "active",
       "tags": "<tag1>, <tag2>",

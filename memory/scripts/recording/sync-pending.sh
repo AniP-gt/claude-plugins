@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# sync-pending: fallback_dir に staged 済みの Raw を MEMORIES_DIR/raw/ へ移送する。
+# sync-pending: fallback_dir に staged 済みの session レポートを MEMORIES_DIR/raw/sessions/ へ移送する。
+# session（Claude Code セッション要約）専用。web / minutes は手動経路のため staging を使わない。
 #
 # 起動条件:
 #   - SessionStart hook（fire-and-forget で呼ばれる）
-#   - 手動実行: ${CLAUDE_PLUGIN_ROOT}/scripts/record/sync-pending.sh
+#   - 手動実行: ${CLAUDE_PLUGIN_ROOT}/scripts/recording/sync-pending.sh
 #
 # 動作:
 #   1. canary でマウント有効性を確認。NG ならスキップ
 #   2. fallback_dir/YYYY-MM-DD/<basename>__staged.md を全件列挙
 #   3. 各ファイルについて
-#       a. 移送先 <memories_dir>/raw/YYYY-MM-DD/<basename>.md を計算（命名規則上絶対衝突しない）
+#       a. 移送先 <memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md を計算（命名規則上絶対衝突しない）
 #       b. 移送先がなければ atomic rename（同一 FS）or cp -p && rm（FS 跨ぎ）で移送
 #       c. 移送先が存在 → ハッシュ完全一致なら staging 削除（成功）、不一致なら staging 保全＋通知
-#   4. 移送成功した raw について enqueue.py を呼び wiki キューに追加
+#   4. 移送成功した session レポートについて enqueue.py を呼び wiki キューに追加
 #   5. 1 件以上正規パスへ移った場合のみ cocoindex update をキック
 #
 # macOS 以外の環境では osascript / open / mount_smbfs などが無く、通知やマウント関連処理は
@@ -22,7 +23,7 @@ set -uo pipefail
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
 LOG_DIR_LOCAL="/tmp/memories"
-LOG_FILE="$LOG_DIR_LOCAL/memory-record-sync.log"
+LOG_FILE="$LOG_DIR_LOCAL/recording-sync.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
 log() {
@@ -46,7 +47,7 @@ notify() {
     if [[ -n "$sound" ]]; then
         sound_clause=" sound name \"$sound\""
     fi
-    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Memory Sync\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
+    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Recording Sync\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
 }
 
 # 設定値（config.toml + 環境変数）を Python 経由で取得。
@@ -101,7 +102,7 @@ for src in "${STAGED_FILES[@]}"; do
     base="$(basename "$src")"
     # __staged.md → .md
     normal_base="${base%__staged.md}.md"
-    dst_dir="$MEMORIES_DIR/raw/$date_dir"
+    dst_dir="$MEMORIES_DIR/raw/sessions/$date_dir"
     dst="$dst_dir/$normal_base"
 
     mkdir -p "$dst_dir" 2>/dev/null || true
