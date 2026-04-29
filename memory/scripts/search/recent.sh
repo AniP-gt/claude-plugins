@@ -49,15 +49,19 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# --kind は単数（session/web/minutes/all）で受け取り、ディレクトリ名（複数形 sessions など）に解決する
 case "$KIND" in
-    session|web|minutes|all) ;;
+    session)  DIR_NAME="sessions" ;;
+    web)      DIR_NAME="web" ;;
+    minutes)  DIR_NAME="minutes" ;;
+    all)      DIR_NAME="" ;;  # raw/ 全体（Python 側で sub 巡回）
     *) echo "Error: invalid --kind: $KIND" >&2; usage ;;
 esac
 
 if [[ "$KIND" == "all" ]]; then
     RAW_DIR="$MEMORIES_DIR/raw"
 else
-    RAW_DIR="$MEMORIES_DIR/raw/$KIND"
+    RAW_DIR="$MEMORIES_DIR/raw/$DIR_NAME"
 fi
 
 if [ ! -d "$RAW_DIR" ]; then
