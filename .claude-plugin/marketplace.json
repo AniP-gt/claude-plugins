@@ -97,6 +97,12 @@
       "version": "0.1.0",
       "source": "./jina",
       "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。"
+    },
+    {
+      "name": "memory",
+      "version": "0.1.0",
+      "source": "./memory",
+      "description": "Claude Code セッションのエピソード記憶（Raw + Wiki）を管理するプラグイン。SessionEnd で会話を Codex 要約し SMB 共有へ保存、SessionStart で staging 同期、cocoindex バックエンドのベクトル検索を提供する。マウント未確立時は fallback_dir に staging し、復帰時に自動移送。macOS 専用機能（通知・Terminal 起動・SMB マウント）はコマンド不在時に自動スキップ。"
     }
   ]
 }

@@ -28,6 +28,7 @@ Custom Claude Code plugins by miya.
 /plugin install drawio@hidetsugu-miya
 /plugin install mermaid@hidetsugu-miya
 /plugin install jina@hidetsugu-miya
+/plugin install memory@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -123,3 +124,16 @@ Node.js 20以上が必要です。使い方は `/mermaid-render` を実行して
 Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで `mcp.jina.ai/v1` にJSON-RPCを送信する。
 
 `~/.config/jina/secrets.env` に `JINA_API_KEY=...` を設定してください（初回実行時にテンプレートから自動コピーされます）。API キーは <https://jina.ai/api-dashboard/key-manager/> から取得できます。使い方は `/jina-step` を実行してください。
+
+### memory
+
+Claude Code セッションのエピソード記憶（Raw + Wiki）を管理するプラグイン。`SessionEnd` で会話履歴を Codex で要約して `<memories_dir>/raw/YYYY-MM-DD/` へ保存し、`SessionStart` で staging を正規パスへ移送する。`memory-setup` / `memory-record` / `memory-wiki` / `memory-search` の4 skill を同梱し、cocoindex プラグイン（同マーケットプレイス）と連携してベクトル検索を提供する。
+
+前提条件:
+
+- `codex` CLI（要約に使用）。インストールされていない場合 Raw 生成は失敗する
+- cocoindex プラグイン（`/plugin install cocoindex@hidetsugu-miya`）と PostgreSQL（既定 localhost:15432）。検索・インデックス更新に使用
+- macOS の場合、通知・Terminal 起動・SMB マウントが利用可能。それ以外の OS では該当コマンドが無いと自動スキップされ、Raw 生成本体はバックグラウンドで動作する
+- 設定ファイル `~/.config/memory-record/config.toml`（任意。ひな形は `${CLAUDE_PLUGIN_ROOT}/templates/config.example.toml`）
+
+インストール直後は `memory-setup` skill（`memory/skills/memory-setup/SKILL.md`）の初期設定手順に従ってください。詳細アーキテクチャは `memory/skills/memory-record/SKILL.md` を参照。

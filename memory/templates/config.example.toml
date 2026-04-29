@@ -1,0 +1,31 @@
+# memory プラグイン設定ファイル
+# 配置先: ~/.config/memory-record/config.toml
+#
+# 環境変数（MEMORIES_DIR / MEMORIES_FALLBACK_DIR / MEMORIES_AUTO_REMOUNT 等）が
+# 設定されていれば、本ファイルより環境変数が優先されます。
+
+# Raw レポートを保存する正規ディレクトリ（SMB/NFS など共有が想定）。
+# このパス直下に `.mount-canary` ファイルが存在しない場合はマウント未確立と判断し、
+# fallback_dir に staging として書き込みます。
+memories_dir = "/Volumes/memory"
+
+# マウント未確立時に Raw を退避する fallback ディレクトリ（ローカル永続）。
+# 後続の SessionStart hook で sync-pending.sh が走り、マウント成功時に正規パスへ移送します。
+fallback_dir = "~/.local/share/memory-record/raw-staging"
+
+# SessionEnd hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
+# false にすると検出のみで remount は行わず staging へ即フォールバックします。
+auto_remount = true
+
+# remount に使うスクリプト（mount_smbfs を呼ぶラッパー）。
+# 既定はプラグイン同梱の mount-memory-share.sh（${CLAUDE_PLUGIN_ROOT}/scripts/record/）。
+# 環境に合わせて任意のスクリプトに差し替え可能。
+remount_script = "${CLAUDE_PLUGIN_ROOT}/scripts/record/mount-memory-share.sh"
+
+# マウント検証用 canary ファイル名。ファイル名のみ指定し、配置場所は memories_dir 直下固定。
+# 共有側（SMB サーバ）で1度だけ touch しておけば以後は変更不要。
+mount_canary_filename = ".mount-canary"
+
+# ホスト名 SHA-1 hex の先頭何文字をファイル名に埋め込むか（衝突確率の調整）。
+# 既定 8 文字（マシン跨ぎでの衝突確率 ~1/2^32）。範囲 4-40。
+hostname_hash_length = 8
