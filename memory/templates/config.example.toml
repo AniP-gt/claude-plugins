@@ -6,7 +6,7 @@
 
 # Raw レポートを保存する正規ディレクトリ（SMB/NFS など共有が想定）。
 # 配下構造は固定:
-#   <memories_dir>/raw/sessions/YYYY-MM-DD/...md   (kind: session, recording 自動)
+#   <memories_dir>/raw/session/YYYY-MM-DD/...md   (kind: session, recording 自動)
 #   <memories_dir>/raw/web/YYYY-MM-DD/...md         (kind: web, recording 手動)
 #   <memories_dir>/raw/minutes/YYYY-MM-DD/...md     (kind: minutes, recording 手動)
 #   <memories_dir>/wiki/...                          (memory-wiki が生成)
@@ -17,7 +17,7 @@ memories_dir = "/Volumes/memory"
 
 # マウント未確立時に session レポートを退避する fallback ディレクトリ（ローカル永続）。
 # 後続の SessionStart hook で sync-pending.sh が走り、マウント成功時に
-# <memories_dir>/raw/sessions/ 配下へ移送します。
+# <memories_dir>/raw/session/ 配下へ移送します。
 fallback_dir = "~/.local/share/recording/raw-staging"
 
 # SessionEnd hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。

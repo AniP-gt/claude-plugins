@@ -24,7 +24,7 @@ argument-hint: [session regenerate <sid> | session extract <sid> <subcmd> | web 
 |---|---|---|
 | 意味記憶 / 手続き記憶 | auto memory（`memory/MEMORY.md` 配下） | ユーザー好み・コーディング規約・繰り返し参照する事実 |
 | 意思決定記録 | `adr` skill | 技術選定・アーキテクチャ判断の永続化 |
-| **エピソード記憶（kind: session）** | 本 skill（自動）+ `memories/raw/sessions/` | 過去セッションでの作業内容・判断・残課題 |
+| **エピソード記憶（kind: session）** | 本 skill（自動）+ `memories/raw/session/` | 過去セッションでの作業内容・判断・残課題 |
 | **エピソード記憶（kind: web）** | 本 skill（手動）+ `memories/raw/web/` | 外部 URL のスナップショット |
 | **エピソード記憶（kind: minutes）** | 本 skill（手動）+ `memories/raw/minutes/` | 議事録・指示・合意ログ |
 | エピソード記憶（Wiki） | `memory-wiki` skill（自動連携、再生成可） | プロジェクト通史・参照索引・議事索引 |
@@ -42,12 +42,12 @@ argument-hint: [session regenerate <sid> | session extract <sid> <subcmd> | web 
 
 ```text
 <memories_dir>/raw/
-├── sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md     # kind: session
+├── session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md      # kind: session
 ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web
 └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes
 ```
 
-session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/recording/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/sessions/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
+session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/recording/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
 
 ## 使い方
 
@@ -179,7 +179,7 @@ EOF
 
 ## 自動化パイプライン（kind: session のみ）
 
-`memory` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/sessions/...` に書き出す。詳細は `references/architecture.md`。
+`memory` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
 
 ## 初期設定
 

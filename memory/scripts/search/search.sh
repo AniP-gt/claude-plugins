@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# memory-search: memories/ 配下（raw/sessions + raw/web + raw/minutes + wiki）に対するベクトル検索
+# memory-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するベクトル検索
 #
 # Usage:
 #   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown]

@@ -125,11 +125,11 @@ def effective_raw_root() -> tuple[Path, bool]:
 
     Returns:
         (raw_root, is_staged)
-        マウント成立: (memories_dir/raw/sessions, False)
+        マウント成立: (memories_dir/raw/session, False)
         未成立     : (fallback_dir, True)
     """
     if is_mount_active():
-        return resolve_memories_dir() / "raw" / "sessions", False
+        return resolve_memories_dir() / "raw" / "session", False
     return resolve_fallback_dir(), True
 
 

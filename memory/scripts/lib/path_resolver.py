@@ -41,10 +41,10 @@ def resolve_report_path(started_at_iso: str, session_id: str) -> tuple[Path, boo
     """セッション開始 ISO8601 と session_id から (report_path, is_staged) を返す。
 
     raw_root は config.effective_raw_root() で決定:
-      - マウント成立: <memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md
+      - マウント成立: <memories_dir>/raw/session/YYYY-MM-DD/<basename>.md
       - 未成立      : <fallback_dir>/YYYY-MM-DD/<basename>__staged.md
 
-    マウント成立時のディレクトリ階層 raw/sessions/YYYY-MM-DD/ は recording が常に作成する。
+    マウント成立時のディレクトリ階層 raw/session/YYYY-MM-DD/ は recording が常に作成する。
     fallback_dir 直下にも YYYY-MM-DD/ を作り、staging→正規への移送を 1:1 で対応付けやすくする。
     """
     started_dt = datetime.fromisoformat(started_at_iso.replace("Z", "+00:00")).astimezone()
@@ -60,11 +60,11 @@ def resolve_report_path(started_at_iso: str, session_id: str) -> tuple[Path, boo
 
 
 def map_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path:
-    """staging 上の絶対パスを、正規 memories_dir/raw/sessions 配下の対応パスへ写像する。
+    """staging 上の絶対パスを、正規 memories_dir/raw/session 配下の対応パスへ写像する。
 
     fallback_dir 配下の構造 `<fallback_dir>/YYYY-MM-DD/<basename>__staged.md` を
-    `<memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md` へ変換する。
+    `<memories_dir>/raw/session/YYYY-MM-DD/<basename>.md` へ変換する。
     """
     date_dir = staged_path.parent.name
     normal_basename = to_normal_basename(staged_path.name)
-    return memories_dir / "raw" / "sessions" / date_dir / normal_basename
+    return memories_dir / "raw" / "session" / date_dir / normal_basename

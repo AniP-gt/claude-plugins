@@ -6,7 +6,7 @@
 #
 # Args:
 #   $1: 命令プロンプト埋め込み済みMarkdownファイル（codex入力）
-#   $2: 保存先レポートパス（マウント時は memories_dir/raw/sessions/...、staged 時は fallback_dir/...）
+#   $2: 保存先レポートパス（マウント時は memories_dir/raw/session/...、staged 時は fallback_dir/...）
 #   $3: "staged" or "normal"（staged の場合は wiki enqueue / cocoindex update を抑止）
 set -u
 

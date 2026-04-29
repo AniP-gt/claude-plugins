@@ -49,19 +49,16 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# --kind は単数（session/web/minutes/all）で受け取り、ディレクトリ名（複数形 sessions など）に解決する
+# kind 値とディレクトリ名は完全一致（session / web / minutes）。
 case "$KIND" in
-    session)  DIR_NAME="sessions" ;;
-    web)      DIR_NAME="web" ;;
-    minutes)  DIR_NAME="minutes" ;;
-    all)      DIR_NAME="" ;;  # raw/ 全体（Python 側で sub 巡回）
+    session|web|minutes|all) ;;
     *) echo "Error: invalid --kind: $KIND" >&2; usage ;;
 esac
 
 if [[ "$KIND" == "all" ]]; then
     RAW_DIR="$MEMORIES_DIR/raw"
 else
-    RAW_DIR="$MEMORIES_DIR/raw/$DIR_NAME"
+    RAW_DIR="$MEMORIES_DIR/raw/$KIND"
 fi
 
 if [ ! -d "$RAW_DIR" ]; then
@@ -142,7 +139,7 @@ def _walk_kind_root(root: Path) -> list[tuple[str, str, Path]]:
 kind = os.environ.get("KIND", "session")
 entries: list[tuple[str, str, Path]] = []
 if kind == "all":
-    for sub in ("sessions", "web", "minutes"):
+    for sub in ("session", "web", "minutes"):
         entries.extend(_walk_kind_root(raw_dir / sub))
 else:
     # raw_dir は kind=all なら memories/raw、それ以外なら memories/raw/<kind>

@@ -1,6 +1,6 @@
 ---
 name: memory-search
-description: エピソード記憶（memories/raw/{sessions,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
+description: エピソード記憶（memories/raw/{session,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
 argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown]
 ---
 
@@ -55,7 +55,7 @@ stdout に以下を出力する。
 
 ```markdown
 ### 1. <title>  _(score: 0.823)_
-- **path**: `/Volumes/memory/raw/sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md`
+- **path**: `/Volumes/memory/raw/session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md`
 - **status**: active  **tags**: hook, recording
 - **snippet**: <冒頭スニペット 200字>
 
@@ -68,7 +68,7 @@ stdout に以下を出力する。
 [
   {
     "score": 0.823,
-    "path": "/Volumes/memory/raw/sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
+    "path": "/Volumes/memory/raw/session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
     "snippet": "...",
     "frontmatter": {
       "kind": "session",

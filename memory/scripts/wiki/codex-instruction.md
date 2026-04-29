@@ -28,18 +28,18 @@ source_count: <統合した session 件数>
 <このプロジェクトが何のためのものか、過去の session レポートから導出した1〜3文>
 
 ## 直近の動き（最大10件、新しい順）
-- **YYYY-MM-DD HH:MM** — <session の title> ([session](../../raw/sessions/YYYY-MM-DD/file.md))
+- **YYYY-MM-DD HH:MM** — <session の title> ([session](../../raw/session/YYYY-MM-DD/file.md))
   - 要点: <session の概要を1〜2文に圧縮>
 
 ## 主要な意思決定（時系列）
-- **YYYY-MM-DD** — <決定内容> ([session](../../raw/sessions/YYYY-MM-DD/file.md))
+- **YYYY-MM-DD** — <決定内容> ([session](../../raw/session/YYYY-MM-DD/file.md))
   - 理由: <短く>
 
 ## 残課題（活きているもののみ）
 - <session の「残課題・次アクション」から、まだ完了が確認できないもの>
 ```
 
-**重要：session レポートへの相対リンクは必ず `../../raw/sessions/YYYY-MM-DD/file.md` 形式（2階層上る）にすること。** Wiki ファイルの配置 `memories/wiki/projects/<project>.md` から session `memories/raw/sessions/YYYY-MM-DD/file.md` へのパスは `projects → wiki` の2階層を遡って `raw/sessions/` に下る。
+**重要：session レポートへの相対リンクは必ず `../../raw/session/YYYY-MM-DD/file.md` 形式（2階層上る）にすること。** Wiki ファイルの配置 `memories/wiki/projects/<project>.md` から session `memories/raw/session/YYYY-MM-DD/file.md` へのパスは `projects → wiki` の2階層を遡って `raw/session/` に下る。
 
 ## 統合ルール
 
@@ -52,7 +52,7 @@ source_count: <統合した session 件数>
 ## 厳守ルール
 
 - session の本文を丸ごとコピーしない。要点を抽出し、リンクで session レポートを指すこと
-- session への相対リンクは `../../raw/sessions/YYYY-MM-DD/file.md` 形式（2階層上る）。`../../../raw/sessions/...` や `../raw/sessions/...` は誤り
+- session への相対リンクは `../../raw/session/YYYY-MM-DD/file.md` 形式（2階層上る）。`../../../raw/session/...` や `../raw/session/...` は誤り
 - 矛盾検出セクション（`## 矛盾検出`）も推奨。session 間の方針転換・仕様差し戻しを発見したら明記する
 - シークレット・APIキー・個人情報・ユーザーの感情的表現は再掲しない（session 側で除外済みのはずだが、念のため）
 - session の `confidence` が 0.6 未満の場合、「直近の動き」には含めるが「主要な意思決定」には含めない

@@ -116,7 +116,7 @@ def execute_tool_remote(args: dict) -> str:
 [
   {
     "score": 0.842,
-    "path": "/Volumes/memory/raw/sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
+    "path": "/Volumes/memory/raw/session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md",
     "snippet": "...（本文冒頭のスニペット）...",
     "frontmatter": {
       "kind": "session",

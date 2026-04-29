@@ -1,6 +1,6 @@
 ---
 name: memory-wiki
-description: エピソード記憶の Raw（memories/raw/{sessions,web,minutes}/）を統合した Wiki（memories/wiki/）を生成・更新するスキル。Raw 生成完了通知（ingest-queue.jsonl）を消化し、kind: session は Codex で project 別通史に統合、kind: web/minutes は References Library / Decisions Log に列挙する。mkdir 方式の排他制御で複数 Raw 同時生成にも整合性を保つ。「wikiを更新して」「memoriesのwiki再生成」「ingest queueを処理して」等で起動する。
+description: エピソード記憶の Raw（memories/raw/{session,web,minutes}/）を統合した Wiki（memories/wiki/）を生成・更新するスキル。Raw 生成完了通知（ingest-queue.jsonl）を消化し、kind: session は Codex で project 別通史に統合、kind: web/minutes は References Library / Decisions Log に列挙する。mkdir 方式の排他制御で複数 Raw 同時生成にも整合性を保つ。「wikiを更新して」「memoriesのwiki再生成」「ingest queueを処理して」等で起動する。
 argument-hint: [--memories-dir PATH] [--no-codex]
 ---
 
@@ -31,7 +31,7 @@ Raw（不変・追記専用の作業記録、kind: session / web / minutes）を
 - **排他制御必須**: `mkdir .state/lock.d` で原子的にロックを取得した1プロセスだけが Wiki を更新する（macOS に flock がないため mkdir 方式）。ロックが取れなければ即終了（後発は降りる）。プロセス異常終了でロックが残った場合は次回起動時に PID 生存確認で自動奪取
 - **キュー駆動**: 処理対象は `.state/ingest-queue.jsonl` の `status: pending` エントリのみ。処理済みは `ingest-archive.jsonl` に追い出す
 - **Codex 上位モデル使用**: kind: session の概念抽出・既存 Wiki との統合判断が必要なため、`gpt-5.4`（既定）を使う。`CODEX_MEMORY_WIKI_MODEL` で上書き可
-- **session レポートのリンク相対パス**: Wiki ファイルは `wiki/projects/X.md` に配置されるため、session への相対リンクは `../../raw/sessions/YYYY-MM-DD/file.md`（2階層上る）形式を厳守する。テンプレート（`scripts/wiki/codex-instruction.md`）にこの形式が固定で記載されている
+- **session レポートのリンク相対パス**: Wiki ファイルは `wiki/projects/X.md` に配置されるため、session への相対リンクは `../../raw/session/YYYY-MM-DD/file.md`（2階層上る）形式を厳守する。テンプレート（`scripts/wiki/codex-instruction.md`）にこの形式が固定で記載されている
 
 ## 完了条件
 
@@ -56,7 +56,7 @@ Raw（不変・追記専用の作業記録、kind: session / web / minutes）を
 ```text
 /Volumes/memory/                                          # MEMORIES_DIR の既定値（SMB / NFS など共有のマウントポイント、永続データ）
 ├── raw/
-│   ├── sessions/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md     # kind: session（recording が自動生成）
+│   ├── session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md      # kind: session（recording が自動生成）
 │   ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web（recording 手動）
 │   └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes（recording 手動）
 └── wiki/
@@ -76,7 +76,7 @@ Raw（不変・追記専用の作業記録、kind: session / web / minutes）を
 
 ## Step 1: Raw 生成側からのキュー追記
 
-`recording` の runner.sh / fetch-jina.sh / save.sh が Raw を書いた直後に、本スキルの `enqueue.py` を呼んでキューへ1行追記する。`enqueue.py` は `raw_path` から kind を自動推定する（パスが `raw/sessions/` / `raw/web/` / `raw/minutes/` のいずれを含むかで判定）。明示指定したい場合は `--kind` 引数を使う。
+`recording` の runner.sh / fetch-jina.sh / save.sh が Raw を書いた直後に、本スキルの `enqueue.py` を呼んでキューへ1行追記する。`enqueue.py` は `raw_path` から kind を自動推定する（パスが `raw/session/` / `raw/web/` / `raw/minutes/` のいずれを含むかで判定）。明示指定したい場合は `--kind` 引数を使う。
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" "$REPORT_PATH"

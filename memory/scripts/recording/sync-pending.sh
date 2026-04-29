@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync-pending: fallback_dir に staged 済みの session レポートを MEMORIES_DIR/raw/sessions/ へ移送する。
+# sync-pending: fallback_dir に staged 済みの session レポートを MEMORIES_DIR/raw/session/ へ移送する。
 # session（Claude Code セッション要約）専用。web / minutes は手動経路のため staging を使わない。
 #
 # 起動条件:
@@ -10,7 +10,7 @@
 #   1. canary でマウント有効性を確認。NG ならスキップ
 #   2. fallback_dir/YYYY-MM-DD/<basename>__staged.md を全件列挙
 #   3. 各ファイルについて
-#       a. 移送先 <memories_dir>/raw/sessions/YYYY-MM-DD/<basename>.md を計算（命名規則上絶対衝突しない）
+#       a. 移送先 <memories_dir>/raw/session/YYYY-MM-DD/<basename>.md を計算（命名規則上絶対衝突しない）
 #       b. 移送先がなければ atomic rename（同一 FS）or cp -p && rm（FS 跨ぎ）で移送
 #       c. 移送先が存在 → ハッシュ完全一致なら staging 削除（成功）、不一致なら staging 保全＋通知
 #   4. 移送成功した session レポートについて enqueue.py を呼び wiki キューに追加
@@ -102,7 +102,7 @@ for src in "${STAGED_FILES[@]}"; do
     base="$(basename "$src")"
     # __staged.md → .md
     normal_base="${base%__staged.md}.md"
-    dst_dir="$MEMORIES_DIR/raw/sessions/$date_dir"
+    dst_dir="$MEMORIES_DIR/raw/session/$date_dir"
     dst="$dst_dir/$normal_base"
 
     mkdir -p "$dst_dir" 2>/dev/null || true
