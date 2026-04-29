@@ -32,6 +32,21 @@ overlap = 200
 # 環境変数: LIVE_UPDATE_INTERVAL（秒）
 update_interval_seconds = 60
 
+[rerank]
+# 環境変数: RERANK_ENABLED（真値で ON、既定 ON）
+# search.py が vector top-K 候補を voyage rerank で再評価する
+enabled = true
+# 環境変数: RERANK_MODEL
+model = "rerank-2.5"
+# 環境変数: RERANK_CANDIDATES
+# vector 検索で取得する候補数（rerank に渡す documents 数）。最終出力件数は --top で指定
+candidates = 30
+
+[embed]
+# 環境変数: EMBED_PREFIX_FILEPATH（真値で ON、既定 ON）
+# 埋め込み計算時にチャンク先頭に "# file: <path>\n" を付与する。rerank 併用時に効果あり
+prefix_filepath = true
+
 # memory-record スキル（agents repo 側）の cocoindex 設定は別ファイル管理:
 #   ~/.config/memory/cocoindex.toml
 # （memory-record スキルが初回起動時にテンプレートを auto-provision する）

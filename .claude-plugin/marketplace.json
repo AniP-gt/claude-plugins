@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "cocoindex",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./cocoindex",
       "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndex 1.0（async 設計）と pgvector halfvec/HNSW を使い、自然言語クエリで関連コードのエントリーポイントを発見する。設定は config.toml + secrets.env で分離管理。"
     },

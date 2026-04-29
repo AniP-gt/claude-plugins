@@ -37,6 +37,10 @@ _MAPPINGS: list[tuple[tuple[str, ...], str]] = [
     (("chunk", "size"), "CHUNK_SIZE"),
     (("chunk", "overlap"), "CHUNK_OVERLAP"),
     (("live", "update_interval_seconds"), "LIVE_UPDATE_INTERVAL"),
+    (("rerank", "enabled"), "RERANK_ENABLED"),
+    (("rerank", "model"), "RERANK_MODEL"),
+    (("rerank", "candidates"), "RERANK_CANDIDATES"),
+    (("embed", "prefix_filepath"), "EMBED_PREFIX_FILEPATH"),
 ]
 
 

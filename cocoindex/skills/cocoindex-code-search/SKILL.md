@@ -33,11 +33,18 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check.sh
 cd ${CLAUDE_PLUGIN_ROOT}/scripts && uv run python search.py "$ARGUMENTS" --project-dir "${CLAUDE_PROJECT_DIR:-$PWD}"
 ```
 
+**検索フロー（既定）:**
+1. vector 検索で Top-K 候補（既定 30、`RERANK_CANDIDATES`）を取得
+2. voyage rerank（既定 `rerank-2.5`、`RERANK_MODEL`）で再評価
+3. 上位 N 件（`--top`、既定 5）を表示
+
 **検索オプション:**
 - `--project-dir`: プロジェクトディレクトリ（`$CLAUDE_PROJECT_DIR` を優先、未設定時は `$PWD` にフォールバック）
 - `--top`: 表示件数（デフォルト: 5）
+- `--no-rerank`: rerank を無効化し vector 検索のみで返す（環境変数 `RERANK_ENABLED=0` でも同じ）
 - テーブル名は `hostname` + プロジェクトディレクトリのベースネームから自動計算される
 - クエリ embedding は `~/.config/cocoindex/config.toml` の `[embedding]` 設定（必要なら `EMBEDDING_DIMENSION`）でドキュメント側と揃える
+- スコア表示は rerank ON 時は voyage rerank の relevance_score（0.8〜0.95 帯）、OFF 時は cosine similarity（0.6〜0.8 帯）
 
 #### Index: NOT FOUND → インデックス構築後に検索
 

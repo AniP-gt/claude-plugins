@@ -16,8 +16,12 @@ cocoindex 1.0 CLI で起動する想定:
   EMBEDDING_PROVIDER  voyage|openai|ollama (既定 voyage)
   EMBEDDING_MODEL     既定 voyage-code-3
   EMBEDDING_DIMENSION 出力次元（Matryoshka 対応モデル用）
+  EMBED_PREFIX_FILEPATH  真値ならチャンク先頭にファイルパスを付与して埋め込み（既定 1）
 
-DB / API キーは ~/.config/cocoindex/.env で集中管理:
+tree-sitter による言語別チャンク分割は、対象ファイル拡張子から自動解決される
+（EXT_TO_LANG マッピング参照）。マッピングに無い拡張子はプレーンテキスト扱い。
+
+DB / API キーは ~/.config/cocoindex/{config.toml,secrets.env} で集中管理:
   COCOINDEX_DATABASE_URL, VOYAGE_API_KEY
 """
 from __future__ import annotations
@@ -100,6 +104,49 @@ EXCLUDED.extend(_csv("EXCLUDE"))
 CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.environ.get("CHUNK_OVERLAP", "200"))
 
+# 検索精度を上げるためにファイルパスをチャンク先頭にメタデータとして付与する。
+# cAST 論文（Recall@5 +1.8〜4.3pt 改善）の主要寄与要因。
+EMBED_PREFIX_FILEPATH = os.environ.get("EMBED_PREFIX_FILEPATH", "1").lower() in ("1", "true", "yes")
+
+# 拡張子 → tree-sitter / RecursiveSplitter で認識される言語名
+# 注意: cocoindex の RecursiveSplitter は拡張子（"rb", ".rb"）を自動で言語に解決しない。
+# フル名（"ruby" 等）を渡さないとプレーンテキスト扱いになる。
+EXT_TO_LANG = {
+    "rb": "ruby",
+    "py": "python",
+    "js": "javascript",
+    "jsx": "javascript",
+    "ts": "typescript",
+    "tsx": "typescript",
+    "go": "go",
+    "rs": "rust",
+    "java": "java",
+    "kt": "kotlin",
+    "swift": "swift",
+    "php": "php",
+    "c": "c",
+    "h": "c",
+    "cpp": "cpp",
+    "cc": "cpp",
+    "hpp": "cpp",
+    "cs": "csharp",
+    "scala": "scala",
+    "sh": "bash",
+    "bash": "bash",
+    "zsh": "bash",
+    "md": "markdown",
+    "markdown": "markdown",
+    "html": "html",
+    "css": "css",
+    "scss": "css",
+    "yml": "yaml",
+    "yaml": "yaml",
+    "toml": "toml",
+    "json": "json",
+    "xml": "xml",
+    "sql": "sql",
+}
+
 # halfvec を使えば pgvector の 4000dim 上限まで HNSW index が利用できる。
 # 1024 dim では vector でも問題ないが halfvec で容量半分・精度同等。
 _DIM_ENV = os.environ.get("EMBEDDING_DIMENSION")
@@ -167,12 +214,18 @@ async def _process_chunk(
     table: postgres.TableTarget[CodeChunk],
 ) -> None:
     embedder = coco.use_context(EMBEDDER)
+    # メタデータ（ファイルパス）を埋め込み計算用テキストの先頭にだけ付与する。
+    # 保存する chunk_text 自体は元の本文のまま（検索結果プレビューが汚れないようにする）。
+    if EMBED_PREFIX_FILEPATH:
+        embed_text = f"# file: {filename}\n{chunk.text}"
+    else:
+        embed_text = chunk.text
     table.declare_row(
         row=CodeChunk(
             id=await id_gen.next_id(chunk.text),
             filename=str(filename),
             chunk_text=chunk.text,
-            embedding=await embedder.embed(chunk.text),
+            embedding=await embedder.embed(embed_text),
         ),
     )
 
@@ -183,11 +236,13 @@ async def _process_file(
     table: postgres.TableTarget[CodeChunk],
 ) -> None:
     text = await file.read_text()
+    suffix = file.file_path.path.suffix.lstrip(".").lower()
+    language = EXT_TO_LANG.get(suffix)
     chunks = _splitter.split(
         text,
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
-        language="markdown",
+        language=language,
     )
     id_gen = IdGenerator()
     await coco.map(_process_chunk, chunks, file.file_path.path, id_gen, table)
