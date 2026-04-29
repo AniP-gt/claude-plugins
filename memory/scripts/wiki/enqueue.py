@@ -24,16 +24,23 @@ from pathlib import Path
 
 
 VALID_KINDS = ("session", "web", "minutes")
+# kind 値は単数（session）だがディレクトリ名は複数形（sessions）。
+# web / minutes は単複同形。命名整合は KIND_TO_DIR で一元管理する。
+KIND_TO_DIR = {"session": "sessions", "web": "web", "minutes": "minutes"}
+DIR_TO_KIND = {v: k for k, v in KIND_TO_DIR.items()}
 
 
 def detect_kind(raw_path: Path) -> str:
-    """パスから kind を推定する。判別不能時は 'session' にフォールバック。"""
+    """パスから kind を推定する。判別不能時は 'session' にフォールバック。
+
+    パス例 `<memories_dir>/raw/sessions/YYYY-MM-DD/file.md` から `session` を返す。
+    """
     parts = raw_path.parts
     for i, p in enumerate(parts):
         if p == "raw" and i + 1 < len(parts):
             nxt = parts[i + 1]
-            if nxt in VALID_KINDS:
-                return nxt
+            if nxt in DIR_TO_KIND:
+                return DIR_TO_KIND[nxt]
     return "session"
 
 

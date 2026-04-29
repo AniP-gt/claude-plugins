@@ -77,6 +77,11 @@ def absolutize(hit_path: str, memories_dir: Path) -> Path:
     return p
 
 
+# kind 値は単数（session）だがディレクトリ名は複数形（sessions）。
+# web / minutes は単複同形。命名整合は SCOPE_TO_DIR で一元管理する。
+SCOPE_TO_DIR = {"session": "sessions", "web": "web", "minutes": "minutes"}
+
+
 def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
     """scope 別フィルタ。
 
@@ -105,8 +110,8 @@ def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
         return False
     if scope == "wiki":
         return parts[0] == "wiki"
-    if scope in ("session", "web", "minutes"):
-        return len(parts) >= 2 and parts[0] == "raw" and parts[1] == scope
+    if scope in SCOPE_TO_DIR:
+        return len(parts) >= 2 and parts[0] == "raw" and parts[1] == SCOPE_TO_DIR[scope]
     return False
 
 

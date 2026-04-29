@@ -1,6 +1,6 @@
 {
   "name": "memory",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。SessionEnd で会話を Codex 要約し SMB 共有 raw/sessions/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブ（raw/web/）と議事録（raw/minutes/）の手動保存、cocoindex バックエンドのベクトル検索を提供する。マウント未確立時は fallback_dir に staging し、復帰時に自動移送。",
   "author": { "name": "miya" },
   "keywords": ["memory", "episodic", "claude-code", "session", "codex", "vector-search", "jina-reader", "minutes"]
