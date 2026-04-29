@@ -27,7 +27,7 @@ argument-hint: [session regenerate <sid> | session extract <sid> <subcmd> | web 
 | **エピソード記憶（kind: session）** | 本 skill（自動）+ `memories/raw/session/` | 過去セッションでの作業内容・判断・残課題 |
 | **エピソード記憶（kind: web）** | 本 skill（手動）+ `memories/raw/web/` | 外部 URL のスナップショット |
 | **エピソード記憶（kind: minutes）** | 本 skill（手動）+ `memories/raw/minutes/` | 議事録・指示・合意ログ |
-| エピソード記憶（Wiki） | `memory-wiki` skill（自動連携、再生成可） | プロジェクト通史・参照索引・議事索引 |
+| エピソード記憶（Wiki） | wiki-runner（recording 経由で自動連携、再生成可） | プロジェクト通史・参照索引・議事索引 |
 | 教訓・改善 | `retrospective` skill | フェーズ完了後に skills/rules を更新 |
 
 **運用原則**:
@@ -140,9 +140,11 @@ printf '%s' '{"session_id":"<UUID>","cwd":"<CWD>","transcript_path":"<JSONL>"}' 
 
 スクリプトは `https://r.jina.ai/<URL>` から Markdown を取得し、`<memories_dir>/raw/web/YYYY-MM-DD/HHMMSS_<slug>.md` に frontmatter 付きで保存する。`JINA_API_KEY` が `~/.config/jina/secrets.env` または環境変数にあれば Bearer 付与。
 
-成功時、保存パスを stdout に返す。cocoindex は変更検知で自動再インデックスするため、追加操作は不要。
+保存成功直後に `wiki/enqueue.py --kind web` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が `wiki/references.md` をテーマ別 + 時系列で更新する（詳細は `references/wiki.md`）。cocoindex は変更検知で自動再インデックス。
 
-> 既知の制限（MVP）: 同一 URL の再取得時に旧版を `superseded` に降格する機構は未実装。毎回新規ファイルとして記録される。フィルタが必要になれば `frontmatter source_url` で重複検出する後処理を追加する。
+成功時、保存パスを stdout に返す。
+
+> 既知の制限（MVP）: 同一 URL の再取得時に Raw 側で旧版を `superseded` に降格する機構は未実装（Wiki 側の `references.md` では codex-instruction-web.md の「重複排除」ルールにより同 source_url の旧版エントリは置換される）。Raw のフィルタが必要になれば `frontmatter source_url` で重複検出する後処理を追加する。
 
 ### 5. minutes（議事録）の記録
 
@@ -175,6 +177,8 @@ EOF
 
 スクリプトは `<memories_dir>/raw/minutes/YYYY-MM-DD/HHMMSS_<slug>.md` に frontmatter 付きで保存する。要約・整形は行わず、渡された本文をそのまま保存する（議事録の生情報を保持する設計）。
 
+保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が `wiki/decisions.md` を意思決定 + 議事 + アクション別で更新する（詳細は `references/wiki.md`）。
+
 成功時、保存パスを stdout に返す。
 
 ## 自動化パイプライン（kind: session のみ）
@@ -189,6 +193,6 @@ EOF
 
 - `memory-setup` — プラグイン初期設定の手順
 - `memory-search` — Raw（session/web/minutes）+ Wiki に対するベクトル検索（Claude API からも利用可）
-- `memory-wiki` — Raw を統合した Wiki 生成（ingest-queue 経由で自動連携。kind: session のみ codex 統合、web/minutes は index 列挙）
+- `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。3 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→decisions.md）
 - `adr` — 意思決定記録（不可逆な判断の永続化レイヤー）
 - `retrospective` — フェーズ完了振り返り（エピソードから skills/rules への昇華）

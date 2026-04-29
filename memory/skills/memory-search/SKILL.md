@@ -122,13 +122,12 @@ stdout に以下を出力する。
 
 ## 関連スキル
 
-- `recording` — Raw 生成（kind: session は SessionEnd hook で自動、kind: web / minutes は手動）
-- `memory-wiki` — Raw を統合した Wiki 生成
+- `recording` — Raw 生成（kind: session は SessionEnd hook で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも recording 経由で自動起動（詳細は `recording/references/wiki.md`）
 - `cocoindex:cocoindex-code-search` — 一般的なコードベース検索（本 skill は memories 専用ラッパー）
 
 ## トラブルシューティング
 
 - `connection refused: localhost:15432` → PostgreSQL 起動。`docker compose -f ~/.config/cocoindex/compose.yml up -d`
 - インデックスが空 / 古い → SessionEnd hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
-- `--scope wiki` で常に空 → wiki 配下にまだファイルがない（memory-wiki 未稼働）
+- `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
 - `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`recording` skill から手動保存する）

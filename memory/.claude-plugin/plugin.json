@@ -1,7 +1,7 @@
 {
   "name": "memory",
-  "version": "0.3.0",
-  "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。kind 値とディレクトリ名を完全一致（session/web/minutes）させ、ファイル名を HHMMSS_<host8>_<sid8>.md 形式に統一。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブ（raw/web/）と議事録（raw/minutes/）の手動保存、cocoindex バックエンドのベクトル検索を提供する。",
+  "version": "0.4.0",
+  "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。3 種すべて Codex で wiki に統合（session→projects/<p>.md、web→references.md、minutes→decisions.md）。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブと議事録の手動保存（保存直後に enqueue + wiki-runner 自動起動）、cocoindex バックエンドのベクトル検索を提供する。state は ~/.local/share/recording/state/ に永続化。",
   "author": { "name": "miya" },
   "keywords": ["memory", "episodic", "claude-code", "session", "codex", "vector-search", "jina-reader", "minutes"]
 }

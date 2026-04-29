@@ -147,6 +147,12 @@ if [[ -z "$TITLE" ]]; then
     fi
 fi
 
+# YAML エスケープ（改行除去 + 二重引用符と \ をエスケープ）。
+# 改行を残すと frontmatter を破壊できるため `tr -d` で必ず除去する。
+yaml_escape() {
+    printf '%s' "$1" | tr -d '\n\r' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
 # tags YAML フラグメント（各要素は yaml_escape で改行・引用符をエスケープ）
 if [[ -n "$TAGS" ]]; then
     TAGS_YAML="["
@@ -165,12 +171,6 @@ if [[ -n "$TAGS" ]]; then
 else
     TAGS_YAML="[]"
 fi
-
-# YAML エスケープ（改行除去 + 二重引用符と \ をエスケープ）。
-# 改行を残すと frontmatter を破壊できるため `tr -d` で必ず除去する。
-yaml_escape() {
-    printf '%s' "$1" | tr -d '\n\r' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
-}
 
 TITLE_ESC="$(yaml_escape "$TITLE")"
 URL_ESC="$(yaml_escape "$URL")"
@@ -195,5 +195,17 @@ URL_ESC="$(yaml_escape "$URL")"
 
 # /tmp 経由ではないが、SMB 上で other-readable を避けるため 600 を試行（best effort）
 chmod 600 "$OUT_PATH" 2>/dev/null || true
+
+# Wiki ingest-queue へ enqueue + wiki-runner を fire-and-forget 起動。
+# 起動失敗を理由に Raw 保存自体を失敗扱いにしないため、すべて || true で握る。
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+ENQUEUE="$PLUGIN_ROOT/scripts/wiki/enqueue.py"
+WIKI_RUNNER="$PLUGIN_ROOT/scripts/wiki/wiki-runner.sh"
+WIKI_LOG_DIR="/tmp/memories"
+mkdir -p "$WIKI_LOG_DIR" 2>/dev/null || true
+if [[ -f "$ENQUEUE" && -x "$WIKI_RUNNER" ]]; then
+    python3 "$ENQUEUE" "$OUT_PATH" --kind web >/dev/null 2>&1 || true
+    ( nohup "$WIKI_RUNNER" >> "$WIKI_LOG_DIR/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+fi
 
 echo "$OUT_PATH"

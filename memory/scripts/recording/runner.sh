@@ -79,22 +79,22 @@ log "---"
 log "runner start: input=$INPUT_MD report=$REPORT_PATH model=$MODEL stage=$STAGE_MODE pid=$$"
 
 trigger_memory_wiki() {
-    # 生成された Raw を memory-wiki のキューに enqueue し、wiki-runner を非同期起動。
+    # 生成された Raw を Wiki ingest キューに enqueue し、wiki-runner を非同期起動。
     # wiki-runner は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。
     local raw_path="$1"
     local enqueue="${PLUGIN_ROOT}/scripts/wiki/enqueue.py"
     local wiki_runner="${PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh"
 
     if [[ ! -f "$enqueue" || ! -x "$wiki_runner" ]]; then
-        log "memory-wiki scripts not found; skip enqueue (enqueue=$enqueue wiki_runner=$wiki_runner)"
+        log "wiki scripts not found; skip enqueue (enqueue=$enqueue wiki_runner=$wiki_runner)"
         return
     fi
 
     if ! python3 "$enqueue" "$raw_path" >> "$LOG_FILE" 2>&1; then
-        log "warn: memory-wiki enqueue failed for $raw_path"
+        log "warn: wiki enqueue failed for $raw_path"
         return
     fi
-    log "enqueued to memory-wiki: $raw_path"
+    log "enqueued to wiki ingest: $raw_path"
 
     # fire-and-forget で wiki-runner を起動（Raw 生成 Terminal を待たない）
     ( nohup "$wiki_runner" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true

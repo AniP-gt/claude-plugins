@@ -197,4 +197,4 @@ rm -rf /tmp/memories
 
 - 詳細アーキテクチャ: `${CLAUDE_PLUGIN_ROOT}/skills/recording/references/architecture.md`
 - 検索の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/memory-search/SKILL.md`
-- Wiki 統合の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/memory-wiki/SKILL.md`
+- Wiki 統合の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/recording/references/wiki.md`

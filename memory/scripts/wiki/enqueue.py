@@ -64,7 +64,9 @@ def main() -> int:
 
     kind = args.kind or detect_kind(raw_path)
 
-    state_dir = Path("/tmp/memories/state")
+    # state は ~/.local/share/recording/state に永続化（OS 再起動でも pending が残る）。
+    # 旧 /tmp/memories/state は wiki-runner.sh 起動時にマージされる。
+    state_dir = Path.home() / ".local" / "share" / "recording" / "state"
     queue_path = state_dir / "ingest-queue.jsonl"
     queue_path.parent.mkdir(parents=True, exist_ok=True)
 
