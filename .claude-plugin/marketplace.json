@@ -100,9 +100,9 @@
     },
     {
       "name": "memory",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "source": "./memory",
-      "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。3 種すべて Codex で wiki に統合（session→projects/<p>.md は gpt-5.4、web→references.md と minutes→decisions.md は gpt-5.4-mini で kind 別モデル分離可）。cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ非同期キックする統一経路（共通関数 lib/cocoindex_trigger.sh）。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブと議事録の手動保存。マウント未確立時は fallback_dir に staging し、復帰時に自動移送。state は ~/.local/share/recording/state/ に永続化（ingest-archive は廃止し再構築は raw から enqueue）。memory-search は file 単位で dedupe（--no-dedupe で chunk 単位の旧挙動）。trashbox の自動削除と /tmp/memories/*.log の gzip ローテーションを wiki-runner / runner / sync-pending 起動時に実行。macOS 専用機能（通知・Terminal 起動・SMB マウント）はコマンド不在時に自動スキップ。"
+      "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。3 種すべて Codex で wiki に統合（session→projects/<p>.md は gpt-5.4、web→references.md と minutes→decisions.md は gpt-5.4-mini で kind 別モデル分離可）。cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ非同期キックする統一経路（共通関数 lib/cocoindex_trigger.sh）。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブと議事録の手動保存。session/web/minutes すべて SMB 不在時に fallback_dir 配下の staging へ退避し、復帰時に sync-pending.sh が自動移送（kind 別サブディレクトリ）。wiki-runner は self-poll でロック中に追加された pending を取りこぼさず処理する（max iterations と進捗なし検知で安全に降りる）。Codex プロンプトはリンク先ファイル探索（rg / find / ls）を抑止して余計な exec を削減。state は ~/.local/share/recording/state/ に永続化（ingest-archive は廃止し再構築は raw から enqueue）。memory-search は file 単位で dedupe（--no-dedupe で chunk 単位の旧挙動）。trashbox の自動削除と /tmp/memories/*.log の gzip ローテーションを wiki-runner / runner / sync-pending 起動時に実行。macOS 専用機能（通知・Terminal 起動・SMB マウント）はコマンド不在時に自動スキップ。"
     }
   ]
 }

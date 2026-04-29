@@ -182,14 +182,17 @@ if [[ ! -s "$QUEUE" ]]; then
     exit 0
 fi
 
-# 全 pending エントリを取り出す（kind 含む TSV: <raw_path>\t<kind>）
-PENDING_ENTRIES=$(python3 -c "
-import json, sys
+# pending エントリ取り出し関数（kind 含む TSV: <raw_path>\t<kind>）。
+# self-poll ループで毎イテレーション再 scan するため関数化する。
+# QUEUE は環境変数経由で渡す（シェル変数の Python ソース直接展開を避けてインジェクション耐性を上げる）。
+read_pending_entries() {
+    QUEUE_PATH="$QUEUE" python3 -c '
+import json, os, sys
 from pathlib import Path
-q = Path('$QUEUE')
+q = Path(os.environ["QUEUE_PATH"])
 if not q.exists():
     sys.exit(0)
-for line in q.read_text(encoding='utf-8').splitlines():
+for line in q.read_text(encoding="utf-8").splitlines():
     line = line.strip()
     if not line:
         continue
@@ -197,22 +200,54 @@ for line in q.read_text(encoding='utf-8').splitlines():
         d = json.loads(line)
     except json.JSONDecodeError:
         continue
-    if d.get('status') != 'pending':
+    if d.get("status") != "pending":
         continue
-    raw = d.get('raw_path', '')
-    kind = d.get('kind') or 'session'
-    print(f'{raw}\t{kind}')
-")
+    raw = d.get("raw_path", "")
+    kind = d.get("kind") or "session"
+    print(f"{raw}\t{kind}")
+'
+}
+
+PENDING_ENTRIES="$(read_pending_entries)"
 
 if [[ -z "$PENDING_ENTRIES" ]]; then
     log "skip: no pending entries"
     exit 0
 fi
 
-PROCESSED_COUNT=0
-FAILED_COUNT=0
-PROCESSED_PROJECTS=()
-FAILED_PROJECTS=()
+# self-poll 用の累積カウンタ（全イテレーション合計）。
+TOTAL_PROCESSED=0
+TOTAL_FAILED=0
+ALL_PROCESSED_PROJECTS=()
+ALL_FAILED_PROJECTS=()
+
+# レース対策: ロック取得後にも他プロセスが queue に追記する可能性があるため、
+# 1 バッチ消化後に再 scan して pending が残っていれば追加で処理する。
+# 進捗なし（前回と同じ pending セット）か MAX_ITERATIONS 到達で安全に降りる。
+MAX_ITERATIONS="${MEMORIES_WIKI_MAX_SELF_POLL:-10}"
+# 非数値が指定された場合はサイレント無効化を避けるため既定値に戻す。
+if ! [[ "$MAX_ITERATIONS" =~ ^[0-9]+$ ]] || [[ "$MAX_ITERATIONS" == "0" ]]; then
+    log "warn: invalid MEMORIES_WIKI_MAX_SELF_POLL='$MAX_ITERATIONS'; falling back to 10"
+    MAX_ITERATIONS=10
+fi
+PREV_PENDING_HASH=""
+ITERATION=0
+
+while true; do
+    ITERATION=$((ITERATION + 1))
+    if [[ $ITERATION -gt $MAX_ITERATIONS ]]; then
+        log "warn: reached MAX_ITERATIONS=$MAX_ITERATIONS in self-poll; deferring rest to next runner"
+        break
+    fi
+    if [[ $ITERATION -gt 1 ]]; then
+        log "self-poll iteration=$ITERATION (re-scanning queue for late additions)"
+    fi
+
+    # イテレーション単位の集計（後でグローバル累積に加算）
+    PROCESSED_COUNT=0
+    FAILED_COUNT=0
+    PROCESSED_PROJECTS=()
+    FAILED_PROJECTS=()
 
 # 共通: untrusted Raw を Codex に渡すための prompt を組み立てる。
 # 引数:
@@ -348,6 +383,67 @@ while IFS=$'\t' read -r RAW_PATH KIND; do
     rm -f "$COMBINED"
 done <<< "$PENDING_ENTRIES"
 
+    # === self-poll: このイテレーションの処理済みを queue から削除 ===
+    # ループ実行中に他プロセスが追記した pending エントリは queue に残し、次イテレーションで処理する。
+    # パスはすべて環境変数経由で Python に渡す（インジェクション耐性）。
+    PROCESSED_PATHS_TMP=$(mktemp -t memory-wiki-processed.XXXXXX)
+    printf '%s\n' "$PENDING_ENTRIES" | awk -F'\t' '{print $1}' > "$PROCESSED_PATHS_TMP"
+
+    QUEUE_PATH="$QUEUE" PROCESSED_PATHS_TMP="$PROCESSED_PATHS_TMP" python3 -c '
+import json
+import os
+from pathlib import Path
+
+q = Path(os.environ["QUEUE_PATH"])
+processed_file = Path(os.environ["PROCESSED_PATHS_TMP"])
+processed_paths = {p.strip() for p in processed_file.read_text(encoding="utf-8").splitlines() if p.strip()}
+
+remaining = []
+
+for line in q.read_text(encoding="utf-8").splitlines() if q.exists() else []:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        d = json.loads(line)
+    except json.JSONDecodeError:
+        remaining.append(line)
+        continue
+    rp = d.get("raw_path", "")
+    if d.get("status") == "pending" and rp in processed_paths:
+        # 処理済み: queue から削除（archive には残さない）
+        continue
+    # 自分が処理していない pending（後発エントリ）はそのまま残す。
+    # 非 pending（done など）も queue に残す（通常起こらないが防御的）。
+    remaining.append(line)
+
+q.write_text(("\n".join(remaining) + "\n") if remaining else "", encoding="utf-8")
+'
+    rm -f "$PROCESSED_PATHS_TMP"
+
+    # 累積カウンタへ加算
+    TOTAL_PROCESSED=$((TOTAL_PROCESSED + PROCESSED_COUNT))
+    TOTAL_FAILED=$((TOTAL_FAILED + FAILED_COUNT))
+    [[ ${#PROCESSED_PROJECTS[@]} -gt 0 ]] && ALL_PROCESSED_PROJECTS+=("${PROCESSED_PROJECTS[@]}")
+    [[ ${#FAILED_PROJECTS[@]} -gt 0 ]] && ALL_FAILED_PROJECTS+=("${FAILED_PROJECTS[@]}")
+
+    # === self-poll: 残 pending を再 scan ===
+    PENDING_ENTRIES="$(read_pending_entries)"
+    if [[ -z "$PENDING_ENTRIES" ]]; then
+        # キューが空になった = 完走
+        break
+    fi
+
+    # 進捗なし検知: 同じ pending セットが残っている場合（codex 連続失敗 / 不可能エントリ）は break。
+    # 無限ループを避けるため、shasum で前回ハッシュと比較する。
+    CURRENT_HASH="$(printf '%s' "$PENDING_ENTRIES" | /usr/bin/shasum -a 256 2>/dev/null | awk '{print $1}')"
+    if [[ -n "$PREV_PENDING_HASH" && "$CURRENT_HASH" == "$PREV_PENDING_HASH" ]]; then
+        log "warn: no progress in iteration $ITERATION (pending unchanged); breaking self-poll"
+        break
+    fi
+    PREV_PENDING_HASH="$CURRENT_HASH"
+done
+
 # index.md 再生成（Sessions Timeline / References Library / Decisions Log の入口リンクと件数）
 WIKI_DIR_FOR_PY="$WIKI_DIR" MEMORIES_DIR_FOR_PY="$MEMORIES_DIR" python3 - <<'PY'
 import os, re
@@ -451,53 +547,14 @@ lines.append('')
 (wiki / 'index.md').write_text('\n'.join(lines), encoding='utf-8')
 PY
 
-# 処理済みエントリを queue から削除する。
-# ループ実行中に他プロセスが追記した pending エントリは queue に残し、次回ランナーで処理する。
-# 永続的なアーカイブは持たない（再構築が必要なら raw/{session,web,minutes} のファイルから
-# enqueue.py を再実行する）。
-PROCESSED_PATHS_TMP=$(mktemp -t memory-wiki-processed.XXXXXX)
-printf '%s\n' "$PENDING_ENTRIES" | awk -F'\t' '{print $1}' > "$PROCESSED_PATHS_TMP"
-
-PROCESSED_PATHS_TMP="$PROCESSED_PATHS_TMP" python3 -c "
-import json
-import os
-from pathlib import Path
-
-q = Path('$QUEUE')
-processed_file = Path(os.environ['PROCESSED_PATHS_TMP'])
-processed_paths = {p.strip() for p in processed_file.read_text(encoding='utf-8').splitlines() if p.strip()}
-
-remaining = []
-
-for line in q.read_text(encoding='utf-8').splitlines() if q.exists() else []:
-    line = line.strip()
-    if not line:
-        continue
-    try:
-        d = json.loads(line)
-    except json.JSONDecodeError:
-        remaining.append(line)
-        continue
-    rp = d.get('raw_path', '')
-    if d.get('status') == 'pending' and rp in processed_paths:
-        # 処理済み: queue から削除（archive には残さない）
-        continue
-    # 自分が処理していない pending（後発エントリ）はそのまま残す。
-    # 非 pending（done など）も queue に残す（通常起こらないが防御的）。
-    remaining.append(line)
-
-q.write_text(('\n'.join(remaining) + '\n') if remaining else '', encoding='utf-8')
-"
-rm -f "$PROCESSED_PATHS_TMP"
-
-log "done: processed=$PROCESSED_COUNT failed=$FAILED_COUNT"
+log "done: total_processed=$TOTAL_PROCESSED total_failed=$TOTAL_FAILED iterations=$ITERATION"
 
 # wiki/projects/<p>.md / references.md / decisions.md / index.md が更新されたので
 # cocoindex update を非同期キックして検索 DB に反映させる。
 # 1 件以上処理した場合のみ呼ぶ（空走 wiki-runner の度に DB 触らない）。
 PLUGIN_ROOT_FOR_LIB="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 COCOINDEX_TRIGGER_LIB="$PLUGIN_ROOT_FOR_LIB/scripts/lib/cocoindex_trigger.sh"
-if [[ $PROCESSED_COUNT -gt 0 && -f "$COCOINDEX_TRIGGER_LIB" ]]; then
+if [[ $TOTAL_PROCESSED -gt 0 && -f "$COCOINDEX_TRIGGER_LIB" ]]; then
     # bash -c 経由のクォート入れ子は MEMORIES_DIR にシングルクォートを含むパスで壊れるため、
     # 同プロセスで source → 関数呼び出しに統一する。共通関数は log() が定義済みならそれを使うため、
     # cocoindex のスケジュールログは wiki-runner.log に流れる（実体出力は cocoindex_log 側）。
@@ -523,11 +580,11 @@ build_project_summary() {
     printf '%s' "${unique[*]:-}"
 }
 
-if [[ $FAILED_COUNT -gt 0 ]]; then
-    SUMMARY="$(build_project_summary "${FAILED_PROJECTS[@]:-}")"
+if [[ $TOTAL_FAILED -gt 0 ]]; then
+    SUMMARY="$(build_project_summary "${ALL_FAILED_PROJECTS[@]:-}")"
     notify_failure "失敗: ${SUMMARY:-?} (log: $LOG_FILE)"
-elif [[ $PROCESSED_COUNT -gt 0 ]]; then
-    SUMMARY="$(build_project_summary "${PROCESSED_PROJECTS[@]:-}")"
+elif [[ $TOTAL_PROCESSED -gt 0 ]]; then
+    SUMMARY="$(build_project_summary "${ALL_PROCESSED_PROJECTS[@]:-}")"
     notify_success "更新: ${SUMMARY:-?}"
 fi
 exit 0
