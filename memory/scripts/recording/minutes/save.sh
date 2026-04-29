@@ -153,15 +153,16 @@ fi
 chmod 600 "$OUT_PATH" 2>/dev/null || true
 
 # Wiki ingest-queue へ enqueue + wiki-runner を fire-and-forget 起動。
+# cocoindex update は wiki-runner 完了時に 1 回呼ばれるためここでは呼ばない（重複起動回避）。
 # 起動失敗を理由に Raw 保存自体を失敗扱いにしないため、すべて || true で握る。
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 ENQUEUE="$PLUGIN_ROOT/scripts/wiki/enqueue.py"
 WIKI_RUNNER="$PLUGIN_ROOT/scripts/wiki/wiki-runner.sh"
-WIKI_LOG_DIR="/tmp/memories"
-mkdir -p "$WIKI_LOG_DIR" 2>/dev/null || true
+LOG_DIR_LOCAL="/tmp/memories"
+mkdir -p "$LOG_DIR_LOCAL" 2>/dev/null || true
 if [[ -f "$ENQUEUE" && -x "$WIKI_RUNNER" ]]; then
     python3 "$ENQUEUE" "$OUT_PATH" --kind minutes >/dev/null 2>&1 || true
-    ( nohup "$WIKI_RUNNER" >> "$WIKI_LOG_DIR/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+    ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 fi
 
 echo "$OUT_PATH"

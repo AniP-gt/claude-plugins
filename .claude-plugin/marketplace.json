@@ -100,9 +100,9 @@
     },
     {
       "name": "memory",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "source": "./memory",
-      "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。3 種すべて Codex で wiki に統合（session→projects/<p>.md、web→references.md、minutes→decisions.md）。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブと議事録の手動保存（保存直後に enqueue + wiki-runner 自動起動）、cocoindex バックエンドのベクトル検索を提供する。マウント未確立時は fallback_dir に staging し、復帰時に自動移送。state は ~/.local/share/recording/state/ に永続化。macOS 専用機能（通知・Terminal 起動・SMB マウント）はコマンド不在時に自動スキップ。"
+      "description": "Claude Code セッションのエピソード記憶（kind: session / web / minutes + Wiki）を管理するプラグイン。3 種すべて Codex で wiki に統合（session→projects/<p>.md、web→references.md、minutes→decisions.md）。cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ非同期キックする統一経路（共通関数 lib/cocoindex_trigger.sh）。SessionEnd で会話を Codex 要約し SMB 共有 raw/session/ へ保存、SessionStart で staging 同期、Jina Reader 経由の URL アーカイブと議事録の手動保存。マウント未確立時は fallback_dir に staging し、復帰時に自動移送。state は ~/.local/share/recording/state/ に永続化。macOS 専用機能（通知・Terminal 起動・SMB マウント）はコマンド不在時に自動スキップ。"
     }
   ]
 }

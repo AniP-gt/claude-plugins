@@ -389,6 +389,22 @@ rm -f "$PROCESSED_PATHS_TMP"
 
 log "done: processed=$PROCESSED_COUNT failed=$FAILED_COUNT"
 
+# wiki/projects/<p>.md / references.md / decisions.md / index.md が更新されたので
+# cocoindex update を非同期キックして検索 DB に反映させる。
+# 1 件以上処理した場合のみ呼ぶ（空走 wiki-runner の度に DB 触らない）。
+PLUGIN_ROOT_FOR_LIB="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
+COCOINDEX_TRIGGER_LIB="$PLUGIN_ROOT_FOR_LIB/scripts/lib/cocoindex_trigger.sh"
+if [[ $PROCESSED_COUNT -gt 0 && -f "$COCOINDEX_TRIGGER_LIB" ]]; then
+    # bash -c 経由のクォート入れ子は MEMORIES_DIR にシングルクォートを含むパスで壊れるため、
+    # 同プロセスで source → 関数呼び出しに統一する。共通関数は log() が定義済みならそれを使うため、
+    # cocoindex のスケジュールログは wiki-runner.log に流れる（実体出力は cocoindex_log 側）。
+    PLUGIN_ROOT="$PLUGIN_ROOT_FOR_LIB"
+    LOG_DIR_LOCAL="$(dirname "$LOG_FILE")"
+    # shellcheck source=../lib/cocoindex_trigger.sh
+    source "$COCOINDEX_TRIGGER_LIB"
+    trigger_cocoindex_update "$MEMORIES_DIR" || true
+fi
+
 # 通知メッセージ生成（ラベルのユニークリストを表示）
 build_project_summary() {
     local -a unique=()

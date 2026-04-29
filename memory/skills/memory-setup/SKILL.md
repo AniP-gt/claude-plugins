@@ -192,6 +192,34 @@ rm -rf /tmp/memories
 | マウント検出が失敗する | `<memories_dir>/.mount-canary` の実在を確認 |
 | 検索結果が空 | cocoindex 側の起動・テーブル存在・SessionEnd hook の実行履歴を確認 |
 | `cocoindex update skipped: ... uv not found` | `brew install uv` |
+| `DuplicateTableError: relation "..." already exists` | cocoindex プラグインの schema migration 不整合。下記「DuplicateTableError 復旧手順」を参照 |
+| `--scope web` / `--scope minutes` で常に空 | cocoindex update が一度も成功していない可能性。`/tmp/memories/cocoindex-memories-update.log` を確認 |
+
+### DuplicateTableError 復旧手順
+
+cocoindex プラグインの version 更新時に PostgreSQL のテーブル定義が前バージョンの状態に残ったまま `CREATE TABLE`（IF NOT EXISTS なし）で衝突するケース。memory プラグイン外（cocoindex プラグイン側）の問題だが、以下の手順で復旧する:
+
+```bash
+# 1. 既存テーブル一覧を確認
+psql -h localhost -p 15432 -U postgres -d postgres -c '\dt public.codeindex_*'
+
+# 2. memories 用テーブルを drop（embedding は再生成される）
+HOST_PREFIX="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
+psql -h localhost -p 15432 -U postgres -d postgres \
+    -c "DROP TABLE IF EXISTS public.codeindex_${HOST_PREFIX}_memory__code_chunks CASCADE;"
+
+# 3. 手動で update を流して再構築
+"${CLAUDE_PLUGIN_ROOT}/scripts/recording/runner.sh"  # は session 経路。手動実行は次:
+PLUGIN_ROOT=~/.claude/plugins/cache/hidetsugu-miya/memory/<version> \
+LOG_DIR_LOCAL=/tmp/memories \
+MEMORIES_DIR=/Volumes/memory \
+bash -c 'source "$PLUGIN_ROOT/scripts/lib/cocoindex_trigger.sh" && trigger_cocoindex_update'
+
+# 4. ログで成功確認
+tail -f /tmp/memories/cocoindex-memories-update.log
+```
+
+恒久対策は cocoindex プラグイン側の `mount_table_target` に既存テーブル再利用ロジックを実装する必要がある（upstream issue 領域）。
 
 ## 関連
 

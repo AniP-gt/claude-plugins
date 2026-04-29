@@ -13,8 +13,8 @@
 #       a. 移送先 <memories_dir>/raw/session/YYYY-MM-DD/<basename>.md を計算（命名規則上絶対衝突しない）
 #       b. 移送先がなければ atomic rename（同一 FS）or cp -p && rm（FS 跨ぎ）で移送
 #       c. 移送先が存在 → ハッシュ完全一致なら staging 削除（成功）、不一致なら staging 保全＋通知
-#   4. 移送成功した session レポートについて enqueue.py を呼び wiki キューに追加
-#   5. 1 件以上正規パスへ移った場合のみ cocoindex update をキック
+#   4. 移送成功した session レポートについて enqueue.py を呼び wiki キューに追加 + wiki-runner を起動
+#      （wiki-runner.sh が処理完了後に cocoindex update を 1 回キックする統一経路）
 #
 # macOS 以外の環境では osascript / open / mount_smbfs などが無く、通知やマウント関連処理は
 # 自動的にスキップされる（ログのみ残る）。
@@ -164,35 +164,8 @@ if [[ ${#MOVED_PATHS[@]} -gt 0 ]]; then
         log "warn: enqueue script not found: $ENQUEUE"
     fi
 
-    # cocoindex update をキック（runner.sh の trigger_cocoindex_update と同等）
-    # cocoindex プラグインキャッシュは plugin update で消えるため動的解決する。
-    PLUGIN_SCRIPTS="$(python3 -c "
-import sys
-sys.path.insert(0, '${PLUGIN_ROOT}/scripts')
-from lib.cocoindex_path import resolve_cocoindex_scripts
-p = resolve_cocoindex_scripts()
-print(p if p else '', end='')
-")"
-    if [[ -z "$PLUGIN_SCRIPTS" || ! -d "$PLUGIN_SCRIPTS/.venv" ]]; then
-        log "cocoindex update skipped: cocoindex plugin venv not found"
-    elif ! command -v uv >/dev/null 2>&1; then
-        log "cocoindex update skipped: uv not found in PATH"
-    elif [[ ! -f "$SCRIPTS_DIR/main_memory.py" ]]; then
-        log "cocoindex update skipped: main_memory.py not found ($SCRIPTS_DIR/main_memory.py)"
-    else
-        index_name="$(basename "$MEMORIES_DIR")"
-        host_prefix="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
-        app_name="CodeIndex_${host_prefix}_${index_name}"
-        (
-            cd "$PLUGIN_SCRIPTS" \
-            && SOURCE_PATH="$MEMORIES_DIR" \
-                INDEX_NAME="$index_name" \
-                PATTERNS="**/*.md" \
-                nohup uv run cocoindex update -f "${SCRIPTS_DIR}/main_memory.py:${app_name}" \
-                >> "$LOG_DIR_LOCAL/cocoindex-memories-update.log" 2>&1 &
-        ) >/dev/null 2>&1 || true
-        log "cocoindex update scheduled (post-sync)"
-    fi
+    # cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ呼ばれる（重複起動回避）。
+    # 上で起動した wiki-runner が cocoindex_trigger.sh 経由で update する。
 fi
 
 if [[ $COLLIDED -gt 0 ]]; then

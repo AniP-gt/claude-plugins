@@ -100,60 +100,8 @@ trigger_memory_wiki() {
     ( nohup "$wiki_runner" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 }
 
-trigger_cocoindex_update() {
-    # 新規/更新されたレポートを cocoindex に反映（best effort / 非同期）。
-    # memories 専用エントリポイント（main_memory.py）を経由し、frontmatter prepend 込みで
-    # embedding を生成する。プラグイン本体（汎用 main.py）は使わない。
-    # cocoindex 1.0 CLI 形式（cocoindex update -f main_memory.py:<AppName>）で起動。
-    #
-    # ドメイン固有設定（embedding model/dimension, chunk size, exclude）は
-    # ~/.config/cocoindex/config.toml の [memory] セクションで管理する。
-    # ここでは起動に必要な動的引数（SOURCE_PATH/INDEX_NAME/PATTERNS）だけを渡す。
-    local memories_dir="$MEMORIES_DIR"
-    local recording_scripts="${PLUGIN_ROOT}/scripts/recording"
-    # cocoindex プラグインキャッシュは plugin update ごとにバージョンが変わるため動的解決する。
-    local plugin_scripts
-    plugin_scripts="$(python3 -c "
-import sys
-sys.path.insert(0, '${PLUGIN_ROOT}/scripts')
-from lib.cocoindex_path import resolve_cocoindex_scripts
-p = resolve_cocoindex_scripts()
-print(p if p else '', end='')
-")"
-    local cocoindex_log="$LOG_DIR_LOCAL/cocoindex-memories-update.log"
-
-    if [[ ! -f "$recording_scripts/main_memory.py" ]]; then
-        log "cocoindex update skipped: main_memory.py not found ($recording_scripts/main_memory.py)"
-        return
-    fi
-    if [[ -z "$plugin_scripts" || ! -d "$plugin_scripts/.venv" ]]; then
-        log "cocoindex update skipped: cocoindex plugin venv not found (resolved=$plugin_scripts)"
-        return
-    fi
-    if ! command -v uv >/dev/null 2>&1; then
-        log "cocoindex update skipped: uv not found in PATH"
-        return
-    fi
-
-    # MEMORIES_DIR=`/Volumes/memory` の場合 INDEX_NAME=memory、AppName と table 名は
-    # main_memory.py が hostname プレフィックス付きで自動計算する。
-    local index_name
-    index_name="$(basename "$memories_dir")"
-    local host_prefix
-    host_prefix="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
-    local app_name="CodeIndex_${host_prefix}_${index_name}"
-
-    log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=config.toml [memory])"
-    # main_memory.py は cocoindex プラグインの venv（uv 管理）を借りて実行する。
-    (
-        cd "$plugin_scripts" \
-        && SOURCE_PATH="$memories_dir" \
-            INDEX_NAME="$index_name" \
-            PATTERNS="**/*.md" \
-            nohup uv run cocoindex update -f "${recording_scripts}/main_memory.py:${app_name}" \
-            >> "$cocoindex_log" 2>&1 &
-    ) >/dev/null 2>&1 || true
-}
+# cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ呼ぶ設計に統一済み。
+# このスクリプトからは直接呼ばない（trigger_memory_wiki が起動する wiki-runner 内部で呼ばれる）。
 
 if ! command -v codex >/dev/null 2>&1; then
     log "error: codex command not found in PATH; cannot generate session report"
@@ -227,8 +175,9 @@ summarize_report() {
 }
 
 post_process() {
-    # report 書き込み成功後の後処理。staged 時は wiki/cocoindex を呼ばず、
+    # report 書き込み成功後の後処理。staged 時は wiki を呼ばず、
     # SessionStart hook 経由の sync-pending.sh が後追いで処理する。
+    # cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ呼ばれる（重複起動回避）。
     local report_path="$1"
     if [[ "$STAGE_MODE" == "staged" ]]; then
         log "post-process skipped (staged): $report_path — sync-pending will handle"
@@ -236,7 +185,6 @@ post_process() {
         return
     fi
     trigger_memory_wiki "$report_path"
-    trigger_cocoindex_update
 }
 
 # codexが直接ファイルを書いた場合（推奨経路）

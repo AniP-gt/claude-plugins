@@ -101,6 +101,7 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
    - `kind: minutes`: → `wiki/decisions.md`（`codex-instruction-minutes.md`）
 5. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Decisions Log**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
 6. 処理済みエントリを `ingest-archive.jsonl` に移し、queue を空に
+7. `PROCESSED_COUNT > 0` なら **`scripts/lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
 
