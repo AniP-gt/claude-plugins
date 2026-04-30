@@ -96,15 +96,28 @@ config.toml より env が優先される。一時的な切り替えに便利:
    /sbin/mount_smbfs //user@host/share /Volumes/memory
    ```
 
-3. プラグイン同梱の `mount-memory-share.sh` を使う場合、SHARE/PING_HOST を環境変数で上書き:
+3. プラグイン同梱の `mount-memory-share.sh` を使う場合、共有 URL は config.toml に、user 名は secrets.env に書く:
 
-   ```bash
-   # 例: ~/.zshrc などに記載
-   export MEMORIES_SMB_SHARE="//user@server.local/memory"
-   export MEMORIES_SMB_PING_HOST="server.local"   # 省略時は SHARE から自動抽出
+   ```toml
+   # ~/.config/recording/config.toml
+   smb_share = "//192.168.11.5/memory"        # 形式: //[user@]host/share
+   # smb_ping_host = "192.168.11.5"           # 省略時は smb_share から自動抽出
    ```
 
-   または config.toml の `remount_script` を自前のラッパーに差し替える:
+   ```bash
+   # ~/.config/recording/secrets.env （chmod 600 必須）
+   MEMORIES_SMB_USER=admin
+   ```
+
+   ```bash
+   # 権限設定（必須。0600 でないとスクリプトが読み込みを拒否する）
+   chmod 600 ~/.config/recording/secrets.env
+   ```
+
+   優先順位は環境変数 > secrets.env > config.toml > プレースホルダ既定（fail）。
+   一時的な上書きをしたい場合は `MEMORIES_SMB_SHARE` / `MEMORIES_SMB_USER` / `MEMORIES_SMB_PING_HOST` を export する。
+
+   config.toml の `remount_script` を自前のラッパーに差し替えることも可能:
 
    ```toml
    remount_script = "~/bin/my-mount-memory.sh"

@@ -1,8 +1,13 @@
 # memory プラグイン設定ファイル
 # 配置先: ~/.config/recording/config.toml
 #
-# 環境変数（MEMORIES_DIR / MEMORIES_FALLBACK_DIR / MEMORIES_AUTO_REMOUNT 等）が
-# 設定されていれば、本ファイルより環境変数が優先されます。
+# 設定の優先順位（高い順）:
+#   1. 環境変数（MEMORIES_DIR / MEMORIES_SMB_SHARE / MEMORIES_SMB_USER 等）
+#   2. ~/.config/recording/secrets.env（chmod 600 必須。シークレット情報のみ）
+#   3. 本ファイル（公開可能な設定）
+#
+# 例: SMB の user 名はシークレット扱いなので secrets.env で MEMORIES_SMB_USER=... と書き、
+#     共有 URL は本ファイルの smb_share に書く運用を推奨します。
 
 # Raw レポートを保存する正規ディレクトリ（SMB/NFS など共有が想定）。
 # 配下構造は固定:
@@ -14,6 +19,15 @@
 # fallback_dir に staging として書き込みます（SessionEnd hook 経路の session のみ。
 # web / minutes は手動経路で常にマウント前提のため staging は使いません）。
 memories_dir = "/Volumes/memory"
+
+# SMB 共有 URL（mount-memory-share.sh 用）。形式: //[user@]host/share
+# user 名はここに書かず、secrets.env の MEMORIES_SMB_USER で渡すことを推奨します
+# （シークレット情報を平文 config から分離するため）。
+# 例: smb_share = "//192.168.11.5/memory"
+# smb_share = "//host.local/memory"
+
+# ping 用ホスト名。省略時は smb_share から自動抽出します。
+# smb_ping_host = "192.168.11.5"
 
 # マウント未確立時に session レポートを退避する fallback ディレクトリ（ローカル永続）。
 # 後続の SessionStart hook で sync-pending.sh が走り、マウント成功時に
@@ -38,9 +52,15 @@ mount_canary_filename = ".mount-canary"
 hostname_hash_length = 8
 
 # ============================================================================
-# 以下は環境変数で上書きする項目。本ファイルでは説明のみ（TOML パーサからは無視される）。
-# 設定したい場合は ~/.zshrc / ~/.bashrc などに export してください。
+# 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。
+# シークレット情報は ~/.config/recording/secrets.env（chmod 600）に書く運用を推奨します。
+# secrets.env の例は templates/secrets.env.example を参照してください。
 # ============================================================================
+
+# SMB 認証用 user 名（mount-memory-share.sh が //user@host/share の形に組み立てる）。
+# パスワードは macOS キーチェーンから自動解決されるため、user 名のみで十分です。
+#   secrets.env: MEMORIES_SMB_USER=admin
+#   または環境変数: export MEMORIES_SMB_USER="admin"
 
 # kind 別 Codex モデル（wiki-runner.sh が参照）。
 #   export CODEX_MEMORY_WIKI_MODEL_SESSION="gpt-5.4"
