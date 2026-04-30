@@ -1,7 +1,7 @@
 ---
 name: memory-search
 description: エピソード記憶（memories/raw/{session,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
-argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe]
+argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
 ---
 
 # Memory Search Skill
@@ -18,11 +18,12 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
-- **依存**: cocoindex プラグイン（`~/.claude/plugins/cache/hidetsugu-miya/cocoindex/<version>`、バージョンは `scripts/lib/cocoindex_path.py` が動的解決）と PostgreSQL（localhost:15432）が起動していること
+- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。memory プラグイン専用 venv（`memory/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
 - **インデックスは recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
 - **既定で同一ファイル内の chunk dedupe**: cocoindex は chunk 単位で返すため、同一ファイル内の異なる chunk が top N を埋めて候補多様性が失われる。既定では filename ベースで dedupe し、最高スコアの chunk のみ採用する。`--no-dedupe` で旧挙動（chunk 単位）に戻せる
+- **弱ヒット時の再クエリヒント**: トップヒットのスコアが `--low-score-threshold`（既定 0.3）未満なら stderr に再クエリ案を出す。stdout（検索結果）は汚染しない。`--low-score-threshold 0` で無効化できる
 
 ## 完了条件
 
@@ -41,13 +42,15 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 | `--include-superseded` | | (false) | superseded/deprecated レポートも含める |
 | `--format json\|markdown` | | markdown | 出力形式 |
 | `--no-dedupe` | | (false) | 同一ファイル内の異なる chunk も全て返す（chunk 単位） |
+| `--low-score-threshold N` | | 0.3 | トップスコアがこの値未満なら stderr に再クエリヒントを出す（0 以下で無効化） |
 
 環境変数（任意）:
 
 - `MEMORIES_DIR`: memories ディレクトリの絶対パス（既定: `/Volumes/memory`）
-- `COCOINDEX_PLUGIN`: cocoindex プラグインのルート（既定: `scripts/lib/cocoindex_path.py` が `~/.claude/plugins/cache/hidetsugu-miya/cocoindex/*` の最新版を動的解決）
-- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。コード検索向け `voyage-code-3` とは棲み分けるため `~/.config/cocoindex/.env` を変更せず本変数で上書きする。インデックス構築側（`recording` の runner.sh）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
+- `MEMORY_DATABASE_URL`: memory 専用 PostgreSQL 接続 URL（既定: `postgres://postgres:postgres@localhost:15432/memory`）。`~/.config/memory/.env` でも設定可能
+- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`recording` の `main_memory.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
 - `MEMORIES_EMBEDDING_PROVIDER`: 埋め込みプロバイダー（既定: `voyage`）
+- `VOYAGE_API_KEY`: voyage embedding / rerank API キー。`~/.config/memory/secrets.env` で設定可能。未設定の場合は `~/.config/cocoindex/secrets.env` を fallback で読む
 
 ## 返却値
 
@@ -130,6 +133,7 @@ stdout に以下を出力する。
 ## トラブルシューティング
 
 - `connection refused: localhost:15432` → PostgreSQL 起動。`docker compose -f ~/.config/cocoindex/compose.yml up -d`
+- `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`memory/scripts/setup_db.sh` を実行 → `cocoindex update -f memory/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
 - インデックスが空 / 古い → SessionEnd hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
 - `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`recording` skill から手動保存する）

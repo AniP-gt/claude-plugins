@@ -100,7 +100,7 @@
     },
     {
       "name": "memory",
-      "version": "0.9.0",
+      "version": "1.0.0",
       "source": "./memory",
       "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。"
     }

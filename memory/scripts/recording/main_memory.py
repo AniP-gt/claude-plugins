@@ -48,23 +48,24 @@ from cocoindex.resources.file import FileLike, PatternFilePathMatcher
 from cocoindex.resources.id import IdGenerator
 from numpy.typing import NDArray
 
-# 1) cocoindex プラグインの config.py を借りて secrets と DB URL を環境変数に展開する
-#    プラグインキャッシュは `~/.claude/plugins/cache/hidetsugu-miya/cocoindex/<version>/scripts`
-#    に展開されるが、バージョンは plugin update で変わるため動的解決する。
+# 1) memory プラグイン専用の env / secrets を読み込む。
+#    優先順位: 既存環境変数 > ~/.config/memory/.env / secrets.env > ~/.config/cocoindex/secrets.env (fallback)
+#    cocoindex プラグインの config.py は依存しない（独立化済み）。
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # scripts/ を import path に追加
-from lib.cocoindex_path import resolve_cocoindex_scripts  # noqa: E402
 
-_PLUGIN_SCRIPTS = resolve_cocoindex_scripts()
-if _PLUGIN_SCRIPTS is not None and str(_PLUGIN_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_PLUGIN_SCRIPTS))
-try:
-    from config import apply_config_to_env  # type: ignore
-    apply_config_to_env()
-except Exception:
-    from dotenv import load_dotenv
-    cfg_dir = pathlib.Path.home() / ".config" / "cocoindex"
-    load_dotenv(dotenv_path=cfg_dir / "secrets.env", override=True)
-    load_dotenv(dotenv_path=cfg_dir / ".env", override=False)
+from dotenv import load_dotenv  # noqa: E402
+
+_MEMORY_CFG_DIR = pathlib.Path.home() / ".config" / "memory"
+_COCOINDEX_CFG_DIR = pathlib.Path.home() / ".config" / "cocoindex"
+
+# cocoindex CLI が先に ~/.env を読み込んで古い VOYAGE_API_KEY 等が紛れ込むことがあるため、
+# プラグイン管理下にある secrets.env で確実に上書きする。
+# 優先順位は「memory 側で明示設定した値」を最優先にしたいので、cocoindex 側を先に override=True
+# で読み込み、その後 memory 側を override=True で読む。memory 側でコメントアウトされたキーは
+# 何も書き換えないので、cocoindex 側で読み込んだ値が残る。
+load_dotenv(dotenv_path=_COCOINDEX_CFG_DIR / "secrets.env", override=True)
+load_dotenv(dotenv_path=_MEMORY_CFG_DIR / ".env", override=True)
+load_dotenv(dotenv_path=_MEMORY_CFG_DIR / "secrets.env", override=True)
 
 
 # 2) memory プラグイン専用設定 ~/.config/memory/cocoindex.toml を auto-provision して読み込む
@@ -164,13 +165,21 @@ def _index_name() -> str:
 
 
 INDEX = _index_name()
-TABLE = f"codeindex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX).lower()}__code_chunks"
-APP = f"CodeIndex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX)}"
+TABLE = f"memoryindex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX).lower()}__chunks"
+APP = f"MemoryIndex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX)}"
 
+# memory 専用 database への接続 URL。MEMORY_DATABASE_URL を最優先し、
+# 未設定の場合は localhost の memory DB を既定値とする。
+# cocoindex プラグインと DB を共有していた旧構成からの移行は、setup_db.sh と
+# 新規 cocoindex update により行う（旧テーブルは別途 drop）。
 DATABASE_URL = os.environ.get(
-    "COCOINDEX_DATABASE_URL",
-    "postgres://postgres:postgres@localhost:15432/postgres",
+    "MEMORY_DATABASE_URL",
+    "postgres://postgres:postgres@localhost:15432/memory",
 )
+
+# cocoindex 1.0 は自身の tracking テーブルを格納する DB を COCOINDEX_DB から取得する。
+# memory プラグインは memory database 内に tracking も置くため、未設定なら DATABASE_URL に揃える。
+os.environ.setdefault("COCOINDEX_DB", DATABASE_URL)
 
 
 def _build_embedder() -> LiteLLMEmbedder:
@@ -306,6 +315,28 @@ async def _app_main(sourcedir: pathlib.Path) -> None:
             f'USING hnsw (embedding halfvec_cosine_ops);'
         ),
         teardown_sql=f'DROP INDEX IF EXISTS public."{TABLE}__embedding_hnsw";',
+    )
+
+    # ハイブリッド検索（dense + BM25 RRF → rerank-2）用に chunk_text の tsvector 生成列と
+    # GIN index を declare する。chunk_tsv は STORED 生成列なので cocoindex の upsert/delete に
+    # 影響されず追従する。to_tsvector('simple') は言語依存のステミングを行わないため、
+    # 日本語混じり文書でも記号トークンの完全一致で BM25 が機能する。
+    target_table.declare_sql_command_attachment(
+        name="chunk_tsv_column",
+        setup_sql=(
+            f'ALTER TABLE public."{TABLE}" '
+            f"ADD COLUMN IF NOT EXISTS chunk_tsv tsvector "
+            f"GENERATED ALWAYS AS (to_tsvector('simple', chunk_text)) STORED;"
+        ),
+        teardown_sql=f'ALTER TABLE public."{TABLE}" DROP COLUMN IF EXISTS chunk_tsv;',
+    )
+    target_table.declare_sql_command_attachment(
+        name="gin_chunk_tsv",
+        setup_sql=(
+            f'CREATE INDEX IF NOT EXISTS "{TABLE}__chunk_tsv_gin" '
+            f'ON public."{TABLE}" USING GIN (chunk_tsv);'
+        ),
+        teardown_sql=f'DROP INDEX IF EXISTS public."{TABLE}__chunk_tsv_gin";',
     )
 
     files = localfs.walk_dir(

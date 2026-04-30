@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """memory-search 専用ベクトル検索（dense + BM25 RRF → rerank-2）。
 
-- 既存テーブル `codeindex_<host>_<name>__code_chunks`（cocoindex 出力）に対して読み取り専用
-- 前提: chunk_tsv (tsvector) 列と GIN index が同テーブルに作成済み
-- 出力フォーマットは cocoindex プラグインの search.py と同じ `[<score>] <filename>` 形式
-  → 同階層の format.py がそのまま利用できる
+- 対象テーブル `memoryindex_<host>_<name>__chunks`（main_memory.py が memory DB に作成）
+- 前提: chunk_tsv (tsvector) 列と GIN index は main_memory.py の declare_sql_command_attachment
+  により自動的に作成・維持される
+- 出力フォーマットは `[<score>] <filename>` の単純形式（同階層の format.py が消費する）
 
 依存: voyageai / psycopg2 / python-dotenv
-通常は cocoindex プラグインの venv を借りて実行する（search.sh が `uv run` でラップ）。
+memory プラグイン専用 venv（memory/scripts/.venv）で実行する（search.sh が `uv run` でラップ）。
 """
 from __future__ import annotations
 
@@ -22,21 +22,28 @@ import psycopg2
 import voyageai
 from psycopg2 import sql
 
-CONFIG_DIR = Path.home() / ".config" / "cocoindex"
-load_dotenv(dotenv_path=CONFIG_DIR / ".env")
+_MEMORY_CFG_DIR = Path.home() / ".config" / "memory"
+_COCOINDEX_CFG_DIR = Path.home() / ".config" / "cocoindex"
+
+# プラグイン管理下にある secrets.env で確実に上書きする（古い ~/.env 等を排除）。
+# 優先順位: memory 側で明示設定した値 > cocoindex 側 secrets.env > プロセス起動時の env。
+load_dotenv(dotenv_path=_COCOINDEX_CFG_DIR / "secrets.env", override=True)
+load_dotenv(dotenv_path=_MEMORY_CFG_DIR / ".env", override=True)
+load_dotenv(dotenv_path=_MEMORY_CFG_DIR / "secrets.env", override=True)
 
 
 def get_table_name(project_dir: str) -> str:
     """プロジェクトディレクトリからテーブル名を計算（hostname prefix付き）。
 
-    cocoindex プラグインの search.py / main.py と同じロジック。
+    main_memory.py の TABLE 命名規約と一致させる:
+      memoryindex_<sanitized_host>_<sanitized_name>__chunks
     """
     import socket
     host_prefix = re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
     name = Path(project_dir).name
     index_name = f"{host_prefix}_{name}"
     sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name)
-    return f"codeindex_{sanitized}__code_chunks".lower()
+    return f"memoryindex_{sanitized}__chunks".lower()
 
 
 def embed_query(query: str) -> list[float]:
@@ -89,6 +96,20 @@ def fetch_bm25(cur, table: str, query: str, n: int) -> list[tuple]:
     return cur.fetchall()
 
 
+def emit_low_score_hint(top_score: float, threshold: float) -> None:
+    """トップスコアが閾値未満なら stderr に再クエリヒントを出す（threshold <= 0 で無効化）。"""
+    if threshold <= 0.0:
+        return
+    if top_score >= threshold:
+        return
+    sys.stderr.write(
+        f"[hint] top score {top_score:.3f} は閾値 {threshold:.3f} 未満です。再クエリを推奨します。\n"
+        "  - 固有名詞を一般語に置換（例: 'feature-dev effort' → 'スキル 設定値 妥当性'）\n"
+        "  - 動詞化（例: 'effort 設定' → 'effort を変更する議論'）\n"
+        "  - 時系列で当てるなら recent.sh --kind session を併用\n"
+    )
+
+
 def dedup_by_filename(ordered_ids: list[str], by_id: dict[str, tuple], limit: int) -> list[str]:
     """同一 filename の chunk は最上位 1 つだけ残す。"""
     seen: set[str] = set()
@@ -121,15 +142,33 @@ def main() -> int:
     )
     p.add_argument("--no-rerank", action="store_true", help="rerank を無効化")
     p.add_argument("--no-bm25", action="store_true", help="BM25 を無効化（dense のみ）")
+    p.add_argument(
+        "--low-score-threshold",
+        type=float,
+        default=0.3,
+        help="この値未満のトップスコアなら stderr に再クエリヒントを出す（既定: 0.3、0 以下で無効化）",
+    )
     args = p.parse_args()
 
     table = get_table_name(args.project_dir)
     db_url = os.environ.get(
-        "COCOINDEX_DATABASE_URL",
-        "postgres://postgres:postgres@localhost:15432/postgres",
+        "MEMORY_DATABASE_URL",
+        "postgres://postgres:postgres@localhost:15432/memory",
     )
 
-    conn = psycopg2.connect(db_url)
+    try:
+        conn = psycopg2.connect(db_url)
+    except psycopg2.OperationalError as e:
+        msg = str(e).strip()
+        if "could not connect" in msg.lower() or "connection refused" in msg.lower():
+            sys.stderr.write(
+                "[memory-search] PostgreSQL に接続できません（既定: localhost:15432）。\n"
+                "  起動コマンド:\n"
+                "    docker compose -f ~/.config/cocoindex/compose.yml up -d\n"
+                "  別ホストの場合は COCOINDEX_DATABASE_URL を設定してください。\n"
+            )
+            return 4
+        raise
     try:
         cur = conn.cursor()
         try:
@@ -158,12 +197,16 @@ def main() -> int:
     deduped = dedup_by_filename(fused, by_id, args.candidates)
 
     if args.no_rerank or not deduped:
-        for cid in deduped[: args.top]:
+        top_score = 0.0
+        for i, cid in enumerate(deduped[: args.top]):
             row = by_id[cid]
             score = rrf_score.get(cid, 0.0)
+            if i == 0:
+                top_score = score
             preview = row[2][:400].replace("\n", " ")
             print(f"[{score:.3f}] {row[1]}")
             print(f"  {preview}")
+        emit_low_score_hint(top_score, args.low_score_threshold)
         return 0
 
     client = voyageai.Client()
@@ -177,12 +220,16 @@ def main() -> int:
         )
     except Exception as e:  # rerank API 失敗時は RRF 順にフォールバック
         sys.stderr.write(f"[warn] rerank failed: {e}; falling back to RRF order\n")
-        for cid in deduped[: args.top]:
+        top_score = 0.0
+        for i, cid in enumerate(deduped[: args.top]):
             row = by_id[cid]
             score = rrf_score.get(cid, 0.0)
+            if i == 0:
+                top_score = score
             preview = row[2][:400].replace("\n", " ")
             print(f"[{score:.3f}] {row[1]}")
             print(f"  {preview}")
+        emit_low_score_hint(top_score, args.low_score_threshold)
         return 0
 
     for r in rerank_result.results:
@@ -191,6 +238,8 @@ def main() -> int:
         preview = row[2][:400].replace("\n", " ")
         print(f"[{r.relevance_score:.3f}] {row[1]}")
         print(f"  {preview}")
+    top_score = rerank_result.results[0].relevance_score if rerank_result.results else 0.0
+    emit_low_score_hint(top_score, args.low_score_threshold)
     return 0
 
 

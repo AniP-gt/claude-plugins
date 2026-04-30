@@ -1,39 +1,26 @@
 #!/usr/bin/env bash
-# memory-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するベクトル検索
+# memory-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するハイブリッド検索
 #
 # Usage:
-#   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown]
+#   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded]
+#                     [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
 #
-# Defaults: --top 10, --scope all, --format markdown, status=active のみ
+# Defaults: --top 10, --scope all, --format markdown, status=active のみ, threshold 0.3
 #
-# Backend (環境変数 MEMORIES_SEARCH_BACKEND で切替):
-#   hybrid (既定) — 同階層の search.py を使用。dense + BM25 (RRF) → voyage rerank-2 で
-#                    top-1 精度を高めたハイブリッド検索。要 chunk_tsv 列＋GIN index。
-#   dense        — cocoindex プラグイン同梱の search.py を使用（dense のみ）。
+# 同階層の search.py を memory プラグイン専用 venv で実行する。
+# dense + BM25 (RRF) → voyage rerank-2 のハイブリッド検索。chunk_tsv 列 + GIN index は
+# main_memory.py の declare_sql_command_attachment で自動的に作成される。
 #
 # 副作用なし（読み取り専用）。Claude Code・Claude API 両方から呼べるよう stdin/stdout 完結。
 set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
-
-# cocoindex プラグインルートを動的解決。COCOINDEX_PLUGIN 環境変数があれば最優先。
-if [[ -n "${COCOINDEX_PLUGIN:-}" ]]; then
-    PLUGIN="$COCOINDEX_PLUGIN"
-else
-    PLUGIN="$(python3 -c "
-import sys
-sys.path.insert(0, '${PLUGIN_ROOT}/scripts')
-from lib.cocoindex_path import resolve_cocoindex_root
-root = resolve_cocoindex_root()
-print(root if root else '', end='')
-")"
-fi
+MEMORY_SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 FORMATTER="${SCRIPTS_DIR}/format.py"
-HYBRID_SEARCH_PY="${SCRIPTS_DIR}/search.py"
-BACKEND="${MEMORIES_SEARCH_BACKEND:-dense}"
+SEARCH_PY="${SCRIPTS_DIR}/search.py"
 
 QUERY=""
 TOP=10
@@ -41,6 +28,7 @@ SCOPE="all"
 INCLUDE_SUPERSEDED=0
 FORMAT="markdown"
 NO_DEDUPE=0
+LOW_SCORE_THRESHOLD="0.3"
 
 usage() {
     cat <<EOF >&2
@@ -52,6 +40,8 @@ Options:
   --format json|markdown                  出力形式（既定: markdown）
   --no-dedupe                             同一ファイル内の異なる chunk も全て返す
                                           （既定では最高スコア chunk のみ採用）
+  --low-score-threshold N                 トップスコアがこの値未満なら stderr に
+                                          再クエリヒントを出す（既定: 0.3、0 以下で無効化）
 EOF
     exit 2
 }
@@ -63,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --include-superseded) INCLUDE_SUPERSEDED=1; shift ;;
         --format) FORMAT="$2"; shift 2 ;;
         --no-dedupe) NO_DEDUPE=1; shift ;;
+        --low-score-threshold) LOW_SCORE_THRESHOLD="$2"; shift 2 ;;
         -h|--help) usage ;;
         --) shift; break ;;
         -*) echo "unknown option: $1" >&2; usage ;;
@@ -77,55 +68,51 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$QUERY" ]] && usage
-[[ -z "$PLUGIN" || ! -d "$PLUGIN/scripts" ]] && { echo "cocoindex plugin not found (set COCOINDEX_PLUGIN or install cocoindex plugin): $PLUGIN" >&2; exit 3; }
+[[ ! -f "$SEARCH_PY" ]] && { echo "search.py not found: $SEARCH_PY" >&2; exit 3; }
+[[ ! -f "$MEMORY_SCRIPTS_DIR/pyproject.toml" ]] && { echo "memory pyproject not found: $MEMORY_SCRIPTS_DIR" >&2; exit 3; }
 [[ ! -d "$MEMORIES_DIR" ]] && { echo "memories dir not found: $MEMORIES_DIR" >&2; exit 3; }
 
-# cocoindex search.py は --project-dir のベースネームでテーブル名を決める。
-# memories/ 全体に対するインデックスを使う（raw + wiki 両対象）。
-# scope フィルタは結果に対して post-process で適用する（cocoindex 側に scope 概念がないため）。
-#
-# memories は多言語自然文書中心のため voyage-3-large を使用。コード検索（cocoindex の
-# 他用途）の voyage-code-3 と棲み分けるため、~/.config/cocoindex/.env は変更せず
-# 呼び出し側で環境変数を上書きする（load_dotenv は既存 env を上書きしない）。
+# memory プラグイン専用設定（cocoindex プラグインに依存しない）
 EMBEDDING_MODEL_OVERRIDE="${MEMORIES_EMBEDDING_MODEL:-voyage-3-large}"
 EMBEDDING_PROVIDER_OVERRIDE="${MEMORIES_EMBEDDING_PROVIDER:-voyage}"
 
-# hybrid バックエンド向けオプション（環境変数で切替可能）
-HYBRID_EXTRA_ARGS=()
-[[ "${MEMORIES_SEARCH_NO_BM25:-0}" == "1" ]] && HYBRID_EXTRA_ARGS+=(--no-bm25)
-[[ "${MEMORIES_SEARCH_NO_RERANK:-0}" == "1" ]] && HYBRID_EXTRA_ARGS+=(--no-rerank)
+# stdout（検索結果）と stderr（hint / スタックトレース）を分離して取得する。
+# search.py が stderr に出す再クエリヒントを後段で透過するため。
+STDERR_FILE=$(mktemp)
+trap 'rm -f "$STDERR_FILE"' EXIT
 
-case "$BACKEND" in
-    hybrid)
-        [[ ! -f "$HYBRID_SEARCH_PY" ]] && { echo "hybrid search.py not found: $HYBRID_SEARCH_PY" >&2; exit 3; }
-        # 候補は format.py 側で scope/status フィルタを適用する分も見越して 3 倍取得。
-        RAW_OUTPUT=$(cd "$PLUGIN/scripts" && \
-            EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
-            EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
-            uv run python "$HYBRID_SEARCH_PY" "$QUERY" \
-            --project-dir "$MEMORIES_DIR" \
-            --top "$((TOP * 3))" ${HYBRID_EXTRA_ARGS[@]+"${HYBRID_EXTRA_ARGS[@]}"} 2>&1)
-        RC=$?
-        ;;
-    dense)
-        RAW_OUTPUT=$(cd "$PLUGIN/scripts" && \
-            EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
-            EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
-            uv run python search.py "$QUERY" \
-            --project-dir "$MEMORIES_DIR" \
-            --top "$((TOP * 3))" 2>&1)
-        RC=$?
-        ;;
-    *)
-        echo "unknown MEMORIES_SEARCH_BACKEND: $BACKEND (expected hybrid|dense)" >&2
-        exit 2
-        ;;
-esac
+# 候補は format.py 側で scope/status フィルタを適用する分も見越して 3 倍取得。
+RAW_OUTPUT=$(cd "$MEMORY_SCRIPTS_DIR" && \
+    EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
+    EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
+    uv run python "$SEARCH_PY" "$QUERY" \
+    --project-dir "$MEMORIES_DIR" \
+    --top "$((TOP * 3))" \
+    --low-score-threshold "$LOW_SCORE_THRESHOLD" 2>"$STDERR_FILE")
+RC=$?
+
+RAW_STDERR=$(cat "$STDERR_FILE")
 
 if [[ $RC -ne 0 ]]; then
-    echo "$RAW_OUTPUT" >&2
+    # search.py 側で OperationalError をハンドルし exit 4 + hint を出すため、そのまま透過。
+    # それ以外のエラーで connection refused が混じった場合のみ hint に置き換える。
+    if [[ $RC -ne 4 ]] && \
+       printf '%s' "$RAW_STDERR" | grep -qiE "could not connect|connection refused"; then
+        cat >&2 <<EOF
+[memory-search] PostgreSQL に接続できません（既定: localhost:15432）。
+  起動コマンド:
+    docker compose -f ~/.config/cocoindex/compose.yml up -d
+  別ホストの場合は MEMORY_DATABASE_URL を ~/.config/memory/.env で設定してください。
+EOF
+        exit 4
+    fi
+    [[ -n "$RAW_STDERR" ]] && echo "$RAW_STDERR" >&2
+    [[ -n "$RAW_OUTPUT" ]] && echo "$RAW_OUTPUT" >&2
     exit $RC
 fi
+
+# 子プロセスの stderr（再クエリヒント等）を親 stderr に透過する。
+[[ -n "$RAW_STDERR" ]] && printf '%s\n' "$RAW_STDERR" >&2
 
 INCLUDE_FLAG=""
 [[ $INCLUDE_SUPERSEDED -eq 1 ]] && INCLUDE_FLAG="--include-superseded"

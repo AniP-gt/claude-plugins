@@ -17,20 +17,23 @@ description: memory プラグインの初期設定手順。インストール直
 | コマンド | 用途 | 入手 |
 |---|---|---|
 | `codex` | Raw 要約・Wiki 統合（Codex CLI） | <https://github.com/openai/codex> |
-| `python3` (>= 3.10) | hook / lib 実装 | macOS 同梱 / Homebrew |
-| `uv` | cocoindex プラグイン venv 経由の実行 | `brew install uv` または `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| `python3` (>= 3.12) | memory 専用 venv の実行基盤 | macOS 同梱 / Homebrew |
+| `uv` | memory プラグイン専用 venv（`memory/scripts/.venv`）の管理と `cocoindex update` 実行 | `brew install uv` または `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| `docker` | PostgreSQL（pgvector）コンテナの起動 | Docker Desktop / OrbStack |
 
-`codex` 不在では Raw 生成本体が失敗する。`uv` 不在では cocoindex 更新だけがスキップされる。
+`codex` 不在では Raw 生成本体が失敗する。`uv` / `docker` 不在では cocoindex 更新と検索だけがスキップされる。
 
-## 2. 関連プラグインのインストール（検索を使うなら必須）
+## 2. 関連プラグインのインストール（PostgreSQL コンテナを共用する場合）
+
+memory プラグインは PostgreSQL コンテナ（pgvector）を `cocoindex` プラグインと**共用**する設計（同一インスタンス上で別 database を使い分け）。検索を有効化するには PostgreSQL が必要なので、未インストールなら以下を実行する:
 
 ```text
 /plugin install cocoindex@hidetsugu-miya
 ```
 
-`cocoindex` プラグインは Python venv（`scripts/.venv`）と PostgreSQL（pgvector）を提供する。本プラグインの `scripts/lib/cocoindex_path.py` がインストール済みバージョンを semver で動的解決するため、cocoindex 側のバージョンが上がっても追従する。
+`/cocoindex-setup` で PostgreSQL コンテナ起動・`~/.config/cocoindex/secrets.env` 初期化を済ませる。memory プラグインは独立した venv（`memory/scripts/.venv`）と独立した database（`memory`）を持つため、cocoindex プラグインのコード変更による影響は受けない。
 
-`/cocoindex-setup` で PostgreSQL コンテナ起動・`secrets.env` 初期化を済ませること。
+すでに同等の PostgreSQL（localhost:15432）が立ち上がっていれば `cocoindex` プラグインを入れずに `~/.config/memory/.env` の `MEMORY_DATABASE_URL` を任意の URL に書き換えてもよい。
 
 ## 3. 設定ファイル（`~/.config/recording/config.toml`）
 
@@ -75,7 +78,7 @@ config.toml より env が優先される。一時的な切り替えに便利:
 | `CODEX_RECORDING_MODEL` | Raw 要約モデル（既定 `gpt-5.4-mini`） |
 | `CODEX_MEMORY_WIKI_MODEL` | Wiki 統合モデル（既定 `gpt-5.4`） |
 | `MEMORIES_EMBEDDING_MODEL` | 検索用 embedding（既定 `voyage-3-large`） |
-| `MEMORIES_SEARCH_BACKEND` | 検索バックエンド（`dense` 既定 / `hybrid`） |
+| `MEMORY_DATABASE_URL` | memory 専用 PostgreSQL 接続 URL（既定 `postgres://postgres:postgres@localhost:15432/memory`） |
 
 ## 4. マウントポイントの準備
 
@@ -141,16 +144,36 @@ touch ~/memory/.mount-canary   # canary 判定を常に成立させる
 
 `mount.cifs` / `net use` などを叩く自前ラッパーを書き、config.toml の `remount_script` で差し替える。
 
-## 5. cocoindex 側の準備（検索が必要なら）
+## 5. memory database のセットアップ（検索が必要なら）
+
+memory プラグイン専用 database（`memory`）と pgvector 拡張を冪等作成する:
 
 ```bash
-# cocoindex プラグインの初回セットアップ（PostgreSQL 起動・secrets.env 雛形）
-/cocoindex-setup
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup_db.sh"
 ```
 
-`~/.config/cocoindex/secrets.env` に embedding API キー（既定では Voyage AI の `VOYAGE_API_KEY`）を設定する。
+このスクリプトが行うこと（既存は触らない）:
 
-memory プラグイン専用設定 `~/.config/memory/cocoindex.toml` は `main_memory.py` 起動時に自動コピーされる（既存ファイルは上書きしない）。
+1. `~/.config/memory/.env`（接続 URL の雛形）を生成
+2. `~/.config/memory/secrets.env`（雛形）を生成
+3. PostgreSQL コンテナ `cocoindex` 上に `memory` database を `CREATE DATABASE`
+4. memory database に `CREATE EXTENSION vector`
+
+`~/.config/memory/secrets.env` で `VOYAGE_API_KEY` を未設定にした場合は、`~/.config/cocoindex/secrets.env` の値が fallback で使われる。
+
+memory プラグイン固有の embedding/chunk/exclude 設定は `~/.config/memory/cocoindex.toml` で管理する（`main_memory.py` 起動時に雛形が自動コピーされる）。
+
+### 初回インデックス構築
+
+```bash
+cd "${CLAUDE_PLUGIN_ROOT}/scripts"
+SOURCE_PATH=/Volumes/memory \
+  INDEX_NAME=memory \
+  PATTERNS="**/*.md" \
+  uv run cocoindex update -f recording/main_memory.py:MemoryIndex_$(hostname | tr -c '[:alnum:]' '_' | tr A-Z a-z)_memory
+```
+
+実 SessionEnd hook 経由でも `recording/runner.sh` から自動的に上記が呼ばれる。手動実行は初回確認用。
 
 ## 6. 動作確認
 
@@ -208,31 +231,25 @@ rm -rf /tmp/memories
 | `DuplicateTableError: relation "..." already exists` | cocoindex プラグインの schema migration 不整合。下記「DuplicateTableError 復旧手順」を参照 |
 | `--scope web` / `--scope minutes` で常に空 | cocoindex update が一度も成功していない可能性。`/tmp/memories/cocoindex-memories-update.log` を確認 |
 
-### DuplicateTableError 復旧手順
+### memory テーブルの再構築手順
 
-cocoindex プラグインの version 更新時に PostgreSQL のテーブル定義が前バージョンの状態に残ったまま `CREATE TABLE`（IF NOT EXISTS なし）で衝突するケース。memory プラグイン外（cocoindex プラグイン側）の問題だが、以下の手順で復旧する:
+スキーマ衝突などで再構築が必要な場合:
 
 ```bash
-# 1. 既存テーブル一覧を確認
-psql -h localhost -p 15432 -U postgres -d postgres -c '\dt public.codeindex_*'
-
-# 2. memories 用テーブルを drop（embedding は再生成される）
+# 1. 既存テーブルを drop（embedding は再生成される）
 HOST_PREFIX="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
-psql -h localhost -p 15432 -U postgres -d postgres \
-    -c "DROP TABLE IF EXISTS public.codeindex_${HOST_PREFIX}_memory__code_chunks CASCADE;"
+docker exec cocoindex psql -U postgres -d memory \
+    -c "DROP TABLE IF EXISTS public.memoryindex_${HOST_PREFIX}_memory__chunks CASCADE;"
 
-# 3. 手動で update を流して再構築
-"${CLAUDE_PLUGIN_ROOT}/scripts/recording/runner.sh"  # は session 経路。手動実行は次:
+# 2. 手動で update を流して再構築
 PLUGIN_ROOT=~/.claude/plugins/cache/hidetsugu-miya/memory/<version> \
 LOG_DIR_LOCAL=/tmp/memories \
 MEMORIES_DIR=/Volumes/memory \
 bash -c 'source "$PLUGIN_ROOT/scripts/lib/cocoindex_trigger.sh" && trigger_cocoindex_update'
 
-# 4. ログで成功確認
+# 3. ログで成功確認
 tail -f /tmp/memories/cocoindex-memories-update.log
 ```
-
-恒久対策は cocoindex プラグイン側の `mount_table_target` に既存テーブル再利用ロジックを実装する必要がある（upstream issue 領域）。
 
 ## 関連
 
