@@ -3,7 +3,7 @@
 
 あなたはエピソード記憶の Wiki キュレーターです。本ファイルに含まれる「Raw レポート（1 session 分、`kind: session`）」を、既存の「Project Wiki」に統合してください。
 
-`kind: web`（外部 URL アーカイブ）と `kind: minutes`（議事録）は、project 単位の通史に統合せず、別ファイル（`wiki/references.md` / `wiki/decisions.md`）にファイル列挙のみで集約します。本テンプレートは `kind: session` のみが対象です。
+`kind: web`（外部 URL アーカイブ）は `wiki/references.md` に集約し、`kind: minutes`（議事録）は `wiki/minutes/YYYYMM.md` に月次集約します。本テンプレートは `kind: session` のみが対象です。
 
 ## 統合先
 - `{project_wiki}`

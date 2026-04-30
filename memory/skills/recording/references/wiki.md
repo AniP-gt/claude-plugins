@@ -16,7 +16,7 @@
 |---|---|---|---|
 | `session` | `wiki/projects/<project>.md`（project 単位通史） | あり | `scripts/wiki/codex-instruction.md` |
 | `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `scripts/wiki/codex-instruction-web.md` |
-| `minutes` | `wiki/decisions.md`（意思決定 + 議事 + アクション） | あり | `scripts/wiki/codex-instruction-minutes.md` |
+| `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `scripts/wiki/codex-instruction-minutes.md` |
 
 3 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。
 
@@ -36,15 +36,15 @@
 - **kind 別リンク相対パス**:
     - `wiki/projects/<project>.md` → session へは `../../raw/session/YYYY-MM-DD/file.md`（2 階層上る）
     - `wiki/references.md` → web へは `../raw/web/YYYY-MM-DD/file.md`（1 階層上る）
-    - `wiki/decisions.md` → minutes へは `../raw/minutes/YYYY-MM-DD/file.md`（1 階層上る）
+    - `wiki/minutes/<YYYYMM>.md` → minutes へは `../../raw/minutes/YYYY-MM-DD/file.md`（2 階層上る、projects/ と統一）
 - **書き込み制限**: Codex は kind 別の単一統合先ファイルにのみ書き込む。CWD を統合先親ディレクトリに固定して workspace-write を限定する
 
 ## 完了条件
 
 - `ingest-queue.jsonl` の `status: pending` エントリが 0 件、もしくは Codex 失敗による pending 残のみ
 - 処理済みエントリは queue から削除されている（永続的な archive は保持しない）
-- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Decisions Log）で再生成されている
-- 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/decisions.md`）が Codex により更新されている
+- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Minutes）で再生成されている
+- 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/minutes/<YYYYMM>.md`）が Codex により更新されている
 
 ## 入力パラメータ（wiki-runner.sh）
 
@@ -74,10 +74,10 @@
 │   ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web（recording 手動）
 │   └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes（recording 手動）
 └── wiki/
-    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Decisions Log への入口）
+    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Minutes への入口）
     ├── projects/<project>.md                              # Codex が統合・更新（kind: session）
     ├── references.md                                      # Codex が統合・更新（kind: web）
-    └── decisions.md                                       # Codex が統合・更新（kind: minutes）
+    └── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
 
 ~/.local/share/recording/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending エントリ、kind 含む）
@@ -109,8 +109,8 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
 4. 各エントリについて kind 別に Codex で統合:
    - `kind: session`: frontmatter から `project` 抽出 → `wiki/projects/<project>.md`（`codex-instruction.md`）
    - `kind: web`: → `wiki/references.md`（`codex-instruction-web.md`）
-   - `kind: minutes`: → `wiki/decisions.md`（`codex-instruction-minutes.md`）
-5. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Decisions Log**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
+   - `kind: minutes`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/minutes/<YYYYMM>.md`（`codex-instruction-minutes.md`、月次集約）
+5. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
 6. 処理済みエントリを queue から削除して queue を空に（永続 archive は持たない）
 7. `PROCESSED_COUNT > 0` なら **`scripts/lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
@@ -145,6 +145,6 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
 - 実行ログ: `/tmp/memories/memory-wiki-runner.log`
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/recording/state/lock.d`
 - Codex 失敗で pending が残る: log を確認し、`--no-codex` でキューだけ消化するか、queue から該当エントリを手動で削除する（`jq` または `python3` で `raw_path` 一致行をフィルタ）
-- 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `decisions.md`）を一度削除して再構築する
-- `references.md` / `decisions.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
+- 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md`）を一度削除して再構築する
+- `references.md` / `minutes/<YYYYMM>.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
 - index.md に AppleDouble (`._*`) が混入: 解消済（v0.4.0 以降）。古い index.md が残っている場合は wiki-runner.sh 再実行で上書きされる

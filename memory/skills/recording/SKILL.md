@@ -177,7 +177,7 @@ EOF
 
 スクリプトは `<memories_dir>/raw/minutes/YYYY-MM-DD/HHMMSS_<slug>.md` に frontmatter 付きで保存する。要約・整形は行わず、渡された本文をそのまま保存する（議事録の生情報を保持する設計）。
 
-保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が `wiki/decisions.md` を意思決定 + 議事 + アクション別で更新する（詳細は `references/wiki.md`）。
+保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が議事録の `date` から `YYYYMM` を抽出して `wiki/minutes/<YYYYMM>.md` を月次集約フォーマットで更新する（詳細は `references/wiki.md`）。
 
 成功時、保存パスを stdout に返す。
 
@@ -193,6 +193,6 @@ EOF
 
 - `memory-setup` — プラグイン初期設定の手順
 - `memory-search` — Raw（session/web/minutes）+ Wiki に対するベクトル検索（Claude API からも利用可）
-- `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。3 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→decisions.md）
+- `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。3 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→minutes/<YYYYMM>.md）
 - `adr` — 意思決定記録（不可逆な判断の永続化レイヤー）
 - `retrospective` — フェーズ完了振り返り（エピソードから skills/rules への昇華）
