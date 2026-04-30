@@ -13,7 +13,9 @@ Custom Claude Code plugins by miya.
 使いたいプラグインをインストール:
 
 ```text
-/plugin install cocoindex@hidetsugu-miya
+/plugin install pgvector-stack@hidetsugu-miya
+/plugin install cocoindex-setup@hidetsugu-miya
+/plugin install compass@hidetsugu-miya
 /plugin install context7@hidetsugu-miya
 /plugin install rollbar@hidetsugu-miya
 /plugin install sentry@hidetsugu-miya
@@ -35,11 +37,33 @@ Custom Claude Code plugins by miya.
 
 ## Plugins
 
-### cocoindex
+### pgvector-stack
 
-CocoIndex を使ったコードベースのベクトル検索プラグイン。自然言語クエリで関連コードのエントリーポイントを発見する。
+pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。`compass` / `memory` 等の下流プラグインの DB 基盤として共有する。
 
-初回セットアップは `/cocoindex-guide` を実行し、`references/setup.md` の手順に従ってください。
+```bash
+mkdir -p ~/.config/cocoindex
+cp ${CLAUDE_PLUGIN_ROOT}/templates/compose.yml ~/.config/cocoindex/compose.yml
+docker compose -f ~/.config/cocoindex/compose.yml up -d
+```
+
+詳細は `pgvector-stack/skills/pgvector-stack-setup/SKILL.md` を参照。
+
+### cocoindex-setup
+
+`~/.config/cocoindex/` の `secrets.env` / `config.toml` を所有・auto-provision する共通基盤プラグイン。`compass` / `memory` は本プラグインが提供する secrets/config を fallback として参照する。
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/check_config.sh
+```
+
+その後 `~/.config/cocoindex/secrets.env` の `VOYAGE_API_KEY` を設定する。詳細は `cocoindex-setup/skills/cocoindex-setup/SKILL.md`。
+
+### compass
+
+コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で自然言語クエリから関連コードのエントリーポイントを発見する。専用 DB `compass`、テーブル `compassindex_*__chunks`、cocoindex 1.0 LiveUpdater 対応。
+
+前提: `pgvector-stack` と `cocoindex-setup` のインストール・初期設定。詳細は `compass/skills/compass-setup/SKILL.md` / `compass/skills/compass-search/SKILL.md` を参照。
 
 ### context7
 

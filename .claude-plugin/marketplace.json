@@ -9,10 +9,22 @@
   },
   "plugins": [
     {
-      "name": "cocoindex",
-      "version": "1.1.0",
-      "source": "./cocoindex",
-      "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndex 1.0（async 設計）と pgvector halfvec/HNSW を使い、自然言語クエリで関連コードのエントリーポイントを発見する。設定は config.toml + secrets.env で分離管理。"
+      "name": "pgvector-stack",
+      "version": "1.0.0",
+      "source": "./pgvector-stack",
+      "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / memory など下流プラグインの DB 基盤として共有する。"
+    },
+    {
+      "name": "cocoindex-setup",
+      "version": "1.0.0",
+      "source": "./cocoindex-setup",
+      "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・memory が fallback で参照する secrets hub。"
+    },
+    {
+      "name": "compass",
+      "version": "1.0.0",
+      "source": "./compass",
+      "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、cocoindex 1.0 LiveUpdater 対応。"
     },
     {
       "name": "context7",

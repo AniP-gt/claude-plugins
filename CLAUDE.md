@@ -6,7 +6,9 @@ Claude Code用のカスタムプラグインリポジトリ。
 
 | プラグイン | 概要 |
 |---|---|
-| cocoindex | コードベースのベクトルインデックス構築・検索（CocoIndex + pgvector halfvec/HNSW） |
+| pgvector-stack | pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン（compass / memory の DB 基盤） |
+| cocoindex-setup | ~/.config/cocoindex/ の secrets/config を所有する共通基盤（compass / memory が fallback で参照） |
+| compass | コードベースのセマンティック検索（pgvector + voyage embedding + voyage rerank、cocoindex 1.0） |
 | context7 | ライブラリの最新ドキュメント取得（Context7 MCP） |
 | rollbar | Rollbar エラートラッキングの取得・更新 |
 | sentry | Sentry エラートラッキングの取得・更新 |

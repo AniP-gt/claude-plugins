@@ -1,0 +1,7 @@
+{
+  "name": "compass",
+  "version": "1.0.0",
+  "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、テーブル compassindex_*__chunks、cocoindex 1.0 LiveUpdater 対応。",
+  "author": { "name": "miya" },
+  "keywords": ["compass", "code-search", "vector-search", "cocoindex", "voyage", "rerank"]
+}

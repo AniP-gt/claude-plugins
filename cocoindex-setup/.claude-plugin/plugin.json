@@ -1,0 +1,7 @@
+{
+  "name": "cocoindex-setup",
+  "version": "1.0.0",
+  "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・memory など複数プラグインが fallback で参照する secrets hub。",
+  "author": { "name": "miya" },
+  "keywords": ["cocoindex", "config", "secrets", "shared-base"]
+}
