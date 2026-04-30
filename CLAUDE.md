@@ -2,12 +2,44 @@
 
 Claude Code用のカスタムプラグインリポジトリ。
 
+## プラグイン一覧
+
+| プラグイン | 概要 |
+|---|---|
+| cocoindex | コードベースのベクトルインデックス構築・検索（CocoIndex + pgvector halfvec/HNSW） |
+| context7 | ライブラリの最新ドキュメント取得（Context7 MCP） |
+| rollbar | Rollbar エラートラッキングの取得・更新 |
+| sentry | Sentry エラートラッキングの取得・更新 |
+| figma | Figma デザイン取得・コード生成（OAuth PKCE） |
+| playwright | Playwright MCP によるブラウザ自動化 |
+| claude-mem | claude-mem 永続メモリの検索・取得（Worker HTTP API） |
+| devin | Devin MCP 経由のリポジトリ Q&A・Session API でのタスク委任 |
+| chrome-devtools | Chrome DevTools MCP 経由のブラウザ自動化・デバッグ |
+| slack | Slack メッセージ検索・送信・読取（複数ワークスペース対応） |
+| todoist | Todoist タスク管理（公式 MCP + OAuth 2.1） |
+| atlassian | Jira・Confluence 操作（Atlassian Rovo MCP + OAuth 2.1） |
+| drawio | draw.io ダイアグラム生成（XML/CSV/Mermaid → ブラウザエディタ） |
+| mermaid | Mermaid 構文から PNG/SVG 画像を生成 |
+| jina | Jina AI Remote MCP 経由の Web 検索・URL→Markdown・論文検索 |
+| memory | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索 |
+
+詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。
+
 ## プラグイン新設時
 
 - README.mdにプラグインの説明とインストールコマンドを追加すること
 - `.claude-plugin/plugin.json` にバージョン情報を含めること
 - `.claude-plugin/marketplace.json` の `plugins` 配列にエントリを追加すること
+- 上記の「プラグイン一覧」表に1行サマリを追加すること
 - スクリプトを含むプラグインは、実際にコマンドを実行して動作確認すること（サーバー起動・主要コマンドの実行など）
+
+### description の長さ規約
+
+`plugin.json` および `marketplace.json` の `description` は **100 文字前後（目安、最大でも 200 文字以内）** に収めること。
+
+- 理由: CLI のプラグイン一覧表示や検索結果で視認性が下がるため。長文化すると `claude plugin validate` の見栄えも悪くなる
+- 詳細仕様・変更履歴・運用注意は `README.md` / `SKILL.md` / コミットメッセージ側に書くこと
+- バージョンアップで機能差分を description に追記し続ける運用は禁止（履歴は git log で追える）
 
 ## 設計大本線: code execution with MCP
 
