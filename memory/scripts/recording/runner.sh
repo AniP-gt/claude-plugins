@@ -52,15 +52,27 @@ _escape_for_osascript() {
 }
 
 notify() {
+    # 引数: notify <subtitle> <msg> [sound] [urgency]
+    #   urgency = "alert" の場合は System Events 経由で display alert を表示し、
+    #             OK ボタンを押すまで残す（手動で消すまで持続）。
+    #   それ以外（既定 "info"）は通常の display notification（バナー、自動消失）。
     # macOS 以外、または osascript が無い環境ではログのみ残してスキップする。
     if ! command -v osascript >/dev/null 2>&1; then
         log "notify skipped (osascript not found): $1 / $2"
         return
     fi
-    local subtitle="$1" msg="$2" sound="${3:-}"
+    local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
     local sub_esc msg_esc sound_clause=""
     sub_esc="$(_escape_for_osascript "$subtitle")"
     msg_esc="$(_escape_for_osascript "$msg")"
+    if [[ "$urgency" == "alert" ]]; then
+        osascript <<APPLE >/dev/null 2>&1 || true
+tell application "System Events"
+    display alert "$sub_esc" message "$msg_esc" as critical buttons {"OK"} default button "OK"
+end tell
+APPLE
+        return
+    fi
     if [[ -n "$sound" ]]; then
         sound_clause=" sound name \"$sound\""
     fi
@@ -69,7 +81,7 @@ notify() {
 
 notify_success() { notify "完了" "$1" "Glass"; }
 notify_skip()    { notify "スキップ" "$1"; }
-notify_failure() { notify "失敗" "$1" "Basso"; }
+notify_failure() { notify "失敗" "$1" "Basso" "alert"; }
 
 print_banner() {
     printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
