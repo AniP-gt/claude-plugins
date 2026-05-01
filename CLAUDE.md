@@ -12,6 +12,7 @@ Claude Code用のカスタムプラグインリポジトリ。
 | context7 | ライブラリの最新ドキュメント取得（Context7 MCP） |
 | rollbar | Rollbar エラートラッキングの取得・更新 |
 | sentry | Sentry エラートラッキングの取得・更新 |
+| circleci | CircleCI のビルド失敗ログ・テスト結果・パイプライン状態の取得・操作（@circleci/mcp-server-circleci） |
 | figma | Figma デザイン取得・コード生成（OAuth PKCE） |
 | playwright | Playwright MCP によるブラウザ自動化 |
 | claude-mem | claude-mem 永続メモリの検索・取得（Worker HTTP API） |
