@@ -24,7 +24,8 @@ Claude Code用のカスタムプラグインリポジトリ。
 | drawio | draw.io ダイアグラム生成（XML/CSV/Mermaid → ブラウザエディタ） |
 | mermaid | Mermaid 構文から PNG/SVG 画像を生成 |
 | jina | Jina AI Remote MCP 経由の Web 検索・URL→Markdown・論文検索 |
-| memory | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索 |
+| memory | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索（Notion URL 取込みフロー対応） |
+| notion | Notion ページ・データベース操作（公式 MCP Python SDK + OAuth 2.1） |
 
 詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。
 
