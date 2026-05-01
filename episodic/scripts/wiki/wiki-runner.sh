@@ -564,7 +564,7 @@ if references_md.exists():
 else:
     lines.append(f'外部 URL アーカイブ（kind: web、Raw 計 {web_count} 件、未統合）:')
     lines.append('')
-    lines.append('- (まだ統合されていません。`recording` skill から URL を保存すると自動生成されます)')
+    lines.append('- (まだ統合されていません。`episodic-recording` skill から URL を保存すると自動生成されます)')
 lines.append('')
 
 lines.append('## Minutes')
@@ -578,7 +578,7 @@ if minutes_files:
 else:
     lines.append(f'議事録（kind: minutes、Raw 計 {minutes_count} 件、未統合）:')
     lines.append('')
-    lines.append('- (まだ統合されていません。`recording` skill から議事録を保存すると自動生成されます)')
+    lines.append('- (まだ統合されていません。`episodic-recording` skill から議事録を保存すると自動生成されます)')
 lines.append('')
 
 (wiki / 'index.md').write_text('\n'.join(lines), encoding='utf-8')

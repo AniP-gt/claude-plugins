@@ -1,8 +1,8 @@
 # Wiki 統合パイプライン（運用ドキュメント）
 
-`recording` skill が Raw を書いた直後に起動する **Wiki 統合パイプライン** の仕組み・配置・トラブルシューティング。普段は完全自動（fire-and-forget）で動くため、ユーザー・LLM が明示的に呼ぶ必要はない。本ドキュメントは **キュー再構築・ロック残留・debug** など運用事象が起きたときに参照する。
+`episodic-recording` skill が Raw を書いた直後に起動する **Wiki 統合パイプライン** の仕組み・配置・トラブルシューティング。普段は完全自動（fire-and-forget）で動くため、ユーザー・LLM が明示的に呼ぶ必要はない。本ドキュメントは **キュー再構築・ロック残留・debug** など運用事象が起きたときに参照する。
 
-> 旧 `memory-wiki` skill の内容を移管したもの。skill としては提供せず、recording 配下のリファレンスとして保持する（v0.4.0 以降）。
+> 旧 `memory-wiki` skill の内容を移管したもの。skill としては提供せず、episodic-recording 配下のリファレンスとして保持する（v0.4.0 以降）。
 
 ## 目的
 
@@ -146,5 +146,5 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/recording/state/lock.d`
 - Codex 失敗で pending が残る: log を確認し、`--no-codex` でキューだけ消化するか、queue から該当エントリを手動で削除する（`jq` または `python3` で `raw_path` 一致行をフィルタ）
 - 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md`）を一度削除して再構築する
-- `references.md` / `minutes/<YYYYMM>.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
+- `references.md` / `minutes/<YYYYMM>.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`episodic-recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
 - index.md に AppleDouble (`._*`) が混入: 解消済（v0.4.0 以降）。古い index.md が残っている場合は wiki-runner.sh 再実行で上書きされる

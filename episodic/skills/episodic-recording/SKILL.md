@@ -1,10 +1,10 @@
 ---
-name: recording
+name: episodic-recording
 description: "エピソード記憶（kind: session / web / minutes）の保存・参照・再調査を担当する skill。session（Claude Code セッション要約）は SessionEnd hook で自動生成される。web（外部 URL アーカイブ）と minutes（議事録）は本 skill から手動で保存する。minutes は Notion URL から本文を取り込んで保存することもできる。「webページを記録して」「議事録を残して」「Notion の議事録を取り込んで」「過去のセッション要約を探して」「このセッションの Bash 実行を全部見せて」などで起動する。"
 argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes | minutes from-notion <URL>"
 ---
 
-# Recording Skill
+# episodic-recording Skill
 
 エピソード記憶（時間軸つきの不変・追記専用記録）の **保存・参照・再調査** を担当する skill。kind は次の 3 種類で、すべて `<memories_dir>/raw/<kind>/YYYY-MM-DD/...md` に保存される。
 

@@ -1,7 +1,7 @@
 """Session レポート保存先パス解決器。
 
 セッションメタから (report_path, is_staged) を返す。session（Claude Code セッション要約）
-専用の保存先解決を担う。web / minutes は recording skill 側のスクリプトが直接組み立てる。
+専用の保存先解決を担う。web / minutes は episodic-recording skill 側のスクリプトが直接組み立てる。
 
 命名規則:
   HHMMSS_<host8>_<sid8>[__staged].md

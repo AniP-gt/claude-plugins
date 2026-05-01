@@ -12,14 +12,14 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 
 - エピソード記憶（過去セッション要約・URL アーカイブ・議事録 + Wiki ページ）を自然言語クエリで横断検索する
 - 検索ロジックを skill として独立化し、Claude Code・Claude API（外部アプリ）両方から同じインターフェースで利用できるようにする
-- `recording` skill から検索責務を切り離し、SRP（単一責任）を守る
+- `episodic-recording` skill から検索責務を切り離し、SRP（単一責任）を守る
 
 ## 制約
 
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
 - **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
-- **インデックスは recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
+- **インデックスは episodic-recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
 - **既定で同一ファイル内の chunk dedupe**: cocoindex は chunk 単位で返すため、同一ファイル内の異なる chunk が top N を埋めて候補多様性が失われる。既定では filename ベースで dedupe し、最高スコアの chunk のみ採用する。`--no-dedupe` で旧挙動（chunk 単位）に戻せる
@@ -48,7 +48,7 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 
 - `MEMORIES_DIR`: memories ディレクトリの絶対パス（既定: `/Volumes/memory`）
 - `MEMORY_DATABASE_URL`: memory 専用 PostgreSQL 接続 URL（既定: `postgres://postgres:postgres@localhost:15432/memory`）。`~/.config/memory/.env` でも設定可能
-- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`recording` の `main_memory.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
+- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`episodic-recording` の `main_memory.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
 - `MEMORIES_EMBEDDING_PROVIDER`: 埋め込みプロバイダー（既定: `voyage`）
 - `VOYAGE_API_KEY`: voyage embedding / rerank API キー。`~/.config/memory/secrets.env` で設定可能。未設定の場合は `~/.config/cocoindex/secrets.env` を fallback で読む
 
@@ -103,7 +103,7 @@ stdout に以下を出力する。
 "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "Jina Reader 仕様" --scope web
 
 # 過去版も含めて検索
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "recording" \
+"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "episodic-recording" \
     --include-superseded
 
 # 直近の作業を時系列で一覧（セマンティック検索ではない）
@@ -127,7 +127,7 @@ stdout に以下を出力する。
 
 ## 関連スキル
 
-- `recording` — Raw 生成（kind: session は SessionEnd hook で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも recording 経由で自動起動（詳細は `recording/references/wiki.md`）
+- `episodic-recording` — Raw 生成（kind: session は SessionEnd hook で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも episodic-recording 経由で自動起動（詳細は `episodic-recording/references/wiki.md`）
 - `cocoindex:cocoindex-code-search` — 一般的なコードベース検索（本 skill は memories 専用ラッパー）
 
 ## トラブルシューティング
@@ -136,4 +136,4 @@ stdout に以下を出力する。
 - `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
 - インデックスが空 / 古い → SessionEnd hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
-- `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`recording` skill から手動保存する）
+- `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`episodic-recording` skill から手動保存する）

@@ -1,5 +1,5 @@
 {
-  "description": "recording / wiki-runner / episodic-search lifecycle hooks",
+  "description": "episodic-recording / wiki-runner / episodic-search lifecycle hooks",
   "hooks": {
     "SessionStart": [
       {

@@ -253,6 +253,6 @@ tail -f /tmp/memories/cocoindex-memories-update.log
 
 ## 関連
 
-- 詳細アーキテクチャ: `${CLAUDE_PLUGIN_ROOT}/skills/recording/references/architecture.md`
+- 詳細アーキテクチャ: `${CLAUDE_PLUGIN_ROOT}/skills/episodic-recording/references/architecture.md`
 - 検索の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/episodic-search/SKILL.md`
-- Wiki 統合の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/recording/references/wiki.md`
+- Wiki 統合の仕様: `${CLAUDE_PLUGIN_ROOT}/skills/episodic-recording/references/wiki.md`
