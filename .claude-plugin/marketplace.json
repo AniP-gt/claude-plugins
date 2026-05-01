@@ -46,9 +46,9 @@
     },
     {
       "name": "circleci",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./circleci",
-      "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作するプラグイン。@circleci/mcp-server-circleciを使ってビルド失敗解析、flakyテスト検出、ワークフロー再実行などを行う。"
+      "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作し、ワークフローを目的状態到達まで監視するプラグイン。investigate / watch の2 skillを提供。"
     },
     {
       "name": "figma",
