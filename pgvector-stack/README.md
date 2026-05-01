@@ -1,6 +1,6 @@
 # pgvector-stack
 
-pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。`compass` / `memory` など下流プラグインの DB 基盤として共有する。
+pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。`compass` / `episodic` など下流プラグインの DB 基盤として共有する。
 
 ## インストール
 

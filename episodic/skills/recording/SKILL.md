@@ -53,7 +53,7 @@ session 共有が未マウント（外出時など）の場合は自動で `~/.l
 
 ### 1. 過去記録の検索
 
-検索は **`memory-search` skill に委譲する**（Raw + Wiki 両方を対象に、scope/status フィルタ付きでベクトル検索する）。
+検索は **`episodic-search` skill に委譲する**（Raw + Wiki 両方を対象に、scope/status フィルタ付きでベクトル検索する）。
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "<自然言語クエリ>" \
@@ -63,7 +63,7 @@ session 共有が未マウント（外出時など）の場合は自動で `~/.l
 "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "Jina" --scope web
 ```
 
-詳細は `memory-search` skill（同プラグイン同梱）を参照。Claude API（外部アプリ）からの利用は `${CLAUDE_PLUGIN_ROOT}/skills/memory-search/references/api-usage.md`。
+詳細は `episodic-search` skill（同プラグイン同梱）を参照。Claude API（外部アプリ）からの利用は `${CLAUDE_PLUGIN_ROOT}/skills/episodic-search/references/api-usage.md`。
 
 時系列で直近を見る場合:
 
@@ -220,16 +220,16 @@ SRC_URL="<Notion URL>"
 
 ## 自動化パイプライン（kind: session のみ）
 
-`memory` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
+`episodic` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
 
 ## 初期設定
 
-インストール直後の前提確認・config.toml 作成・マウントポイント準備・cocoindex 連携起動・初回 session 生成テストの手順は `memory-setup` skill にまとめてある。最初は `memory-setup` を参照すること。
+インストール直後の前提確認・config.toml 作成・マウントポイント準備・cocoindex 連携起動・初回 session 生成テストの手順は `episodic-setup` skill にまとめてある。最初は `episodic-setup` を参照すること。
 
 ## 関連スキル
 
-- `memory-setup` — プラグイン初期設定の手順
-- `memory-search` — Raw（session/web/minutes）+ Wiki に対するベクトル検索（Claude API からも利用可）
+- `episodic-setup` — プラグイン初期設定の手順
+- `episodic-search` — Raw（session/web/minutes）+ Wiki に対するベクトル検索（Claude API からも利用可）
 - `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。3 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→minutes/<YYYYMM>.md）
 - `adr` — 意思決定記録（不可逆な判断の永続化レイヤー）
 - `retrospective` — フェーズ完了振り返り（エピソードから skills/rules への昇華）

@@ -1,10 +1,10 @@
 ---
-name: memory-search
+name: episodic-search
 description: エピソード記憶（memories/raw/{session,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
 argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
 ---
 
-# Memory Search Skill
+# Episodic Search Skill
 
 `memories/` 配下（Raw（kind: session / web / minutes）+ Wiki）に対する全文ベクトル検索を提供する薄い skill。cocoindex プラグインを内部で呼び出し、結果に scope/status フィルタを適用して返す。
 
@@ -18,7 +18,7 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
-- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。memory プラグイン専用 venv（`memory/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
+- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
 - **インデックスは recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
@@ -121,7 +121,7 @@ stdout に以下を出力する。
 
 `references/api-usage.md` に Tool Use 経由のサンプルあり。要点:
 
-1. Bash MCP もしくは独自の shell 実行ツールで `${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh`（または絶対パス `~/.claude/plugins/cache/hidetsugu-miya/memory/<version>/scripts/search/search.sh`）を起動
+1. Bash MCP もしくは独自の shell 実行ツールで `${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh`（または絶対パス `~/.claude/plugins/cache/hidetsugu-miya/episodic/<version>/scripts/search/search.sh`）を起動
 2. `--format json` を指定して結果を JSON で受け取り、アプリ側で構造化処理する
 3. memories ディレクトリを別ホストに置く場合は `MEMORIES_DIR` 環境変数で上書き
 
@@ -133,7 +133,7 @@ stdout に以下を出力する。
 ## トラブルシューティング
 
 - `connection refused: localhost:15432` → PostgreSQL 起動。`docker compose -f ~/.config/cocoindex/compose.yml up -d`
-- `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`memory/scripts/setup_db.sh` を実行 → `cocoindex update -f memory/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
+- `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
 - インデックスが空 / 古い → SessionEnd hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
 - `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`recording` skill から手動保存する）

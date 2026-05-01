@@ -1,6 +1,6 @@
 ---
 name: pgvector-stack-setup
-description: pgvector 搭載 PostgreSQL コンテナの起動手順。compass / memory などの下流プラグインで利用する共有 DB 基盤。
+description: pgvector 搭載 PostgreSQL コンテナの起動手順。compass / episodic などの下流プラグインで利用する共有 DB 基盤。
 user-invocable: false
 ---
 
@@ -8,7 +8,7 @@ user-invocable: false
 
 ## 共通情報
 
-- **コンテナ名**: `cocoindex`（compass の `setup_db.sh` および memory の `setup_db.sh` が `docker exec -i cocoindex` で参照するハードコード）
+- **コンテナ名**: `cocoindex`（compass の `setup_db.sh` および episodic の `setup_db.sh` が `docker exec -i cocoindex` で参照するハードコード）
 - **公開ポート**: ホスト側 `15432` → コンテナ側 `5432`
 - **イメージ**: `pgvector/pgvector:pg17`
 - **配置先**: `~/.config/cocoindex/compose.yml`（複数プラグイン共通の設定 hub）
@@ -45,7 +45,7 @@ docker exec cocoindex psql -U postgres -l
 `pgvector-stack` は DB 基盤のみを提供する。各プラグインは専用 database を分けて使用する:
 
 - `compass` プラグイン: `compass` database（`compassindex_*__chunks` テーブル）
-- `memory` プラグイン: `memory` database（`memoryindex_*__chunks` テーブル）
+- `episodic` プラグイン: `memory` database（`memoryindex_*__chunks` テーブル）
 
 各プラグインの `setup_db.sh` が `CREATE DATABASE`（冪等）と `CREATE EXTENSION vector`（冪等）を実行する。
 

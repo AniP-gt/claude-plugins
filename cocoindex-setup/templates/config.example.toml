@@ -3,7 +3,7 @@
 # このファイルは ~/.config/cocoindex/config.toml に自動コピーされます。
 # 既存の config.toml は上書きされません。自由に編集してください。
 #
-# このファイルは複数プラグイン（compass / memory）の共通既定値として機能します。
+# このファイルは複数プラグイン（compass / episodic）の共通既定値として機能します。
 # 各プラグインは ~/.config/<plugin>/cocoindex.toml で個別オーバーライドできます。
 #
 # 優先順位（強い順）: 環境変数 > 各プラグインの cocoindex.toml > この config.toml > ハードコード既定
@@ -28,7 +28,7 @@ model = "voyage-code-3"
 
 [chunk]
 # 環境変数: CHUNK_SIZE / CHUNK_OVERLAP
-# memory（要約レポート）系は 1200/300、コードは 800/200 が目安
+# episodic（要約レポート）系は 1200/300、コードは 800/200 が目安
 size = 800
 overlap = 200
 

@@ -1,6 +1,6 @@
 ---
 name: cocoindex-setup
-description: CocoIndex 共通の secrets/config ディレクトリ（~/.config/cocoindex/）の auto-provision 手順。複数プラグインの secrets hub として機能し、compass / memory が fallback で参照する。
+description: CocoIndex 共通の secrets/config ディレクトリ（~/.config/cocoindex/）の auto-provision 手順。複数プラグインの secrets hub として機能し、compass / episodic が fallback で参照する。
 user-invocable: false
 ---
 
@@ -13,7 +13,7 @@ user-invocable: false
 - `~/.config/cocoindex/secrets.env` — `VOYAGE_API_KEY` 等の API キー
 - `~/.config/cocoindex/config.toml` — 共通既定値（DB URL / embedding / chunk / rerank 等）
 
-**このディレクトリは複数プラグイン共通の secrets hub** として機能する。`compass` / `memory` などの下流プラグインは、
+**このディレクトリは複数プラグイン共通の secrets hub** として機能する。`compass` / `episodic` などの下流プラグインは、
 
 1. `~/.config/<plugin>/secrets.env`（プラグイン専用、最優先）
 2. `~/.config/cocoindex/secrets.env`（このプラグインが所有、fallback）
@@ -51,7 +51,7 @@ chmod 600 ~/.config/cocoindex/{secrets.env,config.toml}
 
 ## 設定値の優先順位
 
-下流プラグイン（compass / memory）から見た優先順位（強い順）:
+下流プラグイン（compass / episodic）から見た優先順位（強い順）:
 
 1. プロセス環境変数
 2. `~/.config/<plugin>/secrets.env` または `~/.config/<plugin>/.env`（プラグイン専用）
@@ -73,5 +73,5 @@ chmod 600 ~/.config/cocoindex/{secrets.env,config.toml}
 
 ## トラブルシュート
 
-- `VOYAGE_API_KEY` 未設定 → `compass` / `memory` の embedding 実行が 401 で失敗する。`~/.config/cocoindex/secrets.env` に設定する
+- `VOYAGE_API_KEY` 未設定 → `compass` / `episodic` の embedding 実行が 401 で失敗する。`~/.config/cocoindex/secrets.env` に設定する
 - 設定変更後も古い値が参照される → 各プラグインの `~/.config/<plugin>/secrets.env` で override されていないか確認する

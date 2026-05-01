@@ -12,13 +12,13 @@
       "name": "pgvector-stack",
       "version": "1.0.0",
       "source": "./pgvector-stack",
-      "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / memory など下流プラグインの DB 基盤として共有する。"
+      "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / episodic など下流プラグインの DB 基盤として共有する。"
     },
     {
       "name": "cocoindex-setup",
       "version": "1.0.0",
       "source": "./cocoindex-setup",
-      "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・memory が fallback で参照する secrets hub。"
+      "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・episodic が fallback で参照する secrets hub。"
     },
     {
       "name": "compass",
@@ -117,9 +117,9 @@
       "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。"
     },
     {
-      "name": "memory",
-      "version": "1.2.0",
-      "source": "./memory",
+      "name": "episodic",
+      "version": "2.0.0",
+      "source": "./episodic",
       "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。Notion URL から議事録への取込みフローも内蔵。"
     },
     {

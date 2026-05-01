@@ -1,11 +1,11 @@
-# Claude API から memory-search を呼び出す
+# Claude API から episodic-search を呼び出す
 
-`memory-search` skill は副作用なし・stdin/stdout 完結なので、Claude API の Tool Use として登録するだけで外部アプリから利用できる。
+`episodic-search` skill は副作用なし・stdin/stdout 完結なので、Claude API の Tool Use として登録するだけで外部アプリから利用できる。
 
 ## 前提
 
 - skill が配置されたホストにリモートシェル経由でアクセスできる、または同一ホストで Claude アプリを動かしている
-- `memory` プラグインがインストール済み（`/plugin install memory@hidetsugu-miya`）
+- `episodic` プラグインがインストール済み（`/plugin install episodic@hidetsugu-miya`）
 - PostgreSQL（cocoindex バックエンド）が起動している
 - 直近セッションの SessionEnd hook が走り、memories インデックスが構築されている
 
@@ -14,10 +14,10 @@
 Claude Code 内（hook / Bash ツール経由）では `${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh` でアクセスできる。外部アプリから呼ぶ場合は環境変数が無いため、プラグインのインストール先絶対パスを直接指定する:
 
 ```bash
-~/.claude/plugins/cache/hidetsugu-miya/memory/scripts/search/search.sh
+~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh
 ```
 
-`memory` プラグインのバージョンが変わる場合、インストール先パスも変動する可能性がある。複数バージョン併存時は `ls ~/.claude/plugins/cache/hidetsugu-miya/memory/` で確認する。
+`episodic` プラグインのバージョンが変わる場合、インストール先パスも変動する可能性がある。複数バージョン併存時は `ls ~/.claude/plugins/cache/hidetsugu-miya/episodic/` で確認する。
 
 ## 最小実装パターン: Bash 実行可能なツールから直接叩く
 
@@ -58,7 +58,7 @@ tools = [
 
 
 SEARCH_SH = os.path.expanduser(
-    "~/.claude/plugins/cache/hidetsugu-miya/memory/scripts/search/search.sh"
+    "~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh"
 )
 
 
@@ -103,7 +103,7 @@ def execute_tool_remote(args: dict) -> str:
     # リモートホスト側で展開させたいので "~/" のままシェルへ渡す（ssh 越しに展開される）
     cmd = [
         "ssh", "user@memories-host",
-        "~/.claude/plugins/cache/hidetsugu-miya/memory/scripts/search/search.sh",
+        "~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh",
         args["query"],
         "--format", "json",
     ]

@@ -1,6 +1,6 @@
 # cocoindex-setup
 
-`~/.config/cocoindex/` の `secrets.env` / `config.toml` を所有・auto-provision する共通基盤プラグイン。`compass` / `memory` など下流プラグインの secrets hub として機能する。
+`~/.config/cocoindex/` の `secrets.env` / `config.toml` を所有・auto-provision する共通基盤プラグイン。`compass` / `episodic` など下流プラグインの secrets hub として機能する。
 
 ## インストール
 
