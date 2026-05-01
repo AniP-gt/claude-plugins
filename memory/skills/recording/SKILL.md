@@ -1,7 +1,7 @@
 ---
 name: recording
-description: "エピソード記憶（kind: session / web / minutes）の保存・参照・再調査を担当する skill。session（Claude Code セッション要約）は SessionEnd hook で自動生成される。web（外部 URL アーカイブ）と minutes（議事録）は本 skill から手動で保存する。「webページを記録して」「議事録を残して」「過去のセッション要約を探して」「このセッションの Bash 実行を全部見せて」などで起動する。"
-argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes"
+description: "エピソード記憶（kind: session / web / minutes）の保存・参照・再調査を担当する skill。session（Claude Code セッション要約）は SessionEnd hook で自動生成される。web（外部 URL アーカイブ）と minutes（議事録）は本 skill から手動で保存する。minutes は Notion URL から本文を取り込んで保存することもできる。「webページを記録して」「議事録を残して」「Notion の議事録を取り込んで」「過去のセッション要約を探して」「このセッションの Bash 実行を全部見せて」などで起動する。"
+argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes | minutes from-notion <URL>"
 ---
 
 # Recording Skill
@@ -180,6 +180,43 @@ EOF
 保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が議事録の `date` から `YYYYMM` を抽出して `wiki/minutes/<YYYYMM>.md` を月次集約フォーマットで更新する（詳細は `references/wiki.md`）。
 
 成功時、保存パスを stdout に返す。
+
+### 5b. Notion URL から議事録を作成
+
+Notion 上の議事録ページ URL（`https://www.notion.so/...` 等）を入力に与えられた場合、本文を Notion MCP 経由で取得して minutes として保存する。前提として `notion` プラグインがインストール済み・`/notion-login` 済みであること。
+
+**Step 1（前提チェック）**: `notion-runner` サブエージェントが利用できるか確認する。利用不可（プラグイン未インストール／未ログイン）の場合は、ユーザーに `/plugin install notion@hidetsugu-miya` および `/notion-login` を案内し、本フローを中断する。
+
+**Step 2（本文取得）**: `notion-runner` サブエージェントに以下を委任する:
+
+> 「議事録に取り込むため、Notion URL `<URL>` のページ本文を Markdown で取得して、要約せずそのまま返してください。`notion-fetch` ツールを `--arg id="<URL>"` で呼び出し、ページ内の関連 URL は省略しないでください。」
+
+サブエージェントは Notion MCP の `notion-fetch`（または同等のページ取得ツール）を呼び出し、`---fetched-content-begin---` と `---fetched-content-end---` で囲んだ本文を返す。メインエージェントはこのマーカー間の Markdown を抽出する。
+
+**Step 3（メタ情報の確認）**: 取得した本文から候補値を抽出した上で、ユーザーに以下を確認する（既知のものは候補として提示し、空回答なら採用）:
+
+1. タイトル（必須。Notion ページの先頭 H1 を候補にする）
+2. 関連 session_id（任意）
+3. 参加者（任意。本文中の参加者欄から候補抽出）
+4. タグ（任意、カンマ区切り）
+
+**Step 4（保存）**: section 5 と同じ `save.sh` を呼ぶ。本文 Markdown は stdin で渡し、frontmatter には `source_url`（Notion URL）を含めるため `--tags` に `notion,source:<URL>` 等は **入れず**、本文先頭に出典を 1 行付与する:
+
+```bash
+SRC_URL="<Notion URL>"
+{
+  printf '> 出典: %s\n\n' "$SRC_URL"
+  printf '%s\n' "<取得した Markdown 本文>"
+} | "${CLAUDE_PLUGIN_ROOT}/scripts/recording/minutes/save.sh" \
+    --title "<確認したタイトル>" \
+    --tags "notion,minutes" \
+    --participants "<確認した参加者>" \
+    --related-session "<UUID または空>"
+```
+
+> 設計メモ: `save.sh` は frontmatter に任意キーを追加する API を持たないため、出典 URL は本文冒頭の引用ブロックで残す。Wiki 統合（Codex）はこの引用を見出し近傍の典拠として扱う。
+
+成功時、保存パスを stdout に返す。Wiki 連携は通常の minutes と同じく `enqueue.py --kind minutes` → `wiki-runner.sh` が走る。
 
 ## 自動化パイプライン（kind: session のみ）
 
