@@ -331,8 +331,29 @@ def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path:
     return combined
 
 
+def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
+                       jsonl_path: Path, is_staged: bool) -> Path:
+    """runner.sh が retry queue 連携のために参照する meta JSON を /tmp に書く。
+
+    runner.sh は session_id / cwd / transcript_path / first_ts / report_path / is_staged を
+    Codex 失敗時に retry_queue.py upsert へ渡す。launcher の引数経由でパスのみを伝搬する。
+    """
+    sidecar = TMP_DIR / f"{session_id}.codex.meta.json"
+    payload = {
+        "session_id": session_id,
+        "cwd": meta.get("cwd", ""),
+        "transcript_path": str(jsonl_path),
+        "first_ts": meta.get("first_ts") or "",
+        "report_path": str(report_path),
+        "is_staged": bool(is_staged),
+    }
+    sidecar.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    sidecar.chmod(0o600)
+    return sidecar
+
+
 def build_launcher(runner: Path, combined_md: Path, report_path: Path,
-                   session_id: str, is_staged: bool) -> Path:
+                   session_id: str, is_staged: bool, meta_path: Path) -> Path:
     """Terminal.appで起動する .command ランチャースクリプトを生成する。
 
     ランチャーは runner.sh が成功した場合のみ osascript で自ウィンドウを閉じる。
@@ -341,15 +362,17 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
 
     第3引数 is_staged は runner.sh に "staged"/"normal" を渡し、wiki enqueue や
     cocoindex update を行うかの分岐を runner 側で行わせる。
+    第4引数 meta_path は runner.sh が retry queue を更新するために参照する meta JSON。
     """
     launcher = TMP_DIR / f"{session_id}.runner.command"
     runner_q = shlex.quote(str(runner))
     combined_q = shlex.quote(str(combined_md))
     report_q = shlex.quote(str(report_path))
     staged_q = shlex.quote("staged" if is_staged else "normal")
+    meta_q = shlex.quote(str(meta_path))
     script = f"""#!/bin/bash
 OWN_TTY=$(tty)
-{runner_q} {combined_q} {report_q} {staged_q}
+{runner_q} {combined_q} {report_q} {staged_q} {meta_q}
 RC=$?
 if [[ $RC -eq 0 ]]; then
     ( osascript <<APPLE 2>/dev/null &
@@ -509,7 +532,9 @@ def main() -> int:
     log(f"combined markdown: {combined}")
     log(f"report target: {report_path} staged={is_staged}")
 
-    launcher = build_launcher(RUNNER, combined, report_path, session_id, is_staged)
+    meta_path = build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged)
+    log(f"meta sidecar: {meta_path}")
+    launcher = build_launcher(RUNNER, combined, report_path, session_id, is_staged, meta_path)
     log(f"launcher: {launcher}")
     spawn_terminal(launcher)
     log("terminal launcher spawned")

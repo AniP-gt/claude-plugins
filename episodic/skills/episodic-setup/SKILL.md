@@ -223,6 +223,8 @@ rm -rf /tmp/memories
 | 症状 | 確認先 |
 |---|---|
 | Raw が生成されない | `/tmp/memories/recording-runner.log`、`codex` コマンド存在 |
+| Codex の usage limit / API エラーで Raw 失敗 | `~/.local/share/recording/state/session-retry-queue.jsonl` に自動記録され、次回 SessionStart で `retry-pending.sh` が再生成を試みる。手動再試行は `${CLAUDE_PLUGIN_ROOT}/scripts/recording/retry-pending.sh` |
+| 5 回失敗で dead_letter に降格 | `~/.local/share/recording/state/session-retry-deadletter.jsonl` を確認。手動回復は `hook.py` に session_id / cwd / transcript_path を JSON で渡して再投入 |
 | hook が呼ばれない | `/tmp/memories/recording-hook.log`、`/plugin status episodic` |
 | Terminal が起動しない（macOS 以外） | これは仕様。launcher が直接バックグラウンド実行されログ集約 |
 | マウント検出が失敗する | `<memories_dir>/.mount-canary` の実在を確認 |

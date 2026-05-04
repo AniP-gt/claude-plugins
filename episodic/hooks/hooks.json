@@ -10,6 +10,15 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "nohup ${CLAUDE_PLUGIN_ROOT}/scripts/recording/retry-pending.sh >/dev/null 2>&1 & disown",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "SessionEnd": [
