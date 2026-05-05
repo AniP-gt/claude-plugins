@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "pgvector-stack",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "source": "./pgvector-stack",
       "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / episodic など下流プラグインの DB 基盤として共有する。"
     },

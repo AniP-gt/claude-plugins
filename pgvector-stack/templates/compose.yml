@@ -2,6 +2,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: cocoindex
+    restart: unless-stopped
     command:
       - postgres
       - -c
