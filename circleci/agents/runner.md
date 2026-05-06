@@ -1,6 +1,6 @@
 ---
 name: circleci-runner
-description: CircleCIのビルド・パイプライン・テスト結果を調査する。URLやプロジェクトslugからビルド失敗ログ、テスト結果、flakyテスト、最新パイプラインステータスを取得し、必要に応じてワークフロー再実行・パイプライン実行・config検証を行う。
+description: CircleCIのビルド失敗ログ・テスト結果・flakyテスト・パイプライン状態を調査し、再実行やconfig検証も実施する。
 tools: Bash
 model: sonnet
 effort: low

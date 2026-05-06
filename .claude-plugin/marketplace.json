@@ -46,7 +46,7 @@
     },
     {
       "name": "circleci",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "source": "./circleci",
       "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作し、ワークフローを目的状態到達まで監視するプラグイン。investigate / watch の2 skillを提供。"
     },
