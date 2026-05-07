@@ -3,6 +3,7 @@ name: security-check
 description: プラグインの作成・更新後にセキュリティリスクを検出する。npxサプライチェーン、SQLインジェクション、シェル変数不整合、認証情報ハードコードをチェックする。
 tools: Bash, Read, Glob, Grep
 model: sonnet
+effort: medium
 ---
 
 指定されたプラグインディレクトリに対してセキュリティチェックを実行し、レポートを返す。

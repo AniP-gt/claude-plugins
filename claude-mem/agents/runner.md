@@ -3,6 +3,7 @@ name: claude-mem-runner
 description: 永続メモリの検索・取得を実行する。過去のセッション情報、観察、タイムラインの参照が必要なときに使用する。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - claude-mem-memory-search
   - claude-mem-smart-explore

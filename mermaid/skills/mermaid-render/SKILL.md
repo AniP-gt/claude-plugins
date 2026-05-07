@@ -2,6 +2,7 @@
 name: mermaid-render
 description: Mermaid.js構文からPNG/SVG画像を生成する。@mermaid-js/mermaid-cliを使って画像出力する。
 context: fork
+effort: low
 agent: general-purpose
 ---
 

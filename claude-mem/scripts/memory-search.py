@@ -2,7 +2,11 @@
 """
 Claude-Mem HTTP API Wrapper
 
-claude-memのWorker HTTP API（localhost:37777）を使用して永続メモリを検索・取得するスクリプト
+claude-memのWorker HTTP APIを使用して永続メモリを検索・取得するスクリプト。
+ポート・ホストは claude-mem 本体と同じ解決順序で決定する:
+  1. 環境変数 CLAUDE_MEM_WORKER_PORT / CLAUDE_MEM_WORKER_HOST
+  2. ~/.claude-mem/settings.json
+  3. デフォルト（port = 37700 + (UID % 100), host = 127.0.0.1）
 
 Usage:
     claude-mem search <query> [--limit N] [--project NAME] [--type TYPE]
@@ -39,12 +43,60 @@ Examples:
 
 import argparse
 import json
+import os
+import re
 import sys
 import urllib.request
 import urllib.parse
 import urllib.error
+from pathlib import Path
 
-WORKER_BASE_URL = "http://localhost:37777"
+_DEFAULT_HOST = "127.0.0.1"
+_HOST_PATTERN = re.compile(r"^[A-Za-z0-9.\-]{1,253}$")
+
+
+def _default_port() -> int:
+    uid = os.getuid() if hasattr(os, "getuid") else 77
+    return 37700 + (uid % 100)
+
+
+def _load_settings() -> dict:
+    data_dir = os.environ.get("CLAUDE_MEM_DATA_DIR") or str(Path.home() / ".claude-mem")
+    settings_path = Path(data_dir) / "settings.json"
+    try:
+        with settings_path.open("r", encoding="utf-8") as f:
+            settings = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    # 旧スキーマ（{"env": {...}}）との互換
+    if isinstance(settings.get("env"), dict):
+        return settings["env"]
+    return settings if isinstance(settings, dict) else {}
+
+
+def _resolve_worker_base_url() -> str:
+    settings = _load_settings()
+    host = (
+        os.environ.get("CLAUDE_MEM_WORKER_HOST")
+        or settings.get("CLAUDE_MEM_WORKER_HOST")
+        or _DEFAULT_HOST
+    )
+    if not isinstance(host, str) or not _HOST_PATTERN.match(host):
+        host = _DEFAULT_HOST
+    port_raw = (
+        os.environ.get("CLAUDE_MEM_WORKER_PORT")
+        or settings.get("CLAUDE_MEM_WORKER_PORT")
+    )
+    try:
+        port = int(port_raw) if port_raw is not None else _default_port()
+    except (TypeError, ValueError):
+        port = _default_port()
+    if not (1 <= port <= 65535):
+        port = _default_port()
+    return f"http://{host}:{port}"
+
+
+WORKER_BASE_URL = _resolve_worker_base_url()
 
 
 def http_get(endpoint, params=None):
@@ -59,7 +111,7 @@ def http_get(endpoint, params=None):
         with urllib.request.urlopen(req, timeout=30) as response:
             return json.loads(response.read().decode('utf-8'))
     except urllib.error.URLError as e:
-        return {"error": True, "message": f"Connection failed: {e.reason}. Is claude-mem worker running?"}
+        return {"error": True, "message": f"Connection failed: {e.reason} (url={WORKER_BASE_URL}). Is claude-mem worker running?"}
     except json.JSONDecodeError as e:
         return {"error": True, "message": f"Invalid JSON response: {e}"}
     except Exception as e:

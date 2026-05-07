@@ -9,106 +9,124 @@
   },
   "plugins": [
     {
-      "name": "cocoindex",
-      "version": "0.16.1",
-      "source": "./cocoindex",
-      "description": "コードベースのベクトルインデックス構築・検索プラグイン。CocoIndexを使って自然言語クエリで関連コードのエントリーポイントを発見する。"
+      "name": "pgvector-stack",
+      "version": "1.0.1",
+      "source": "./pgvector-stack",
+      "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / episodic など下流プラグインの DB 基盤として共有する。"
+    },
+    {
+      "name": "cocoindex-setup",
+      "version": "1.0.0",
+      "source": "./cocoindex-setup",
+      "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・episodic が fallback で参照する secrets hub。"
+    },
+    {
+      "name": "compass",
+      "version": "1.0.0",
+      "source": "./compass",
+      "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、cocoindex 1.0 LiveUpdater 対応。"
     },
     {
       "name": "context7",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "source": "./context7",
       "description": "ライブラリの最新ドキュメントを取得するプラグイン。Context7 MCPサーバーを使ってパッケージ名からIDを解決し、バージョン固有のドキュメントを参照する。"
     },
     {
       "name": "rollbar",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "source": "./rollbar",
       "description": "Rollbarのエラートラッキングデータを取得・管理するプラグイン。@rollbar/mcp-serverを使ってアイテム詳細、デプロイ情報、トップエラーの確認・更新を行う。"
     },
     {
       "name": "sentry",
-      "version": "0.9.3",
+      "version": "0.9.4",
       "source": "./sentry",
       "description": "Sentryのエラートラッキングデータを取得・管理するプラグイン。@sentry/mcp-serverを使ってイシュー詳細、プロジェクト情報の確認・更新を行う。"
     },
     {
+      "name": "circleci",
+      "version": "0.2.1",
+      "source": "./circleci",
+      "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作し、ワークフローを目的状態到達まで監視するプラグイン。investigate / watch の2 skillを提供。"
+    },
+    {
       "name": "figma",
-      "version": "0.8.2",
+      "version": "0.8.3",
       "source": "./figma",
       "description": "Figmaデザインファイルの取得・コード生成プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでFigma MCPツールを実行する。"
     },
     {
       "name": "playwright",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "source": "./playwright",
       "description": "Playwright MCPを使ったブラウザ自動化プラグイン。Webページのナビゲート、スナップショット取得、要素クリックなどのブラウザ操作をHTTPサーバーモードで実行する。"
     },
     {
       "name": "claude-mem",
-      "version": "1.6.3",
+      "version": "1.6.5",
       "source": "./claude-mem",
       "description": "claude-mem永続メモリの検索・取得プラグイン。Worker HTTP API経由で過去のセッション情報、観察、タイムラインを参照する。"
     },
     {
       "name": "devin",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "source": "./devin",
       "description": "Devin MCP経由でGitHubリポジトリのドキュメント取得・質問応答・Session APIによるタスク委任を行うプラグイン。"
     },
     {
       "name": "chrome-devtools",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "source": "./chrome-devtools",
       "description": "Chrome DevTools MCPを使ったブラウザ自動化・デバッグプラグイン。DOMスナップショット、スクリーンショット、コンソールログ、ネットワーク監視、パフォーマンス分析などをHTTPサーバーモードで実行する。"
     },
     {
       "name": "slack",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "source": "./slack",
       "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。公式MCP Python SDKでOAuth認証し、Streamable HTTP経由でSlack MCPツールを実行する（複数ワークスペース対応）。"
     },
     {
       "name": "todoist",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "source": "./todoist",
       "description": "Todoistタスク管理プラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でTodoist MCPツールを実行する。"
     },
     {
       "name": "atlassian",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "source": "./atlassian",
       "description": "Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でJira・Confluenceツールを実行する。"
     },
     {
       "name": "drawio",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "source": "./drawio",
       "description": "draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。"
     },
     {
       "name": "mermaid",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "source": "./mermaid",
       "description": "Mermaid.jsダイアグラム画像出力プラグイン。@mermaid-js/mermaid-cliを使ってMermaid構文からPNG/SVG画像を生成する。"
     },
     {
-      "name": "ticktick",
+      "name": "jina",
       "version": "0.1.0",
-      "source": "./ticktick",
-      "description": "TickTickタスク管理プラグイン。OAuth 2.0でブラウザ認証し、TickTick Open API v1でタスク・プロジェクト操作を行う。"
+      "source": "./jina",
+      "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。"
     },
     {
-      "name": "youtube-analyzer",
-      "version": "0.1.2",
-      "source": "./youtube-analyzer",
-      "description": "YouTube チャンネル分析とトレンド検索プラグイン。YouTube Analytics API と YouTube Data API v3 を使い、チャンネル統計取得とキーワードトレンド検索を行う。"
+      "name": "episodic",
+      "version": "2.2.0",
+      "source": "./episodic",
+      "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。Notion URL から議事録への取込みフローも内蔵。"
     },
     {
-      "name": "ga4",
-      "version": "0.1.2",
-      "source": "./ga4",
-      "description": "Google Analytics 4 データ取得プラグイン。google-analytics-data SDKを使ってアカウント・プロパティ・レポートをClaude Codeから参照する。複数プロパティを名前で管理できる。"
+      "name": "notion",
+      "version": "0.2.0",
+      "source": "./notion",
+      "description": "Notion MCP経由でページ・データベースを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でNotion MCPツールを実行する（複数アカウント対応）。"
     }
   ]
 }

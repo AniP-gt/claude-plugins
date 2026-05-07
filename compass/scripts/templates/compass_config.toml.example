@@ -1,0 +1,41 @@
+# compass プラグイン専用設定（任意）
+#
+# このファイルは ~/.config/compass/cocoindex.toml に自動コピーされます。
+# 既存ファイルは上書きされません。
+#
+# 優先順位（強い順）:
+#   環境変数 > このファイル > ~/.config/cocoindex/config.toml > ハードコード既定
+#
+# 共通既定（DB URL / embedding / chunk / rerank）は ~/.config/cocoindex/config.toml に
+# 委ねるのが推奨です。本ファイルは compass で値を上書きしたい場合のみ使用してください。
+
+[embedding]
+# 環境変数: EMBEDDING_PROVIDER
+# provider = "voyage"
+# 環境変数: EMBEDDING_MODEL
+# voyage-code-3: コード検索用
+# model = "voyage-code-3"
+# 環境変数: EMBEDDING_DIMENSION
+# dimension = 1024
+
+[chunk]
+# 環境変数: CHUNK_SIZE / CHUNK_OVERLAP
+# コード検索用の目安: 800/200
+# size = 800
+# overlap = 200
+
+[rerank]
+# 環境変数: RERANK_ENABLED / RERANK_MODEL / RERANK_CANDIDATES
+# enabled = true
+# model = "rerank-2.5"
+# candidates = 30
+
+[embed]
+# 環境変数: EMBED_PREFIX_FILEPATH
+# 埋め込み入力にファイルパス prefix を付与する（rerank 併用で精度向上）
+# prefix_filepath = true
+
+[index]
+# 環境変数: COMPASS_EXCLUDE（csv）
+# DEFAULT_EXCLUDES に追加で除外したいパターンを csv で
+# exclude = ""

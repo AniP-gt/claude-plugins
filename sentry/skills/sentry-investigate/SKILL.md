@@ -2,6 +2,7 @@
 name: sentry-investigate
 description: Sentryエラートラッキングの調査を実行。URLやイシューIDからエラー詳細を取得し、プロジェクト・組織情報の確認、エラー統計・推移分析を行う。
 context: fork
+effort: low
 agent: general-purpose
 ---
 

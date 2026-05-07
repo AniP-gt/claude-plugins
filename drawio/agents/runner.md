@@ -3,6 +3,7 @@ name: drawio-runner
 description: draw.ioダイアグラムの作成・表示を実行する。XML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザで開く。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - drawio-create
 ---

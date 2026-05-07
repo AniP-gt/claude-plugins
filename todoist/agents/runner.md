@@ -3,6 +3,7 @@ name: todoist-runner
 description: Todoistのタスク管理・プロジェクト操作を実行する。タスクの追加・検索・完了・プロジェクト管理等を行い結果を返すときに使用。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - todoist-run
 ---

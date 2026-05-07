@@ -1,0 +1,14 @@
+[project]
+name = "compass-plugin"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.30",
+    "cocoindex[postgres,litellm]>=1.0.1",
+    "litellm>=1.50",
+    "numpy>=1.26",
+    "pgvector>=0.4.1",
+    "psycopg2-binary>=2.9.11",
+    "python-dotenv",
+    "voyageai>=0.3.7",
+]

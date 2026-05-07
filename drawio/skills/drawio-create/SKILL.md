@@ -2,6 +2,7 @@
 name: drawio-create
 description: draw.ioダイアグラムの作成・表示を実行。XML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。
 context: fork
+effort: low
 agent: general-purpose
 ---
 

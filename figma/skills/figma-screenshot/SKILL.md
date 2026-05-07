@@ -2,6 +2,7 @@
 name: figma-screenshot
 description: Figmaデザインファイルのスクリーンショットを取得し、視覚的内容を解析する。レイアウト・色・UI要素の詳細をテキストで報告する。
 context: fork
+effort: low
 ---
 
 # Figma スクリーンショット取得

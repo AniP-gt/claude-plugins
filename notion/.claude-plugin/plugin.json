@@ -1,0 +1,7 @@
+{
+  "name": "notion",
+  "version": "0.2.0",
+  "description": "Notion MCP経由でページ・データベースを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でNotion MCPツールを実行する（複数アカウント対応）。",
+  "author": { "name": "miya" },
+  "keywords": ["notion", "mcp", "oauth", "knowledge-base", "page", "database", "multi-account"]
+}

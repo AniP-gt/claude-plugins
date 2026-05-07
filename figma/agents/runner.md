@@ -3,6 +3,7 @@ name: figma-runner
 description: Figmaデザインファイルからデザインコンテキストやスクリーンショットを取得する。ノードID指定でデザイン情報・コード・画像を取得して結果を返すときに使用。
 tools: Bash, Read
 model: sonnet
+effort: low
 skills:
   - figma-design
   - figma-screenshot

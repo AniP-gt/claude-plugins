@@ -1,0 +1,52 @@
+# CocoIndex 共通設定
+#
+# このファイルは ~/.config/cocoindex/config.toml に自動コピーされます。
+# 既存の config.toml は上書きされません。自由に編集してください。
+#
+# このファイルは複数プラグイン（compass / episodic）の共通既定値として機能します。
+# 各プラグインは ~/.config/<plugin>/cocoindex.toml で個別オーバーライドできます。
+#
+# 優先順位（強い順）: 環境変数 > 各プラグインの cocoindex.toml > この config.toml > ハードコード既定
+
+[database]
+# 環境変数: COCOINDEX_DATABASE_URL（cocoindex 1.0 では COCOINDEX_DB に内部展開されます）
+# 各プラグインは専用 DB URL（COMPASS_DATABASE_URL / MEMORY_DATABASE_URL）を持つので、
+# このキーは fallback としてのみ使用されます。
+url = "postgres://postgres:postgres@localhost:15432/postgres"
+
+[embedding]
+# 環境変数: EMBEDDING_PROVIDER（voyage | openai | ollama）
+provider = "voyage"
+# 環境変数: EMBEDDING_MODEL
+# voyage-code-3: コード検索用、voyage-3-large: 自然文書用
+model = "voyage-code-3"
+# 環境変数: EMBEDDING_DIMENSION（Matryoshka 対応モデルのみ。voyage-3-large は 256/512/1024/2048）
+# 未指定なら provider 既定値（多くは 1024）
+# dimension = 1024
+# 環境変数: EMBEDDING_ADDRESS（ollama 用）
+# address = "http://localhost:11434"
+
+[chunk]
+# 環境変数: CHUNK_SIZE / CHUNK_OVERLAP
+# episodic（要約レポート）系は 1200/300、コードは 800/200 が目安
+size = 800
+overlap = 200
+
+[live]
+# 環境変数: LIVE_UPDATE_INTERVAL（秒）
+update_interval_seconds = 60
+
+[rerank]
+# 環境変数: RERANK_ENABLED（真値で ON、既定 ON）
+# search.py が vector top-K 候補を voyage rerank で再評価する
+enabled = true
+# 環境変数: RERANK_MODEL
+model = "rerank-2.5"
+# 環境変数: RERANK_CANDIDATES
+# vector 検索で取得する候補数（rerank に渡す documents 数）。最終出力件数は --top で指定
+candidates = 30
+
+[embed]
+# 環境変数: EMBED_PREFIX_FILEPATH（真値で ON、既定 ON）
+# 埋め込み計算時にチャンク先頭に "# file: <path>\n" を付与する。rerank 併用時に効果あり
+prefix_filepath = true

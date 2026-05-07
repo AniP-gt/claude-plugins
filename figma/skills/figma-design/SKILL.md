@@ -2,6 +2,7 @@
 name: figma-design
 description: FigmaデザインファイルからデザインコンテキストやUIコードを取得する。ノードID指定でデザイン情報・コンポーネント構造・コードを取得して結果を返す。
 context: fork
+effort: low
 ---
 
 # Figma デザインコンテキスト取得

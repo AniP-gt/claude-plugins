@@ -2,6 +2,7 @@
 name: rollbar-investigate
 description: Rollbarエラートラッキングの調査を実行。URLやアイテム番号からエラー詳細を取得し、トップエラーやデプロイ履歴を確認する。
 context: fork
+effort: low
 ---
 
 # Rollbar 調査手順

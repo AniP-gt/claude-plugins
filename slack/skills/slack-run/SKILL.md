@@ -2,6 +2,7 @@
 name: slack-run
 description: Slack MCPツールを実行する。メッセージ検索・送信・チャンネル読み取り等の操作を行い結果を返す。
 context: fork
+effort: low
 ---
 
 # Slack MCP ツール実行

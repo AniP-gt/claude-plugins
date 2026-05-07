@@ -3,6 +3,7 @@ name: devin-runner
 description: Devin MCP経由でGitHubリポジトリのドキュメント取得・質問応答・Session APIによるタスク委任を実行する。
 tools: Bash
 model: sonnet
+effort: low
 skills:
   - devin-deepwiki
   - devin-session

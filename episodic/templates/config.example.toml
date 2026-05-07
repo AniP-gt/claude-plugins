@@ -1,0 +1,77 @@
+# episodic プラグイン設定ファイル
+# 配置先: ~/.config/recording/config.toml
+#
+# 設定の優先順位（高い順）:
+#   1. 環境変数（MEMORIES_DIR / MEMORIES_SMB_SHARE / MEMORIES_SMB_USER 等）
+#   2. ~/.config/recording/secrets.env（chmod 600 必須。シークレット情報のみ）
+#   3. 本ファイル（公開可能な設定）
+#
+# 例: SMB の user 名はシークレット扱いなので secrets.env で MEMORIES_SMB_USER=... と書き、
+#     共有 URL は本ファイルの smb_share に書く運用を推奨します。
+
+# Raw レポートを保存する正規ディレクトリ（SMB/NFS など共有が想定）。
+# 配下構造は固定:
+#   <memories_dir>/raw/session/YYYY-MM-DD/...md   (kind: session, recording 自動)
+#   <memories_dir>/raw/web/YYYY-MM-DD/...md         (kind: web, recording 手動)
+#   <memories_dir>/raw/minutes/YYYY-MM-DD/...md     (kind: minutes, recording 手動)
+#   <memories_dir>/wiki/...                          (wiki-runner が生成)
+# このパス直下に `.mount-canary` ファイルが存在しない場合はマウント未確立と判断し、
+# fallback_dir に staging として書き込みます（SessionEnd hook 経路の session のみ。
+# web / minutes は手動経路で常にマウント前提のため staging は使いません）。
+memories_dir = "/Volumes/memory"
+
+# SMB 共有 URL（mount-memory-share.sh 用）。形式: //[user@]host/share
+# user 名はここに書かず、secrets.env の MEMORIES_SMB_USER で渡すことを推奨します
+# （シークレット情報を平文 config から分離するため）。
+# 例: smb_share = "//192.168.11.5/memory"
+# smb_share = "//host.local/memory"
+
+# ping 用ホスト名。省略時は smb_share から自動抽出します。
+# smb_ping_host = "192.168.11.5"
+
+# マウント未確立時に session レポートを退避する fallback ディレクトリ（ローカル永続）。
+# 後続の SessionStart hook で sync-pending.sh が走り、マウント成功時に
+# <memories_dir>/raw/session/ 配下へ移送します。
+fallback_dir = "~/.local/share/recording/raw-staging"
+
+# SessionEnd hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
+# false にすると検出のみで remount は行わず staging へ即フォールバックします。
+auto_remount = true
+
+# remount に使うスクリプト（mount_smbfs を呼ぶラッパー）。
+# 既定はプラグイン同梱の mount-memory-share.sh（${CLAUDE_PLUGIN_ROOT}/scripts/recording/）。
+# 環境に合わせて任意のスクリプトに差し替え可能。
+remount_script = "${CLAUDE_PLUGIN_ROOT}/scripts/recording/mount-memory-share.sh"
+
+# マウント検証用 canary ファイル名。ファイル名のみ指定し、配置場所は memories_dir 直下固定。
+# 共有側（SMB サーバ）で1度だけ touch しておけば以後は変更不要。
+mount_canary_filename = ".mount-canary"
+
+# ホスト名 SHA-1 hex の先頭何文字をファイル名に埋め込むか（衝突確率の調整）。
+# 既定 8 文字（マシン跨ぎでの衝突確率 ~1/2^32）。範囲 4-40。
+hostname_hash_length = 8
+
+# ============================================================================
+# 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。
+# シークレット情報は ~/.config/recording/secrets.env（chmod 600）に書く運用を推奨します。
+# secrets.env の例は templates/secrets.env.example を参照してください。
+# ============================================================================
+
+# SMB 認証用 user 名（mount-memory-share.sh が //user@host/share の形に組み立てる）。
+# パスワードは macOS キーチェーンから自動解決されるため、user 名のみで十分です。
+#   secrets.env: MEMORIES_SMB_USER=admin
+#   または環境変数: export MEMORIES_SMB_USER="admin"
+
+# kind 別 Codex モデル（wiki-runner.sh が参照）。
+#   export CODEX_MEMORY_WIKI_MODEL_SESSION="gpt-5.4"
+#   export CODEX_MEMORY_WIKI_MODEL_WEB="gpt-5.4-mini"
+#   export CODEX_MEMORY_WIKI_MODEL_MINUTES="gpt-5.4-mini"
+# 後方互換: CODEX_MEMORY_WIKI_MODEL を設定すると全 kind の既定値を上書きします。
+
+# trashbox 自動削除（wiki-runner.sh 起動時に mtime ベースで実行）。
+#   export MEMORIES_TRASHBOX_RETAIN_DAYS=30   # 保持日数（既定 30、0 で無効化）
+#   export MEMORIES_TRASHBOX_DRY_RUN=1        # 1 で削除せずログのみ
+
+# /tmp/memories/*.log のローテーション（各 runner 起動時に閾値超過なら gzip 退避）。
+#   export MEMORIES_LOG_ROTATE_BYTES=5242880  # 既定 5MB
+#   export MEMORIES_LOG_ROTATE_KEEP=3         # 保持世代数

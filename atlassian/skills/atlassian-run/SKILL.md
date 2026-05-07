@@ -2,6 +2,7 @@
 name: atlassian-run
 description: Atlassian MCPツール（Jira・Confluence）を実行する。公式MCP Python SDK経由でイシュー検索・作成・更新、ページ検索・取得などを行い結果を返す。
 context: fork
+effort: low
 ---
 
 # Atlassian MCPツール実行
