@@ -231,7 +231,7 @@ SRC_URL="<Notion URL>"
 
 ## 自動化パイプライン（kind: session のみ）
 
-`episodic` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
+`episodic` プラグインの `SessionEnd` hook が `${CLAUDE_PLUGIN_ROOT}/scripts/session-end.sh` を起動し、最終的に `scripts/recording/hook.py` → `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
 
 ## 初期設定
 
