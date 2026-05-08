@@ -1,6 +1,0 @@
-__pycache__/
-*.pyc
-CLAUDE.md
-*.env
-secrets.env
-!templates/secrets.example.env

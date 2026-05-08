@@ -9,21 +9,11 @@ Claude Code用のカスタムプラグインリポジトリ。
 | pgvector-stack | pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン（compass / episodic の DB 基盤） |
 | cocoindex-setup | ~/.config/cocoindex/ の secrets/config を所有する共通基盤（compass / episodic が fallback で参照） |
 | compass | コードベースのセマンティック検索（pgvector + voyage embedding + voyage rerank、cocoindex 1.0） |
-| rollbar | Rollbar エラートラッキングの取得・更新 |
-| sentry | Sentry エラートラッキングの取得・更新 |
-| circleci | CircleCI のビルド失敗調査（investigate）と目的状態到達までの監視（watch）。@circleci/mcp-server-circleci 利用 |
-| figma | Figma デザイン取得・コード生成（OAuth PKCE） |
-| playwright | Playwright MCP によるブラウザ自動化 |
-| devin | Devin MCP 経由のリポジトリ Q&A・Session API でのタスク委任 |
-| chrome-devtools | Chrome DevTools MCP 経由のブラウザ自動化・デバッグ |
-| slack | Slack メッセージ検索・送信・読取（複数ワークスペース対応） |
-| todoist | Todoist タスク管理（公式 MCP + OAuth 2.1） |
-| atlassian | Jira・Confluence 操作（Atlassian Rovo MCP + OAuth 2.1） |
-| drawio | draw.io ダイアグラム生成（XML/CSV/Mermaid → ブラウザエディタ） |
-| mermaid | Mermaid 構文から PNG/SVG 画像を生成 |
-| jina | Jina AI Remote MCP 経由の Web 検索・URL→Markdown・論文検索 |
+| circleci | CircleCI 調査（@circleci/mcp-server-circleci `.mcp.json` 同梱）+ ワークフロー監視（watch CLI / circleci-watch skill） |
+| devin | Devin MCP（DeepWiki）`.mcp.json` 同梱 + Session API CLI でタスク委任 |
+| mermaid | Mermaid 構文から PNG/SVG 画像を生成（mermaid-cli、MCP 不在） |
+| jina | Jina AI Remote MCP（http `.mcp.json` 同梱、Bearer 認証） |
 | episodic | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索（Notion URL 取込みフロー対応） |
-| notion | Notion ページ・データベース操作（公式 MCP Python SDK + OAuth 2.1） |
 
 詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。
 
@@ -43,19 +33,18 @@ Claude Code用のカスタムプラグインリポジトリ。
 - 詳細仕様・変更履歴・運用注意は `README.md` / `SKILL.md` / コミットメッセージ側に書くこと
 - バージョンアップで機能差分を description に追記し続ける運用は禁止（履歴は git log で追える）
 
-## 設計大本線: code execution with MCP
+## 設計大本線: `.mcp.json` 同梱 + deferred tools
 
-このプロジェクトのツール実行における根幹方針。MCPが提供するツールは、**runnerサブエージェント経由のコード実行（code execution with MCP）** として利用する。メインコンテキストからMCPツールを直接呼び出す「MCPツール呼び出し」とは区別する。
+外部 SaaS / ローカルツールへのアクセスは、可能な限り **`.mcp.json` 同梱プラグイン** として提供する。Claude Code の deferred tools 機構によって、ツール名のみが常時展開され、JSON Schema は呼び出し直前に `ToolSearch` で on-demand ロードされる。
 
-| 方式 | 主体 | メインコンテキスト影響 | 採用 |
-|------|------|----------------------|------|
-| MCPツール直接呼び出し | メインコンテキスト | 大（ツール結果が流入） | ❌ 禁止 |
-| code execution with MCP | runnerサブエージェント | 小（要約のみ受け取る） | ✅ 推奨 |
-| Bash + スクリプト | runnerサブエージェント | 小（要約のみ受け取る） | ✅ 推奨 |
+| 方式 | 採用基準 |
+|------|------|
+| `.mcp.json` 同梱（stdio / http） | 公式 MCP サーバーが存在する場合の第一選択 |
+| Bash + スクリプト + skill | MCP では実現できない処理（バックグラウンドポーリング、独自プロトコル、画像生成 CLI 等） |
 
-- **スキル**: MCP経由ツールの呼び出し手順・パラメータをリファレンスとして記載
-- **runner**: `tools: Bash` を基本とし、スキルをプリロードしてコード実行を担う
-- **メインコンテキスト**: runnerに委任し、結果の要約のみを受け取る
+- **`.mcp.json`**: プラグインルートに配置し、stdio または http で MCP サーバーを宣言する。OAuth は Claude Code が自動処理
+- **skill**: MCP では賄えない手順（例: `circleci-watch` の REST ポーリング、`devin-session` の Session API 操作）を Bash + スクリプトで実装するときに使う
+- **メインコンテキスト**: deferred tools のスキーマを必要時のみロードして MCP ツールを呼び出す
 
 ## 必須: `{plugin}/` 配下を変更したらバージョン更新
 

@@ -194,15 +194,11 @@ EOF
 
 ### 5b. Notion URL から議事録を作成
 
-Notion 上の議事録ページ URL（`https://www.notion.so/...` 等）を入力に与えられた場合、本文を Notion MCP 経由で取得して minutes として保存する。前提として `notion` プラグインがインストール済み・`/notion-login` 済みであること。
+Notion 上の議事録ページ URL（`https://www.notion.so/...` 等）を入力に与えられた場合、本文を Notion MCP 経由で取得して minutes として保存する。前提として Notion MCP が `claude mcp add` で登録済みであること。OAuth 認証は Notion MCP の初回呼び出し時に Claude Code が自動処理する。
 
-**Step 1（前提チェック）**: `notion-runner` サブエージェントが利用できるか確認する。利用不可（プラグイン未インストール／未ログイン）の場合は、ユーザーに `/plugin install notion@hidetsugu-miya` および `/notion-login` を案内し、本フローを中断する。
+**Step 1（前提チェック）**: Notion MCP のツール（`notion-fetch` 等）が利用可能か確認する。利用不可の場合は、ユーザーに `claude mcp add --transport http --scope user notion https://mcp.notion.com/mcp` の実行を案内し、本フローを中断する。
 
-**Step 2（本文取得）**: `notion-runner` サブエージェントに以下を委任する:
-
-> 「議事録に取り込むため、Notion URL `<URL>` のページ本文を Markdown で取得して、要約せずそのまま返してください。`notion-fetch` ツールを `--arg id="<URL>"` で呼び出し、ページ内の関連 URL は省略しないでください。」
-
-サブエージェントは Notion MCP の `notion-fetch`（または同等のページ取得ツール）を呼び出し、`---fetched-content-begin---` と `---fetched-content-end---` で囲んだ本文を返す。メインエージェントはこのマーカー間の Markdown を抽出する。
+**Step 2（本文取得）**: Notion MCP の `notion-fetch`（または同等のページ取得ツール）を直接呼び出し、ページ本文の Markdown を取得する。引数は `id=<URL>` を渡し、ページ内の関連 URL は省略せずそのまま保持する。初回呼び出し時はブラウザで OAuth 認証が走る。
 
 **Step 3（メタ情報の確認）**: 取得した本文から候補値を抽出した上で、ユーザーに以下を確認する（既知のものは候補として提示し、空回答なら採用）:
 

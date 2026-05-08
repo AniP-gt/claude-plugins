@@ -1,7 +1,7 @@
 {
   "name": "jina",
-  "version": "0.1.0",
-  "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。",
+  "version": "1.0.0",
+  "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。mcp.jina.ai/v1 にStreamable HTTPで接続する。環境変数 JINA_API_KEY が必要。",
   "author": { "name": "miya" },
   "keywords": ["jina", "search", "reader", "rerank", "embedding", "mcp"]
 }

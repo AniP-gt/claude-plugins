@@ -1,7 +1,0 @@
-{
-  "name": "slack",
-  "version": "0.5.1",
-  "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。公式MCP Python SDKでOAuth認証し、Streamable HTTP経由でSlack MCPツールを実行する（複数ワークスペース対応）。",
-  "author": { "name": "miya" },
-  "keywords": ["slack", "mcp", "oauth", "messaging", "search"]
-}

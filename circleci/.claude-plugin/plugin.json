@@ -1,7 +1,7 @@
 {
   "name": "circleci",
-  "version": "0.2.1",
-  "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作し、ワークフローを目的状態到達まで監視するプラグイン。investigate / watch の2 skillを提供。",
+  "version": "1.0.0",
+  "description": "CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群を提供しつつ、watch CLIスクリプトでREST APIを直接ポーリングして目的状態到達まで監視する。",
   "author": { "name": "miya" },
   "keywords": ["circleci", "ci-cd", "build", "pipeline", "mcp", "watch", "polling"]
 }

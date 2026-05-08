@@ -1,7 +1,0 @@
-{
-  "name": "rollbar",
-  "version": "0.5.4",
-  "description": "Rollbarのエラートラッキングデータを取得・管理するプラグイン。@rollbar/mcp-serverを使ってアイテム詳細、デプロイ情報、トップエラーの確認・更新を行う。",
-  "author": { "name": "miya" },
-  "keywords": ["rollbar", "error-tracking", "monitoring", "mcp"]
-}

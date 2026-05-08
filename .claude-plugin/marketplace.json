@@ -27,70 +27,16 @@
       "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、cocoindex 1.0 LiveUpdater 対応。"
     },
     {
-      "name": "rollbar",
-      "version": "0.5.4",
-      "source": "./rollbar",
-      "description": "Rollbarのエラートラッキングデータを取得・管理するプラグイン。@rollbar/mcp-serverを使ってアイテム詳細、デプロイ情報、トップエラーの確認・更新を行う。"
-    },
-    {
-      "name": "sentry",
-      "version": "0.9.4",
-      "source": "./sentry",
-      "description": "Sentryのエラートラッキングデータを取得・管理するプラグイン。@sentry/mcp-serverを使ってイシュー詳細、プロジェクト情報の確認・更新を行う。"
-    },
-    {
       "name": "circleci",
-      "version": "0.2.1",
+      "version": "1.0.0",
       "source": "./circleci",
-      "description": "CircleCIのビルド失敗ログ・テスト結果・パイプライン状態を取得・操作し、ワークフローを目的状態到達まで監視するプラグイン。investigate / watch の2 skillを提供。"
-    },
-    {
-      "name": "figma",
-      "version": "0.8.3",
-      "source": "./figma",
-      "description": "Figmaデザインファイルの取得・コード生成プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでFigma MCPツールを実行する。"
-    },
-    {
-      "name": "playwright",
-      "version": "0.4.2",
-      "source": "./playwright",
-      "description": "Playwright MCPを使ったブラウザ自動化プラグイン。Webページのナビゲート、スナップショット取得、要素クリックなどのブラウザ操作をHTTPサーバーモードで実行する。"
+      "description": "CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群を提供しつつ、watch CLIスクリプトでREST APIを直接ポーリングして目的状態到達まで監視する。"
     },
     {
       "name": "devin",
-      "version": "0.5.4",
+      "version": "1.0.0",
       "source": "./devin",
-      "description": "Devin MCP経由でGitHubリポジトリのドキュメント取得・質問応答・Session APIによるタスク委任を行うプラグイン。"
-    },
-    {
-      "name": "chrome-devtools",
-      "version": "0.2.2",
-      "source": "./chrome-devtools",
-      "description": "Chrome DevTools MCPを使ったブラウザ自動化・デバッグプラグイン。DOMスナップショット、スクリーンショット、コンソールログ、ネットワーク監視、パフォーマンス分析などをHTTPサーバーモードで実行する。"
-    },
-    {
-      "name": "slack",
-      "version": "0.5.1",
-      "source": "./slack",
-      "description": "Slack MCP経由でメッセージ検索・送信・チャンネル読み取りを行うプラグイン。公式MCP Python SDKでOAuth認証し、Streamable HTTP経由でSlack MCPツールを実行する（複数ワークスペース対応）。"
-    },
-    {
-      "name": "todoist",
-      "version": "0.4.2",
-      "source": "./todoist",
-      "description": "Todoistタスク管理プラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でTodoist MCPツールを実行する。"
-    },
-    {
-      "name": "atlassian",
-      "version": "0.3.1",
-      "source": "./atlassian",
-      "description": "Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でJira・Confluenceツールを実行する。"
-    },
-    {
-      "name": "drawio",
-      "version": "0.3.2",
-      "source": "./drawio",
-      "description": "draw.ioダイアグラム作成プラグイン。@drawio/mcpを使ってXML・CSV・Mermaid形式からダイアグラムを生成し、ブラウザのdraw.ioエディタで開く。"
+      "description": "Devin MCP経由でGitHubリポジトリのドキュメント取得・質問応答（DeepWiki）を行い、Devin Session API CLIでタスク委任・状態確認・メッセージ送信を行うプラグイン。MCPは https://mcp.devin.ai/mcp に Bearer 認証で接続。"
     },
     {
       "name": "mermaid",
@@ -100,21 +46,15 @@
     },
     {
       "name": "jina",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "source": "./jina",
-      "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。Streamable HTTPで mcp.jina.ai/v1 にJSON-RPCを送り、認証は ~/.config/jina/secrets.env の JINA_API_KEY を使う。"
+      "description": "Jina AI Remote MCP経由でWeb検索・URLからのmarkdown抽出・arXiv/SSRN論文検索・リランク・分類などを実行するプラグイン。mcp.jina.ai/v1 にStreamable HTTPで接続する。環境変数 JINA_API_KEY が必要。"
     },
     {
       "name": "episodic",
       "version": "2.2.4",
       "source": "./episodic",
       "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。Notion URL から議事録への取込みフローも内蔵。"
-    },
-    {
-      "name": "notion",
-      "version": "0.2.0",
-      "source": "./notion",
-      "description": "Notion MCP経由でページ・データベースを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でNotion MCPツールを実行する（複数アカウント対応）。"
     }
   ]
 }
