@@ -9,13 +9,11 @@ Claude Code用のカスタムプラグインリポジトリ。
 | pgvector-stack | pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン（compass / episodic の DB 基盤） |
 | cocoindex-setup | ~/.config/cocoindex/ の secrets/config を所有する共通基盤（compass / episodic が fallback で参照） |
 | compass | コードベースのセマンティック検索（pgvector + voyage embedding + voyage rerank、cocoindex 1.0） |
-| context7 | ライブラリの最新ドキュメント取得（Context7 MCP） |
 | rollbar | Rollbar エラートラッキングの取得・更新 |
 | sentry | Sentry エラートラッキングの取得・更新 |
 | circleci | CircleCI のビルド失敗調査（investigate）と目的状態到達までの監視（watch）。@circleci/mcp-server-circleci 利用 |
 | figma | Figma デザイン取得・コード生成（OAuth PKCE） |
 | playwright | Playwright MCP によるブラウザ自動化 |
-| claude-mem | claude-mem 永続メモリの検索・取得（Worker HTTP API） |
 | devin | Devin MCP 経由のリポジトリ Q&A・Session API でのタスク委任 |
 | chrome-devtools | Chrome DevTools MCP 経由のブラウザ自動化・デバッグ |
 | slack | Slack メッセージ検索・送信・読取（複数ワークスペース対応） |

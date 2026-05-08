@@ -27,12 +27,6 @@
       "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、cocoindex 1.0 LiveUpdater 対応。"
     },
     {
-      "name": "context7",
-      "version": "0.3.2",
-      "source": "./context7",
-      "description": "ライブラリの最新ドキュメントを取得するプラグイン。Context7 MCPサーバーを使ってパッケージ名からIDを解決し、バージョン固有のドキュメントを参照する。"
-    },
-    {
       "name": "rollbar",
       "version": "0.5.4",
       "source": "./rollbar",
@@ -61,12 +55,6 @@
       "version": "0.4.2",
       "source": "./playwright",
       "description": "Playwright MCPを使ったブラウザ自動化プラグイン。Webページのナビゲート、スナップショット取得、要素クリックなどのブラウザ操作をHTTPサーバーモードで実行する。"
-    },
-    {
-      "name": "claude-mem",
-      "version": "1.6.5",
-      "source": "./claude-mem",
-      "description": "claude-mem永続メモリの検索・取得プラグイン。Worker HTTP API経由で過去のセッション情報、観察、タイムラインを参照する。"
     },
     {
       "name": "devin",
