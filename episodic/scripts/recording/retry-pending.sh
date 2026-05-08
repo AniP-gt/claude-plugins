@@ -63,7 +63,7 @@ notify_failure() {
     msg_esc="$(_escape_for_osascript "$1")"
     osascript <<APPLE >/dev/null 2>&1 || true
 tell application "System Events"
-    display alert "Claude Code Recording" message "$msg_esc" as critical buttons {"OK"} default button "OK"
+    display alert "Episodic Recording" message "$msg_esc" as critical buttons {"OK"} default button "OK"
 end tell
 APPLE
 }

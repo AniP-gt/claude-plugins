@@ -26,7 +26,7 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/recording
 LIB_PARENT = SCRIPTS_DIR.parent                # <PLUGIN_ROOT>/scripts （lib が直下にある）
@@ -54,6 +54,7 @@ TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消�
 LOG_DIR = Path("/tmp/memories")  # hook/runner のログ集約先（揮発・OS再起動で消える）
 LOG_FILE = LOG_DIR / "recording-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
+CODEX_JSONL_TO_MD = SCRIPTS_DIR / "codex-jsonl-to-markdown.py"
 RUNNER = SCRIPTS_DIR / "runner.sh"
 
 
@@ -64,6 +65,8 @@ def log(msg: str) -> None:
 
 
 def read_hook_input() -> dict[str, Any]:
+    if sys.stdin.isatty():
+        return {}
     try:
         raw = sys.stdin.read()
         if not raw:
@@ -113,6 +116,7 @@ def scan_metadata(jsonl: Path) -> dict[str, Any]:
             if ts:
                 first_ts = first_ts or ts
                 last_ts = ts
+
             git_branch = git_branch or d.get("gitBranch")
             cwd = cwd or d.get("cwd")
 
@@ -371,9 +375,14 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
     staged_q = shlex.quote("staged" if is_staged else "normal")
     meta_q = shlex.quote(str(meta_path))
     script = f"""#!/bin/bash
+LOG_DIR="/tmp/memories"
+LOG_FILE="$LOG_DIR/recording-runner.log"
+mkdir -p "$LOG_DIR"
 OWN_TTY=$(tty)
+printf '[%s] launcher start: launcher=%s tty=%s pid=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$OWN_TTY" "$$" >> "$LOG_FILE"
 {runner_q} {combined_q} {report_q} {staged_q} {meta_q}
 RC=$?
+printf '[%s] launcher finished: launcher=%s rc=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$RC" >> "$LOG_FILE"
 if [[ $RC -eq 0 ]]; then
     ( osascript <<APPLE 2>/dev/null &
 tell application "Terminal"
@@ -426,11 +435,15 @@ def spawn_terminal(launcher: Path) -> None:
             log_fp.close()
         return
 
+    terminal_command = f"/bin/bash {shlex.quote(str(launcher))}"
     applescript = f'''
 tell application "System Events"
     set frontApp to name of first application process whose frontmost is true
 end tell
-do shell script "open -g -a Terminal " & quoted form of {json.dumps(str(launcher))}
+tell application "Terminal"
+    activate
+    do script {json.dumps(terminal_command)}
+end tell
 -- Terminalの遅延activateに対処するため複数回フォーカスを復帰する
 repeat 3 times
     delay 0.3
@@ -473,11 +486,11 @@ def try_auto_remount() -> None:
         log(f"auto_remount: invocation failed: {e}")
 
 
-def main() -> int:
+def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
+        metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata) -> int:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    payload = read_hook_input()
     session_id_raw = payload.get("session_id") or ""
     session_id = sanitize_session_id(session_id_raw)
     cwd = payload.get("cwd") or os.getcwd()
@@ -490,7 +503,7 @@ def main() -> int:
         log(f"error: JSONL not found for session={session_id}")
         return 0
 
-    meta = scan_metadata(jsonl)
+    meta = metadata_scanner(jsonl)
     if meta.get("user_prompt_count", 0) == 0:
         log(f"skip: no user prompts in {jsonl}")
         return 0
@@ -501,7 +514,7 @@ def main() -> int:
     session_md = TMP_DIR / f"{session_id}.md"
     try:
         subprocess.run(
-            ["python3", str(JSONL_TO_MD), str(jsonl), str(session_md)],
+            ["python3", str(jsonl_to_md), str(jsonl), str(session_md)],
             check=True,
             timeout=60,
         )
@@ -539,6 +552,24 @@ def main() -> int:
     spawn_terminal(launcher)
     log("terminal launcher spawned")
     return 0
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    source = "claude"
+    if len(args) >= 2 and args[0] == "--source":
+        source = args[1]
+        args = args[2:]
+
+    if source == "codex":
+        import codex_source
+
+        payload = codex_source.build_payload(args, log)
+        if not payload:
+            return 0
+        return run(payload, CODEX_JSONL_TO_MD, codex_source.scan_metadata)
+
+    return run(read_hook_input())
 
 
 if __name__ == "__main__":

@@ -75,7 +75,7 @@ APPLE
     if [[ -n "$sound" ]]; then
         sound_clause=" sound name \"$sound\""
     fi
-    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Recording Sync\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
+    osascript -e "display notification \"$msg_esc\" with title \"Episodic Recording Sync\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
 }
 
 # 設定値（config.toml + 環境変数）を Python 経由で取得。
