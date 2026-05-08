@@ -5,4 +5,9 @@
 # 未定義時はスクリプト自身の位置からプラグインルートを逆算する。
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 : "${CLAUDE_PLUGIN_ROOT:=$(cd "$SELF_DIR/.." && pwd)}"
-exec "${CLAUDE_PLUGIN_ROOT}/scripts/recording/hook.py"
+
+if [[ -n "${CODEX_EXIT_STATUS:-}" ]]; then
+    exec "${CLAUDE_PLUGIN_ROOT}/scripts/recording/hook.py" --source codex "$@"
+fi
+
+exec "${CLAUDE_PLUGIN_ROOT}/scripts/recording/hook.py" --source claude
