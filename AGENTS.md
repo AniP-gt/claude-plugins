@@ -12,7 +12,6 @@ Claude Code用のカスタムプラグインリポジトリ。
 | circleci | CircleCI 調査（@circleci/mcp-server-circleci `.mcp.json` 同梱）+ ワークフロー監視（watch CLI / circleci-watch skill） |
 | devin | Devin MCP（DeepWiki）`.mcp.json` 同梱 + Session API CLI でタスク委任 |
 | mermaid | Mermaid 構文から PNG/SVG 画像を生成（mermaid-cli、MCP 不在） |
-| jina | Jina AI Remote MCP（http `.mcp.json` 同梱、Bearer 認証） |
 | episodic | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索（Notion URL 取込みフロー対応） |
 
 詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。
