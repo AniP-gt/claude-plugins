@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-search": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/opencode-mcp-launcher.cjs"
+      ]
+    }
+  }
+}
