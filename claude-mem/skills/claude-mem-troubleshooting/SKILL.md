@@ -55,3 +55,23 @@ sed -i '' 's|generativelanguage.googleapis.com/v1/models|generativelanguage.goog
 修正後はworkerの再起動が必要。プラグインの更新で上書きされる点に注意。
 
 参照: https://github.com/thedotmack/claude-mem/issues/1148
+
+## OpenCode MCP 起動エラー
+
+OpenCode で `claude-mem:mcp-search` が `mcp server not found` になる場合は、同梱の OpenCode 用ランチャーで upstream MCP サーバーを解決できるか確認する。
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/opencode-mcp-launcher.cjs" --print-path
+```
+
+自動探索で見つからない場合は、upstream `thedotmack/claude-mem` の `scripts/mcp-server.cjs` を指す環境変数を設定する。
+
+```bash
+export CLAUDE_MEM_MCP_SERVER_PATH="$HOME/.claude/plugins/cache/thedotmack/claude-mem/<VERSION>/scripts/mcp-server.cjs"
+```
+
+または plugin root を指定する。
+
+```bash
+export CLAUDE_MEM_UPSTREAM_PLUGIN_ROOT="$HOME/.claude/plugins/cache/thedotmack/claude-mem/<VERSION>"
+```
