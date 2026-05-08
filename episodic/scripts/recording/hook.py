@@ -375,9 +375,14 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
     staged_q = shlex.quote("staged" if is_staged else "normal")
     meta_q = shlex.quote(str(meta_path))
     script = f"""#!/bin/bash
+LOG_DIR="/tmp/memories"
+LOG_FILE="$LOG_DIR/recording-runner.log"
+mkdir -p "$LOG_DIR"
 OWN_TTY=$(tty)
+printf '[%s] launcher start: launcher=%s tty=%s pid=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$OWN_TTY" "$$" >> "$LOG_FILE"
 {runner_q} {combined_q} {report_q} {staged_q} {meta_q}
 RC=$?
+printf '[%s] launcher finished: launcher=%s rc=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$RC" >> "$LOG_FILE"
 if [[ $RC -eq 0 ]]; then
     ( osascript <<APPLE 2>/dev/null &
 tell application "Terminal"
@@ -430,11 +435,15 @@ def spawn_terminal(launcher: Path) -> None:
             log_fp.close()
         return
 
+    terminal_command = f"/bin/bash {shlex.quote(str(launcher))}"
     applescript = f'''
 tell application "System Events"
     set frontApp to name of first application process whose frontmost is true
 end tell
-do shell script "open -g -a Terminal " & quoted form of {json.dumps(str(launcher))}
+tell application "Terminal"
+    activate
+    do script {json.dumps(terminal_command)}
+end tell
 -- Terminalの遅延activateに対処するため複数回フォーカスを復帰する
 repeat 3 times
     delay 0.3

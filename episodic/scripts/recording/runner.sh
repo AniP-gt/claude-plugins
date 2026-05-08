@@ -45,13 +45,6 @@ log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"
 }
 
-_escape_for_osascript() {
-    # osascript 文字列リテラル用に " と \ をエスケープし、改行を空白に置換する。
-    # 改行を残すと osascript の文字列リテラルが切れ、AppleScript 側で構文エラーになるか
-    # 意図しない式として解釈される可能性がある（codex 出力が複数行を含むケース等）。
-    printf '%s' "$1" | tr '\n\r' '  ' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
-}
-
 notify() {
     # 引数: notify <subtitle> <msg> [sound] [urgency]
     #   urgency = "alert" の場合は System Events 経由で display alert を表示し、
@@ -63,21 +56,34 @@ notify() {
         return
     fi
     local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
-    local sub_esc msg_esc sound_clause=""
-    sub_esc="$(_escape_for_osascript "$subtitle")"
-    msg_esc="$(_escape_for_osascript "$msg")"
+    local rc
     if [[ "$urgency" == "alert" ]]; then
-        osascript <<APPLE >/dev/null 2>&1 || true
-tell application "System Events"
-    display alert "$sub_esc" message "$msg_esc" as critical buttons {"OK"} default button "OK"
-end tell
-APPLE
+        osascript \
+            -e 'on run argv' \
+            -e 'tell application "System Events"' \
+            -e 'display alert (item 1 of argv) message (item 2 of argv) as critical buttons {"OK"} default button "OK"' \
+            -e 'end tell' \
+            -e 'end run' \
+            "$subtitle" "$msg" >>"$LOG_FILE" 2>&1
+        rc=$?
+        log "notify alert: rc=$rc subtitle=$subtitle msg=$msg"
         return
     fi
     if [[ -n "$sound" ]]; then
-        sound_clause=" sound name \"$sound\""
+        osascript \
+            -e 'on run argv' \
+            -e 'display notification (item 1 of argv) with title "Episodic Recording" subtitle (item 2 of argv) sound name (item 3 of argv)' \
+            -e 'end run' \
+            "$msg" "$subtitle" "$sound" >>"$LOG_FILE" 2>&1
+    else
+        osascript \
+            -e 'on run argv' \
+            -e 'display notification (item 1 of argv) with title "Episodic Recording" subtitle (item 2 of argv)' \
+            -e 'end run' \
+            "$msg" "$subtitle" >>"$LOG_FILE" 2>&1
     fi
-    osascript -e "display notification \"$msg_esc\" with title \"Claude Code Recording\" subtitle \"$sub_esc\"$sound_clause" >/dev/null 2>&1 || true
+    rc=$?
+    log "notify notification: rc=$rc subtitle=$subtitle sound=${sound:-none} msg=$msg"
 }
 
 notify_success() { notify "完了" "$1" "Glass"; }
@@ -86,7 +92,7 @@ notify_failure() { notify "失敗" "$1" "Basso" "alert"; }
 
 print_banner() {
     printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
-    printf '%s  Claude Code Recording%s\n' "$C_CYAN" "$C_RESET"
+    printf '%s  Episodic Recording%s\n' "$C_CYAN" "$C_RESET"
     printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
     printf 'Model:  %s\n' "$MODEL"
     printf 'Input:  %s\n' "$INPUT_MD"
