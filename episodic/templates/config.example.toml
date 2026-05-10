@@ -16,7 +16,7 @@
 #   <memories_dir>/raw/minutes/YYYY-MM-DD/...md     (kind: minutes, recording 手動)
 #   <memories_dir>/wiki/...                          (wiki-runner が生成)
 # このパス直下に `.mount-canary` ファイルが存在しない場合はマウント未確立と判断し、
-# fallback_dir に staging として書き込みます（SessionEnd hook 経路の session のみ。
+# fallback_dir に staging として書き込みます（Stop hook 経路の session のみ。
 # web / minutes は手動経路で常にマウント前提のため staging は使いません）。
 memories_dir = "/Volumes/memory"
 
@@ -34,7 +34,7 @@ memories_dir = "/Volumes/memory"
 # <memories_dir>/raw/session/ 配下へ移送します。
 fallback_dir = "~/.local/share/recording/raw-staging"
 
-# SessionEnd hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
+# Stop hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
 # false にすると検出のみで remount は行わず staging へ即フォールバックします。
 auto_remount = true
 
@@ -50,6 +50,11 @@ mount_canary_filename = ".mount-canary"
 # ホスト名 SHA-1 hex の先頭何文字をファイル名に埋め込むか（衝突確率の調整）。
 # 既定 8 文字（マシン跨ぎでの衝突確率 ~1/2^32）。範囲 4-40。
 hostname_hash_length = 8
+
+# Stop hook 起動から Codex 要約までの debounce 秒数。
+# Stop が連続発火した場合は最後の Stop から本秒数経過後に 1 回だけ Codex が走る。
+# 環境変数 MEMORIES_STOP_DEBOUNCE_SECONDS で上書き可能（範囲 0-600）。
+stop_debounce_seconds = 15
 
 # ============================================================================
 # 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code SessionEnd hook: 会話履歴をcodexで要約しレポート化する。
+"""Claude Code Stop hook: 会話履歴をcodexで要約しレポート化する。
 
 フロー:
   1. stdin JSONからsession_id / cwd / transcript_pathを取得
@@ -10,8 +10,13 @@
      - ランチャーは runner.sh 実行後に osascript で自ウィンドウを自動クローズ
   5. 失敗時は runner.sh が macOS 通知を出す
 
-本スクリプトはhookから呼ばれ、即座にreturnする（Terminal起動のみ）。
-Claude Codeのセッション終了処理をブロックしない。
+中間ファイルは `/tmp/{session_id}/{ts}.{md,codex.md,codex.meta.json,runner.command}` に
+集約し、runner.sh の trap EXIT がディレクトリごと削除する。
+
+Stop hook は応答ごとに発火するため、本スクリプトは debounce タイマーを使い
+最後の Stop から `stop_debounce_seconds` 静寂が続いたときに 1 度だけ Codex を起動する。
+処理中（runner.sh 実行中）に新たな Stop が来た場合はロックで skip し、runner.sh の
+trap EXIT が `--finalize` を再 spawn して取り残しを救済する。
 """
 
 from __future__ import annotations
@@ -21,14 +26,16 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/recording
+SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/session
 LIB_PARENT = SCRIPTS_DIR.parent                # <PLUGIN_ROOT>/scripts （lib が直下にある）
 if str(LIB_PARENT) not in sys.path:
     sys.path.insert(0, str(LIB_PARENT))
@@ -36,7 +43,7 @@ if str(LIB_PARENT) not in sys.path:
 from lib import config as memcfg  # noqa: E402  -- 上で sys.path に追加した直後に import
 from lib import path_resolver  # noqa: E402
 
-# stdin から渡される session_id は untrusted。`/tmp/{session_id}.runner.command`
+# stdin から渡される session_id は untrusted。`/tmp/{session_id}/...`
 # のようなパス組み立てに使うため、UUID 形式以外を受け入れない。
 _SESSION_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -52,10 +59,11 @@ def sanitize_session_id(raw: str | None) -> str:
 HOME = Path.home()
 TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消える）
 LOG_DIR = Path("/tmp/memories")  # hook/runner のログ集約先（揮発・OS再起動で消える）
-LOG_FILE = LOG_DIR / "recording-hook.log"
+LOG_FILE = LOG_DIR / "session-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
-CODEX_JSONL_TO_MD = SCRIPTS_DIR / "codex-jsonl-to-markdown.py"
 RUNNER = SCRIPTS_DIR / "runner.sh"
+
+LOCK_STALE_SEC = 600  # PID 不明かつ 600 秒以上経過したロックは奪取
 
 
 def log(msg: str) -> None:
@@ -308,8 +316,19 @@ def project_name(cwd: str) -> str:
     return name
 
 
+def session_dir_for(session_id: str) -> Path:
+    """`/tmp/{session_id}/` を返す。chmod 700 で作成する。"""
+    d = TMP_DIR / session_id
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        d.chmod(0o700)
+    except OSError as e:
+        log(f"warn: chmod 700 failed for {d}: {e}")
+    return d
+
+
 def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path: Path,
-                            session_id: str, jsonl_path: Path) -> Path:
+                            session_id: str, jsonl_path: Path, combined: Path) -> Path:
     project = project_name(meta["cwd"])
     generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
     instruction = CODEX_INSTRUCTION_TEMPLATE.format(
@@ -328,7 +347,6 @@ def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path:
     )
     body = session_md.read_text(encoding="utf-8")
     reminder = CODEX_REMINDER_TEMPLATE.format(report_path=str(report_path))
-    combined = TMP_DIR / f"{session_id}.codex.md"
     combined.write_text(instruction + body + reminder, encoding="utf-8")
     # /tmp は world-readable のため、会話履歴を含む中間 Markdown は所有者のみ読み書き可能にする。
     combined.chmod(0o600)
@@ -336,13 +354,12 @@ def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path:
 
 
 def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
-                       jsonl_path: Path, is_staged: bool) -> Path:
+                       jsonl_path: Path, is_staged: bool, sidecar: Path) -> Path:
     """runner.sh が retry queue 連携のために参照する meta JSON を /tmp に書く。
 
     runner.sh は session_id / cwd / transcript_path / first_ts / report_path / is_staged を
     Codex 失敗時に retry_queue.py upsert へ渡す。launcher の引数経由でパスのみを伝搬する。
     """
-    sidecar = TMP_DIR / f"{session_id}.codex.meta.json"
     payload = {
         "session_id": session_id,
         "cwd": meta.get("cwd", ""),
@@ -357,7 +374,8 @@ def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
 
 
 def build_launcher(runner: Path, combined_md: Path, report_path: Path,
-                   session_id: str, is_staged: bool, meta_path: Path) -> Path:
+                   session_id: str, is_staged: bool, meta_path: Path,
+                   launcher: Path) -> Path:
     """Terminal.appで起動する .command ランチャースクリプトを生成する。
 
     ランチャーは runner.sh が成功した場合のみ osascript で自ウィンドウを閉じる。
@@ -368,7 +386,6 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
     cocoindex update を行うかの分岐を runner 側で行わせる。
     第4引数 meta_path は runner.sh が retry queue を更新するために参照する meta JSON。
     """
-    launcher = TMP_DIR / f"{session_id}.runner.command"
     runner_q = shlex.quote(str(runner))
     combined_q = shlex.quote(str(combined_md))
     report_q = shlex.quote(str(report_path))
@@ -376,7 +393,7 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
     meta_q = shlex.quote(str(meta_path))
     script = f"""#!/bin/bash
 LOG_DIR="/tmp/memories"
-LOG_FILE="$LOG_DIR/recording-runner.log"
+LOG_FILE="$LOG_DIR/session-runner.log"
 mkdir -p "$LOG_DIR"
 OWN_TTY=$(tty)
 printf '[%s] launcher start: launcher=%s tty=%s pid=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$OWN_TTY" "$$" >> "$LOG_FILE"
@@ -417,7 +434,7 @@ def spawn_terminal(launcher: Path) -> None:
     バックグラウンドで起動するフォールバックを使う。Codex の stdout は通常通り runner.sh
     内で LOG_FILE に追記されるため、ターミナル可視化が無くてもログは残る。
     """
-    log_path = LOG_DIR / "recording-runner.log"
+    log_path = LOG_DIR / "session-runner.log"
     log_fp = log_path.open("a", encoding="utf-8")
 
     if not (shutil.which("osascript") and shutil.which("open")):
@@ -486,32 +503,132 @@ def try_auto_remount() -> None:
         log(f"auto_remount: invocation failed: {e}")
 
 
-def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
-        metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata) -> int:
-    TMP_DIR.mkdir(parents=True, exist_ok=True)
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+def acquire_lock(lock_dir: Path) -> bool:
+    """mkdir 方式の処理中ロックを取得する。stale ロックは pid 不在 or age 超過で奪取。
 
+    `retry-pending.sh:71-87` の pattern を Python に移植したもの。
+    """
+    try:
+        lock_dir.mkdir(parents=True, exist_ok=False)
+        (lock_dir / "pid").write_text(str(os.getpid()), encoding="utf-8")
+        return True
+    except FileExistsError:
+        pass
+
+    pid_file = lock_dir / "pid"
+    stale = False
+    try:
+        old_pid = int(pid_file.read_text(encoding="utf-8").strip() or "0")
+    except (OSError, ValueError):
+        old_pid = 0
+    if old_pid > 0:
+        try:
+            os.kill(old_pid, 0)
+        except OSError:
+            stale = True
+    try:
+        age = time.time() - lock_dir.stat().st_mtime
+    except OSError:
+        age = 0.0
+
+    if stale or age > LOCK_STALE_SEC:
+        log(f"acquire_lock: stale lock detected (pid={old_pid} age={age:.0f}s); reclaiming")
+        try:
+            if pid_file.exists():
+                pid_file.unlink()
+            lock_dir.rmdir()
+        except OSError:
+            pass
+        try:
+            lock_dir.mkdir(parents=True, exist_ok=False)
+            (lock_dir / "pid").write_text(str(os.getpid()), encoding="utf-8")
+            return True
+        except FileExistsError:
+            return False
+    return False
+
+
+def schedule_debounce(session_id: str, seconds: int) -> None:
+    """debounce タイマーを (再)起動する。最後の Stop で reset するため、既存 sleep を kill する。
+
+    sleep プロセスは新しい session を持つ（`start_new_session=True`）。
+    完了時に hook.py --finalize {session_id} を呼ぶ。
+    `sleep && python3` の連結は SIGTERM で sleep が死亡した場合に finalize を起動しないため、
+    最後の Stop だけが finalize に到達する設計を満たす。
+    """
+    pid_file = TMP_DIR / session_id / ".debounce.pid"
+
+    # 既存 sleep プロセスを kill（最後の Stop に reset）
+    if pid_file.exists():
+        try:
+            old_pid = int(pid_file.read_text(encoding="utf-8").strip())
+            if old_pid > 0:
+                os.kill(old_pid, signal.SIGTERM)
+                log(f"schedule_debounce: terminated previous debounce pid={old_pid} session={session_id}")
+        except (ValueError, ProcessLookupError, PermissionError, OSError):
+            pass
+
+    finalize_cmd = (
+        f"sleep {seconds} && python3 {shlex.quote(str(__file__))} --finalize {shlex.quote(session_id)}"
+    )
+    log_path = LOG_DIR / "session-hook.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_fp = log_path.open("a", encoding="utf-8")
+    try:
+        proc = subprocess.Popen(
+            ["/bin/bash", "-c", finalize_cmd],
+            stdin=subprocess.DEVNULL,
+            stdout=log_fp,
+            stderr=log_fp,
+            start_new_session=True,
+            close_fds=True,
+        )
+    finally:
+        log_fp.close()
+
+    # pid_file は tmp + os.replace で atomic 化し、kill→spawn の窓で別 hook が読みに来ても
+    # 部分書き込みを見ないようにする。
+    tmp = pid_file.with_suffix(".pid.tmp")
+    tmp.write_text(str(proc.pid), encoding="utf-8")
+    os.replace(tmp, pid_file)
+    log(f"schedule_debounce: scheduled finalize in {seconds}s pid={proc.pid} session={session_id}")
+
+
+def prepare_payload_artifacts(payload: dict[str, Any],
+                              jsonl_to_md: Path = JSONL_TO_MD,
+                              metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata,
+                              ) -> Path | None:
+    """payload を解析して `/tmp/{session_id}/{ts}.*` 一式を書き出し、launcher パスを返す。
+
+    None を返した場合は呼び出し側で何もせず終了する（JSONL 不在・user 発話なし等）。
+    """
     session_id_raw = payload.get("session_id") or ""
     session_id = sanitize_session_id(session_id_raw)
     cwd = payload.get("cwd") or os.getcwd()
     transcript_path = payload.get("transcript_path")
 
-    log(f"hook invoked: session={session_id} cwd={cwd} transcript={transcript_path}")
+    log(f"prepare artifacts: session={session_id} cwd={cwd} transcript={transcript_path}")
 
     jsonl = find_jsonl(session_id, cwd, transcript_path)
     if jsonl is None:
         log(f"error: JSONL not found for session={session_id}")
-        return 0
+        return None
 
     meta = metadata_scanner(jsonl)
     if meta.get("user_prompt_count", 0) == 0:
         log(f"skip: no user prompts in {jsonl}")
-        return 0
+        return None
 
     effective_cwd = meta["cwd"] or cwd
     meta["cwd"] = effective_cwd
 
-    session_md = TMP_DIR / f"{session_id}.md"
+    session_dir = session_dir_for(session_id)
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S%f")
+    session_md = session_dir / f"{ts}.md"
+    combined = session_dir / f"{ts}.codex.md"
+    meta_path = session_dir / f"{ts}.codex.meta.json"
+    launcher = session_dir / f"{ts}.runner.command"
+
     try:
         subprocess.run(
             ["python3", str(jsonl_to_md), str(jsonl), str(session_md)],
@@ -520,7 +637,7 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         log(f"error: jsonl-to-markdown failed: {e}")
-        return 0
+        return None
     # /tmp は world-readable のため、会話履歴 Markdown は所有者のみアクセス可能にする。
     try:
         session_md.chmod(0o600)
@@ -541,34 +658,81 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
         # ログだけ残してそのまま続行する（Codex が同パスへ書き込むことで上書きされる）。
         log(f"warn: report path already exists, will be overwritten: {report_path}")
 
-    combined = build_combined_markdown(session_md, meta, report_path, session_id, jsonl)
+    build_combined_markdown(session_md, meta, report_path, session_id, jsonl, combined)
     log(f"combined markdown: {combined}")
     log(f"report target: {report_path} staged={is_staged}")
 
-    meta_path = build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged)
+    build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged, meta_path)
     log(f"meta sidecar: {meta_path}")
-    launcher = build_launcher(RUNNER, combined, report_path, session_id, is_staged, meta_path)
-    log(f"launcher: {launcher}")
-    spawn_terminal(launcher)
-    log("terminal launcher spawned")
+    build_launcher(RUNNER, combined, report_path, session_id, is_staged, meta_path, launcher)
+    log(f"launcher: {launcher} ts={ts}")
+    return launcher
+
+
+def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
+        metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata) -> int:
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Stop hook の無限ループ防止（Anthropic 公式推奨パターン）。
+    # 連投 Stop と区別がつかないため、debounce タイマー reset 副作用を許容して early return する。
+    if payload.get("stop_hook_active"):
+        sid = sanitize_session_id(payload.get("session_id") or "")
+        log(f"skip: stop_hook_active=true session={sid} (debounce not reset)")
+        return 0
+
+    launcher = prepare_payload_artifacts(payload, jsonl_to_md, metadata_scanner)
+    if launcher is None:
+        return 0
+
+    session_id = launcher.parent.name
+    is_retry = payload.get("source") == "retry"
+    if is_retry:
+        log(f"is_retry=True session={session_id} -> spawn launcher immediately")
+        spawn_terminal(launcher)
+        return 0
+
+    debounce_seconds = memcfg.resolve_stop_debounce_seconds()
+    schedule_debounce(session_id, debounce_seconds)
+    return 0
+
+
+def finalize(session_id: str) -> int:
+    """debounce タイマーが満了したときに呼ばれる。最新 launcher で Codex を起動する。"""
+    sid = sanitize_session_id(session_id)
+    session_dir = TMP_DIR / sid
+    if not session_dir.exists():
+        log(f"finalize: session dir not found: {session_dir}")
+        return 0
+
+    launchers = sorted(session_dir.glob("*.runner.command"))
+    if not launchers:
+        log(f"finalize: no launcher found in {session_dir}")
+        return 0
+    latest = launchers[-1]
+
+    # 処理中ロック取得（取れなければ runner.sh の trap EXIT が再 spawn する経路に委ねる）。
+    lock_dir = session_dir / ".lock"
+    if not acquire_lock(lock_dir):
+        log(f"skip finalize: lock held; runner.sh trap EXIT will respawn finalize for new timestamps session={sid}")
+        return 0
+
+    # debounce pid を消す（既に satisfaction 済み）。ロック解放は runner.sh の trap EXIT が行う。
+    pid_file = session_dir / ".debounce.pid"
+    try:
+        pid_file.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+    log(f"finalize: spawning launcher session={sid} latest={latest.name}")
+    spawn_terminal(latest)
     return 0
 
 
 def main() -> int:
     args = sys.argv[1:]
-    source = "claude"
-    if len(args) >= 2 and args[0] == "--source":
-        source = args[1]
-        args = args[2:]
-
-    if source == "codex":
-        import codex_source
-
-        payload = codex_source.build_payload(args, log)
-        if not payload:
-            return 0
-        return run(payload, CODEX_JSONL_TO_MD, codex_source.scan_metadata)
-
+    if len(args) >= 2 and args[0] == "--finalize":
+        return finalize(args[1])
     return run(read_hook_input())
 
 

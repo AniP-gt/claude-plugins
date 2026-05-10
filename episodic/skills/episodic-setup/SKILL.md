@@ -62,6 +62,7 @@ cp ~/.claude/plugins/cache/hidetsugu-miya/episodic/templates/config.example.toml
 | `remount_script` | プラグイン同梱の `mount-memory-share.sh` | 自前のマウントスクリプトに差し替え可能 |
 | `mount_canary_filename` | `.mount-canary` | `memories_dir` 直下に置く判定ファイル名 |
 | `hostname_hash_length` | `8` | 複数マシン共有の衝突確率調整 |
+| `stop_debounce_seconds` | `15` | Stop hook 連投から Codex 起動までの debounce 秒数（0-600） |
 
 ### 環境変数による上書き
 
@@ -75,6 +76,7 @@ config.toml より env が優先される。一時的な切り替えに便利:
 | `MEMORIES_REMOUNT_SCRIPT` | `remount_script` |
 | `MEMORIES_MOUNT_CANARY` | `mount_canary_filename` |
 | `MEMORIES_HOSTNAME_HASH_LENGTH` | `hostname_hash_length` |
+| `MEMORIES_STOP_DEBOUNCE_SECONDS` | `stop_debounce_seconds`（Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600） |
 | `CODEX_RECORDING_MODEL` | Raw 要約モデル（既定 `gpt-5.4-mini`） |
 | `CODEX_MEMORY_WIKI_MODEL` | Wiki 統合モデル（既定 `gpt-5.4`） |
 | `MEMORIES_EMBEDDING_MODEL` | 検索用 embedding（既定 `voyage-3-large`） |
@@ -126,7 +128,7 @@ config.toml より env が優先される。一時的な切り替えに便利:
    remount_script = "~/bin/my-mount-memory.sh"
    ```
 
-4. 自動再マウント（任意）。LaunchAgent などから `mount-memory-share.sh` を起動するか、`auto_remount = true`（既定）で SessionEnd hook が未確立検出時に呼ぶ。
+4. 自動再マウント（任意）。LaunchAgent などから `mount-memory-share.sh` を起動するか、`auto_remount = true`（既定）で Stop hook が未確立検出時に呼ぶ。
 
 ### B. SMB を使わずローカルのみで使う場合
 
@@ -173,7 +175,7 @@ SOURCE_PATH=/Volumes/memory \
   uv run cocoindex update -f recording/main_memory.py:MemoryIndex_$(hostname | tr -c '[:alnum:]' '_' | tr A-Z a-z)_memory
 ```
 
-実 SessionEnd hook 経由でも `recording/runner.sh` から自動的に上記が呼ばれる。手動実行は初回確認用。
+実 Stop hook 経由でも `session/runner.sh` から自動的に上記が呼ばれる。手動実行は初回確認用。
 
 ## 6. 動作確認
 
@@ -186,14 +188,14 @@ SOURCE_PATH=/Volumes/memory \
 
 ### B. 初回 Raw 生成
 
-任意のセッションを終了すると `SessionEnd` hook が走り、Terminal が立ち上がって codex が要約する。完了後:
+新規セッションで何度か応答するか、Claude Code を強制終了すると `Stop` hook の debounce タイマー満了後に Terminal が立ち上がって codex が要約する。完了後:
 
 ```bash
 ls "$(cat ~/.config/recording/config.toml | grep memories_dir | head -1 | cut -d'"' -f2)/raw" 2>/dev/null \
   || ls /Volumes/memory/raw 2>/dev/null
 ```
 
-うまくいかない場合は `/tmp/memories/recording-{hook,runner,sync}.log` を確認。
+うまくいかない場合は `/tmp/memories/session-{hook,runner,sync,retry}.log` を確認。
 
 ### C. 検索の動作確認
 
@@ -201,7 +203,7 @@ ls "$(cat ~/.config/recording/config.toml | grep memories_dir | head -1 | cut -d
 "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "テスト" --top 3
 ```
 
-cocoindex 側のインデックスが空なら結果ゼロが返る（エラーではない）。SessionEnd hook が走るたびに自動でインデックスが更新される。
+cocoindex 側のインデックスが空なら結果ゼロが返る（エラーではない）。Stop hook の debounce 経由で要約が完了するたびに自動でインデックスが更新される。
 
 ## 7. アンインストール
 
@@ -222,13 +224,13 @@ rm -rf /tmp/memories
 
 | 症状 | 確認先 |
 |---|---|
-| Raw が生成されない | `/tmp/memories/recording-runner.log`、`codex` コマンド存在 |
-| Codex の usage limit / API エラーで Raw 失敗 | `~/.local/share/recording/state/session-retry-queue.jsonl` に自動記録され、次回 SessionStart で `retry-pending.sh` が再生成を試みる。手動再試行は `${CLAUDE_PLUGIN_ROOT}/scripts/recording/retry-pending.sh` |
-| 5 回失敗で dead_letter に降格 | `~/.local/share/recording/state/session-retry-deadletter.jsonl` を確認。手動回復は `hook.py` に session_id / cwd / transcript_path を JSON で渡して再投入 |
-| hook が呼ばれない | `/tmp/memories/recording-hook.log`、`/plugin status episodic` |
+| Raw が生成されない | `/tmp/memories/session-runner.log`、`codex` コマンド存在 |
+| Codex の usage limit / API エラーで Raw 失敗 | `~/.local/share/recording/state/session-retry-queue.jsonl` に自動記録され、次回 SessionStart で `retry-pending.sh` が再生成を試みる。手動再試行は `${CLAUDE_PLUGIN_ROOT}/scripts/session/retry-pending.sh` |
+| 5 回失敗で dead_letter に降格 | `~/.local/share/recording/state/session-retry-deadletter.jsonl` を確認。手動回復は `hook.py` に session_id / cwd / transcript_path / `"source": "retry"` を JSON で渡して再投入 |
+| hook が呼ばれない | `/tmp/memories/session-hook.log`、`/plugin status episodic` |
 | Terminal が起動しない（macOS 以外） | これは仕様。launcher が直接バックグラウンド実行されログ集約 |
 | マウント検出が失敗する | `<memories_dir>/.mount-canary` の実在を確認 |
-| 検索結果が空 | cocoindex 側の起動・テーブル存在・SessionEnd hook の実行履歴を確認 |
+| 検索結果が空 | cocoindex 側の起動・テーブル存在・Stop hook の実行履歴を確認 |
 | `cocoindex update skipped: ... uv not found` | `brew install uv` |
 | `DuplicateTableError: relation "..." already exists` | cocoindex プラグインの schema migration 不整合。下記「DuplicateTableError 復旧手順」を参照 |
 | `--scope web` / `--scope minutes` で常に空 | cocoindex update が一度も成功していない可能性。`/tmp/memories/cocoindex-memories-update.log` を確認 |

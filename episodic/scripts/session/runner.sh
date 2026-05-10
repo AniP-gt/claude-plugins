@@ -22,8 +22,26 @@ MODEL="${CODEX_RECORDING_MODEL:-gpt-5.4-mini}"
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 LOG_DIR_LOCAL="/tmp/memories"
-LOG_FILE="$LOG_DIR_LOCAL/recording-runner.log"
+LOG_FILE="$LOG_DIR_LOCAL/session-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
+
+# /tmp/{session_id}/ から最新 timestamp を再選択する（trap EXIT 取り残し検出に必要）。
+# launcher が Terminal 起動の遅延中に新しい Stop が来て新 timestamp が書かれた可能性があるため、
+# まず INPUT_MD の親ディレクトリを SESSION_DIR とみなして最新 *.codex.md を選び直す。
+SESSION_DIR=$(dirname "$INPUT_MD")
+LATEST_TS=""
+LATEST_CODEX=$(ls -t "${SESSION_DIR}"/*.codex.md 2>/dev/null | head -1)
+if [[ -n "$LATEST_CODEX" ]]; then
+    INPUT_MD="$LATEST_CODEX"
+    # {ts}.codex.md → {ts} を抽出して同 ts の meta / launcher / md を確定。
+    LATEST_TS=$(basename "$LATEST_CODEX" .codex.md)
+    META_CANDIDATE="${SESSION_DIR}/${LATEST_TS}.codex.meta.json"
+    if [[ -f "$META_CANDIDATE" ]]; then
+        META_PATH="$META_CANDIDATE"
+    else
+        META_PATH=""
+    fi
+fi
 
 # ログ肥大化を防ぐため、起動直後に rotate を試みる（best effort）。
 LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
@@ -103,7 +121,7 @@ print_banner() {
 }
 
 log "---"
-log "runner start: input=$INPUT_MD report=$REPORT_PATH model=$MODEL stage=$STAGE_MODE meta=$META_PATH pid=$$"
+log "runner start: input=$INPUT_MD report=$REPORT_PATH model=$MODEL stage=$STAGE_MODE meta=$META_PATH pid=$$ ts=${LATEST_TS:-?}"
 
 RETRY_QUEUE_PY="$SCRIPTS_DIR/retry_queue.py"
 
@@ -206,6 +224,40 @@ cleanup_meta_sidecar() {
     [[ -n "$META_PATH" && -f "$META_PATH" ]] && rm -f "$META_PATH"
 }
 
+# session_id の UUID 検証（パストラバーサル防御）。SESSION_DIR の basename をここで判定する。
+SESSION_ID_FROM_DIR=$(basename "$SESSION_DIR")
+if [[ ! "$SESSION_ID_FROM_DIR" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+    log "warn: session_id from dir is not UUID, skip cleanup: $SESSION_ID_FROM_DIR"
+    SESSION_ID_FROM_DIR=""
+fi
+
+cleanup_session_dir() {
+    cleanup_meta_sidecar
+    [[ -z "$SESSION_DIR" || ! -d "$SESSION_DIR" ]] && return 0
+    [[ "$SESSION_DIR" != /tmp/* ]] && return 0
+
+    # 取り残し検出: 処理に使った {ts} より新しい {ts}.codex.md があれば再 finalize spawn。
+    # finalize 中に新 Stop が来てロック取得失敗で skip された分を救済する。
+    if [[ -n "$LATEST_TS" && -n "$SESSION_ID_FROM_DIR" ]]; then
+        local newer
+        newer=$(find "$SESSION_DIR" -maxdepth 1 -name '*.codex.md' -newer "${SESSION_DIR}/${LATEST_TS}.codex.md" 2>/dev/null | head -1)
+        if [[ -n "$newer" ]]; then
+            log "respawn finalize for newer timestamp: $newer"
+            local hook_py="${SCRIPTS_DIR}/hook.py"
+            # 現 runner.sh の trap EXIT で .lock を解放した直後に新 finalize がロックを取得できる。
+            # SESSION_DIR は新 finalize の trap EXIT 経由で掃除されるためここでは消さない。
+            rm -rf "${SESSION_DIR}/.lock"
+            rm -f "${SESSION_DIR}/.debounce.pid"
+            ( nohup python3 "$hook_py" --finalize "$SESSION_ID_FROM_DIR" \
+                >> "$LOG_FILE" 2>&1 & ) >/dev/null 2>&1 || true
+            return 0
+        fi
+    fi
+
+    # 通常クリーンアップ: ディレクトリごと削除。
+    rm -rf "$SESSION_DIR"
+}
+
 trigger_memory_wiki() {
     # 生成された Raw を Wiki ingest キューに enqueue し、wiki-runner を非同期起動。
     # wiki-runner は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。
@@ -249,8 +301,8 @@ fi
 
 mkdir -p "$(dirname "$REPORT_PATH")"
 
-CODEX_LAST_MSG="$(mktemp -t codex-recording.XXXXXX)"
-trap 'rm -f "$CODEX_LAST_MSG"; cleanup_meta_sidecar' EXIT
+CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
+trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
 
 print_banner
 log "codex exec start"

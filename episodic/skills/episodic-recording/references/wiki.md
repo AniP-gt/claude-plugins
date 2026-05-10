@@ -84,8 +84,8 @@
 └── lock.d/                                                # 排他ロック（mkdir 方式、中に pid ファイル）
 
 /tmp/memories/                                             # ローカル揮発（OS 再起動で消える）
-├── recording-hook.log                                     # hook ログ
-├── recording-runner.log                                   # runner ログ
+├── session-hook.log                                       # Stop hook ログ
+├── session-runner.log                                     # runner ログ
 ├── memory-wiki-runner.log                                 # wiki-runner ログ
 └── smb-mount.log                                          # SMB マウント結果ログ
 ```

@@ -41,6 +41,7 @@ DEFAULTS: dict[str, Any] = {
     "remount_script": str(plugin_root() / "scripts/recording/mount-memory-share.sh"),
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
+    "stop_debounce_seconds": 15,
 }
 
 
@@ -84,6 +85,12 @@ def load_config() -> dict[str, Any]:
         n = int(hash_env)
         if 4 <= n <= 40:
             cfg["hostname_hash_length"] = n
+
+    debounce_env = os.environ.get("MEMORIES_STOP_DEBOUNCE_SECONDS")
+    if debounce_env and debounce_env.isdigit():
+        n = int(debounce_env)
+        if 0 <= n <= 600:
+            cfg["stop_debounce_seconds"] = n
 
     return cfg
 
@@ -131,6 +138,11 @@ def effective_raw_root() -> tuple[Path, bool]:
     if is_mount_active():
         return resolve_memories_dir() / "raw" / "session", False
     return resolve_fallback_dir(), True
+
+
+def resolve_stop_debounce_seconds() -> int:
+    """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 15）。"""
+    return int(load_config().get("stop_debounce_seconds", 15))
 
 
 @lru_cache(maxsize=1)

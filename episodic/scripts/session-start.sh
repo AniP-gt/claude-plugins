@@ -13,4 +13,4 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 # マウント試行（失敗してもログだけ残して後続へ。sync-pending 側がマウント未確立を検知して skip する）
 "${CLAUDE_PLUGIN_ROOT}/scripts/recording/mount-memory-share.sh" || true
 
-exec "${CLAUDE_PLUGIN_ROOT}/scripts/recording/sync-pending.sh"
+exec "${CLAUDE_PLUGIN_ROOT}/scripts/session/sync-pending.sh"

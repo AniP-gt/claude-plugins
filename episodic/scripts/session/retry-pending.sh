@@ -3,7 +3,7 @@
 #
 # 起動条件:
 #   - SessionStart hook（nohup でバックグラウンド起動）
-#   - 手動: ${CLAUDE_PLUGIN_ROOT}/scripts/recording/retry-pending.sh
+#   - 手動: ${CLAUDE_PLUGIN_ROOT}/scripts/session/retry-pending.sh
 #
 # 動作:
 #   1. グローバル排他ロック（state/retry-pending.lock.d）を mkdir 方式で取得
@@ -27,7 +27,7 @@ set -uo pipefail
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
 LOG_DIR_LOCAL="/tmp/memories"
-LOG_FILE="$LOG_DIR_LOCAL/recording-retry.log"
+LOG_FILE="$LOG_DIR_LOCAL/session-retry.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
 LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
@@ -166,6 +166,7 @@ print(json.dumps({
     "session_id": sys.argv[1],
     "cwd": sys.argv[2],
     "transcript_path": sys.argv[3],
+    "source": "retry",
 }))
 ' "$SESSION_ID" "$CWD" "$TRANSCRIPT")
 

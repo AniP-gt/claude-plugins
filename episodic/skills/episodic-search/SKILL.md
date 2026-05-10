@@ -19,7 +19,7 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
 - **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
-- **インデックスは episodic-recording 側で管理**: SessionEnd hook 起動時に runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
+- **インデックスは episodic-recording 側で管理**: Stop hook 経路の runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
 - **既定で同一ファイル内の chunk dedupe**: cocoindex は chunk 単位で返すため、同一ファイル内の異なる chunk が top N を埋めて候補多様性が失われる。既定では filename ベースで dedupe し、最高スコアの chunk のみ採用する。`--no-dedupe` で旧挙動（chunk 単位）に戻せる
@@ -127,13 +127,13 @@ stdout に以下を出力する。
 
 ## 関連スキル
 
-- `episodic-recording` — Raw 生成（kind: session は SessionEnd hook で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも episodic-recording 経由で自動起動（詳細は `episodic-recording/references/wiki.md`）
+- `episodic-recording` — Raw 生成（kind: session は Stop hook + debounce で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも episodic-recording 経由で自動起動（詳細は `episodic-recording/references/wiki.md`）
 - `cocoindex:cocoindex-code-search` — 一般的なコードベース検索（本 skill は memories 専用ラッパー）
 
 ## トラブルシューティング
 
 - `connection refused: localhost:15432` → PostgreSQL 起動。`docker compose -f ~/.config/cocoindex/compose.yml up -d`
 - `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
-- インデックスが空 / 古い → SessionEnd hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
+- インデックスが空 / 古い → Stop hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
 - `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`episodic-recording` skill から手動保存する）

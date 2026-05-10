@@ -4,7 +4,7 @@
 #
 # 起動条件:
 #   - SessionStart hook（fire-and-forget で呼ばれる）
-#   - 手動実行: ${CLAUDE_PLUGIN_ROOT}/scripts/recording/sync-pending.sh
+#   - 手動実行: ${CLAUDE_PLUGIN_ROOT}/scripts/session/sync-pending.sh
 #
 # staging 配置:
 #   <fallback_dir>/YYYY-MM-DD/<base>__staged.md          # session（後方互換: kind 直下なし）
@@ -28,7 +28,7 @@ set -uo pipefail
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
 LOG_DIR_LOCAL="/tmp/memories"
-LOG_FILE="$LOG_DIR_LOCAL/recording-sync.log"
+LOG_FILE="$LOG_DIR_LOCAL/session-sync.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
 # ログ肥大化を防ぐため、起動直後に rotate を試みる（best effort）。
