@@ -68,30 +68,22 @@ trigger_cocoindex_update() {
         rc=$?
         if [[ $rc -eq 0 ]]; then
             _ct_log "cocoindex update finished: rc=0 app=$app_name"
-            _ct_notify "完了" "cocoindex update 成功 (app=${app_name})" "Glass" info
+            _ct_notify "完了" "cocoindex update 成功 (app=${app_name})" "Glass"
         else
             _ct_log "cocoindex update failed: rc=$rc app=$app_name"
-            _ct_notify "失敗" "cocoindex update 失敗 (rc=${rc})。ログ: $cocoindex_log" "Basso" alert
+            _ct_notify "失敗" "cocoindex update 失敗 (rc=${rc})。ログ: $cocoindex_log" "Basso"
         fi
     ) >/dev/null 2>&1 &
     disown 2>/dev/null || true
 }
 
 # macOS 通知ヘルパー。osascript 不在環境（Linux 等）ではログだけ残してスキップする。
-# 引数: _ct_notify <subtitle> <message> [sound] [info|alert]
+# 引数: _ct_notify <subtitle> <message> [sound]
+# バックグラウンド実行で OK ボタン待ちブロッキングが起きないよう、
+# display alert / dialog は使わず display notification（バナー、自動消失）に統一する。
 _ct_notify() {
-    local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
+    local subtitle="$1" msg="$2" sound="${3:-}"
     if ! command -v osascript >/dev/null 2>&1; then
-        return
-    fi
-    if [[ "$urgency" == "alert" ]]; then
-        osascript \
-            -e 'on run argv' \
-            -e 'tell application "System Events"' \
-            -e 'display alert (item 1 of argv) message (item 2 of argv) as critical buttons {"OK"} default button "OK"' \
-            -e 'end tell' \
-            -e 'end run' \
-            "$subtitle" "$msg" >/dev/null 2>&1
         return
     fi
     if [[ -n "$sound" ]]; then

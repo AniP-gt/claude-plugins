@@ -16,8 +16,8 @@
 #   5. 1 回の起動で dead_letter に降格した件数があれば 1 度だけ通知
 #
 # 設計上の前提:
-#   - hook.py は Terminal launcher を spawn して即 return する非同期構造のため、
-#     本スクリプトはエントリごとに hook.py を逐次呼び出すだけで良い
+#   - hook.py は runner.sh を subprocess.Popen でバックグラウンド起動して即 return する
+#     非同期構造のため、本スクリプトはエントリごとに hook.py を逐次呼び出すだけで良い
 #   - runner.sh が retry queue の attempt_count をインクリメントする
 #     （成功したら remove、失敗したら upsert）
 #   - 同時に複数 Claude Code セッションが起動した場合は、後発の retry-pending は
@@ -55,17 +55,15 @@ _escape_for_osascript() {
 }
 
 notify_failure() {
+    # バックグラウンド実行で OK ボタン待ちブロッキングが起きないよう、
+    # display alert / dialog は使わず display notification（バナー、自動消失）に統一する。
     if ! command -v osascript >/dev/null 2>&1; then
         log "notify skipped (osascript not found): $1"
         return
     fi
     local msg_esc
     msg_esc="$(_escape_for_osascript "$1")"
-    osascript <<APPLE >/dev/null 2>&1 || true
-tell application "System Events"
-    display alert "Episodic Recording" message "$msg_esc" as critical buttons {"OK"} default button "OK"
-end tell
-APPLE
+    osascript -e "display notification \"$msg_esc\" with title \"Episodic Recording\" subtitle \"失敗\" sound name \"Basso\"" >/dev/null 2>&1 || true
 }
 
 acquire_lock() {
@@ -158,7 +156,7 @@ while IFS= read -r line; do
         continue
     fi
 
-    # hook.py へ再投入。stdin に JSON を渡し、Terminal launcher を spawn させる。
+    # hook.py へ再投入。stdin に JSON を渡し、runner.sh をバックグラウンド spawn させる。
     log "spawn retry: session=$SESSION_ID attempt=$ATTEMPT cwd=$CWD"
     HOOK_PAYLOAD=$(python3 -c '
 import json, sys

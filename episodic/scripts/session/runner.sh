@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Terminal.appウィンドウ内で実行されることを前提としたランナー（macOS）。
-# codexのstdoutを画面に流しつつ tee で LOG_FILE にも追記する。
-# 完了時に macOS 通知センターで通知する（成功・SKIP・失敗いずれも）。
-# osascript / open / codex などのコマンドが無い環境ではログだけ残して該当処理をスキップする。
+# hook.py から subprocess.Popen で直接バックグラウンド起動されるランナー。
+# stdin / stdout / stderr は呼び出し元で /tmp/episodic/session-runner.log に redirect されている前提。
+# 完了時の状況は macOS 通知センター（display notification）で通知する（成功・SKIP・失敗いずれも）。
+# osascript / codex などのコマンドが無い環境ではログだけ残して該当処理をスキップする。
 #
 # Args:
 #   $1: 命令プロンプト埋め込み済みMarkdownファイル（codex入力）
 #   $2: 保存先レポートパス（マウント時は memories_dir/raw/session/...、staged 時は fallback_dir/...）
 #   $3: "staged" or "normal"（staged の場合は wiki enqueue / cocoindex update を抑止）
+#   $4: meta sidecar（retry queue 連携で参照する JSON）
 set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -26,8 +27,9 @@ LOG_FILE="$LOG_DIR_LOCAL/session-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
 # /tmp/{session_id}/ から最新 timestamp を再選択する（trap EXIT 取り残し検出に必要）。
-# launcher が Terminal 起動の遅延中に新しい Stop が来て新 timestamp が書かれた可能性があるため、
-# まず INPUT_MD の親ディレクトリを SESSION_DIR とみなして最新 *.codex.md を選び直す。
+# Popen 起動から runner.sh が走り出すまでの僅かな遅延中に新しい Stop が来て
+# 新 timestamp が書かれた可能性があるため、INPUT_MD の親ディレクトリを SESSION_DIR とみなして
+# 最新 *.codex.md を選び直す。
 SESSION_DIR=$(dirname "$INPUT_MD")
 LATEST_TS=""
 LATEST_CODEX=$(ls -t "${SESSION_DIR}"/*.codex.md 2>/dev/null | head -1)
@@ -51,42 +53,22 @@ if [[ -f "$LOG_ROTATE_LIB" ]]; then
     rotate_log_if_needed "$LOG_FILE" || true
 fi
 
-# ANSI色コード（Terminal表示用）
-readonly C_CYAN=$'\033[1;36m'
-readonly C_YELLOW=$'\033[1;33m'
-readonly C_GREEN=$'\033[1;32m'
-readonly C_RED=$'\033[1;31m'
-readonly C_RESET=$'\033[0m'
-
 log() {
     mkdir -p "$(dirname "$LOG_FILE")"
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"
 }
 
 notify() {
-    # 引数: notify <subtitle> <msg> [sound] [urgency]
-    #   urgency = "alert" の場合は System Events 経由で display alert を表示し、
-    #             OK ボタンを押すまで残す（手動で消すまで持続）。
-    #   それ以外（既定 "info"）は通常の display notification（バナー、自動消失）。
+    # 引数: notify <subtitle> <msg> [sound]
+    #   バックグラウンド実行で OK ボタン待ちブロッキングが起きないよう、
+    #   display alert / dialog は使わず display notification（バナー、自動消失）に統一する。
     # macOS 以外、または osascript が無い環境ではログのみ残してスキップする。
     if ! command -v osascript >/dev/null 2>&1; then
         log "notify skipped (osascript not found): $1 / $2"
         return
     fi
-    local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
+    local subtitle="$1" msg="$2" sound="${3:-}"
     local rc
-    if [[ "$urgency" == "alert" ]]; then
-        osascript \
-            -e 'on run argv' \
-            -e 'tell application "System Events"' \
-            -e 'display alert (item 1 of argv) message (item 2 of argv) as critical buttons {"OK"} default button "OK"' \
-            -e 'end tell' \
-            -e 'end run' \
-            "$subtitle" "$msg" >>"$LOG_FILE" 2>&1
-        rc=$?
-        log "notify alert: rc=$rc subtitle=$subtitle msg=$msg"
-        return
-    fi
     if [[ -n "$sound" ]]; then
         osascript \
             -e 'on run argv' \
@@ -101,23 +83,16 @@ notify() {
             "$msg" "$subtitle" >>"$LOG_FILE" 2>&1
     fi
     rc=$?
-    log "notify notification: rc=$rc subtitle=$subtitle sound=${sound:-none} msg=$msg"
+    log "notify: rc=$rc subtitle=$subtitle sound=${sound:-none} msg=$msg"
 }
 
 notify_success() { notify "完了" "$1" "Glass"; }
 notify_skip()    { notify "スキップ" "$1"; }
-notify_failure() { notify "失敗" "$1" "Basso" "alert"; }
+notify_failure() { notify "失敗" "$1" "Basso"; }
 
-print_banner() {
-    printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
-    printf '%s  Episodic Recording%s\n' "$C_CYAN" "$C_RESET"
-    printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_CYAN" "$C_RESET"
-    printf 'Model:  %s\n' "$MODEL"
-    printf 'Input:  %s\n' "$INPUT_MD"
-    printf 'Report: %s\n' "$REPORT_PATH"
-    printf 'Log:    %s\n' "$LOG_FILE"
-    printf '\n'
-    printf '%s▶ codex exec を実行中...%s\n\n' "$C_YELLOW" "$C_RESET"
+log_run_header() {
+    log "model=$MODEL input=$INPUT_MD report=$REPORT_PATH"
+    log "codex exec を実行します"
 }
 
 log "---"
@@ -285,26 +260,42 @@ trigger_memory_wiki() {
     fi
     log "enqueued to wiki ingest: $raw_path"
 
-    # fire-and-forget で debounced launcher を起動（Raw 生成 Terminal を待たない）
+    # fire-and-forget で wiki kick-runner を起動（Raw 生成側は wiki 処理を待たない）
     ( nohup "$wiki_kicker" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 }
 
 # cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ呼ぶ設計に統一済み。
 # このスクリプトからは直接呼ばない（trigger_memory_wiki が起動する wiki-runner 内部で呼ばれる）。
 
-if ! command -v codex >/dev/null 2>&1; then
-    log "error: codex command not found in PATH; cannot generate session report"
+# Codex CLI のパス解決。攻撃者が PATH を細工して悪意ある codex バイナリを差し込む攻撃に
+# 備えて、絶対パスかつ世界書き込み可能ディレクトリ配下でないことを検証する。
+# CODEX_BINARY を環境変数で明示指定できる（CI 等で固定したいケース向け）。
+if [[ -n "${CODEX_BINARY:-}" ]]; then
+    CODEX_BIN="$CODEX_BINARY"
+else
+    CODEX_BIN="$(command -v codex 2>/dev/null || true)"
+fi
+if [[ -z "$CODEX_BIN" || ! -x "$CODEX_BIN" ]]; then
+    log "error: codex binary not executable: '${CODEX_BIN:-<empty>}'"
     notify_failure "codex コマンドが見つかりません。Codex CLI をインストールしてください。"
-    printf '%s✗ codex コマンドが見つかりません%s\n' "$C_RED" "$C_RESET"
     exit 127
 fi
+if command -v realpath >/dev/null 2>&1; then
+    CODEX_BIN_REAL="$(realpath "$CODEX_BIN" 2>/dev/null || echo "$CODEX_BIN")"
+else
+    CODEX_BIN_REAL="$CODEX_BIN"
+fi
+case "$CODEX_BIN_REAL" in
+    /tmp/*|/var/tmp/*|/private/tmp/*|/private/var/tmp/*)
+        log "error: codex binary in world-writable dir: $CODEX_BIN_REAL"
+        notify_failure "codex のパスが世界書き込み可能ディレクトリ配下にあります: $CODEX_BIN_REAL"
+        exit 126
+        ;;
+esac
 
 if [[ ! -f "$INPUT_MD" ]]; then
     log "error: input not found: $INPUT_MD"
     notify_failure "入力Markdownが見つかりません: $INPUT_MD"
-    printf '%s✗ 入力ファイルが見つかりません: %s%s\n' "$C_RED" "$INPUT_MD" "$C_RESET"
-    printf '\n%s(このウィンドウは失敗時に残ります。閉じるには Enter を押してください)%s\n' "$C_YELLOW" "$C_RESET"
-    read -r _ || true
     exit 1
 fi
 
@@ -313,11 +304,13 @@ mkdir -p "$(dirname "$REPORT_PATH")"
 CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
 
-print_banner
+log_run_header
 log "codex exec start (hooks disabled)"
 
+# tee で session-runner.log にも追記する（hook.py 側 redirect と二重になっても害はない）。
+# pipefail を有効にすると tee の失敗が混ざるため、PIPESTATUS で codex の RC のみを取る。
 set -o pipefail
-EPISODIC_RECORDING_ACTIVE=1 codex exec \
+EPISODIC_RECORDING_ACTIVE=1 "$CODEX_BIN" exec \
     --disable hooks \
     --skip-git-repo-check \
     --sandbox workspace-write \
@@ -325,18 +318,14 @@ EPISODIC_RECORDING_ACTIVE=1 codex exec \
     -m "$MODEL" \
     -o "$CODEX_LAST_MSG" \
     < "$INPUT_MD" 2>&1 | tee -a "$LOG_FILE"
-CODEX_RC=$?
+CODEX_RC=${PIPESTATUS[0]}
 set +o pipefail
 
 if [[ $CODEX_RC -ne 0 ]]; then
     REASON="$(classify_failure_reason "$CODEX_RC")"
     log "error: codex exec failed (rc=$CODEX_RC reason=$REASON)"
     retry_queue_upsert "$REASON"
-    notify_failure "codex exec に失敗しました（$REASON）。ログ: $LOG_FILE"
-    printf '\n%s✗ codex exec に失敗しました (rc=%d, %s)%s\n' "$C_RED" "$CODEX_RC" "$REASON" "$C_RESET"
-    printf '%s次回 SessionStart で自動リトライされます。%s\n' "$C_YELLOW" "$C_RESET"
-    printf '\n%s(このウィンドウは失敗時に残ります。閉じるには Enter を押してください)%s\n' "$C_YELLOW" "$C_RESET"
-    read -r _ || true
+    notify_failure "codex exec に失敗しました（$REASON）。次回 SessionStart で自動リトライ。ログ: $LOG_FILE"
     exit 1
 fi
 
@@ -349,8 +338,6 @@ if printf '%s' "$LAST_MSG_CONTENT" | grep -q '^SKIP:'; then
     log "skipped by codex: $LAST_MSG_CONTENT"
     retry_queue_remove
     notify_skip "$SKIP_FIRST_LINE"
-    printf '\n%s⊘ %s%s\n' "$C_YELLOW" "$SKIP_FIRST_LINE" "$C_RESET"
-    sleep 2
     exit 0
 fi
 
@@ -375,7 +362,6 @@ post_process() {
     local report_path="$1"
     if [[ "$STAGE_MODE" == "staged" ]]; then
         log "post-process skipped (staged): $report_path — sync-pending will handle"
-        printf '%s⚠ 共有未マウントのため staging に保存しました。次回マウント成功時に自動同期されます。%s\n' "$C_YELLOW" "$C_RESET"
         return
     fi
     trigger_memory_wiki "$report_path"
@@ -387,9 +373,8 @@ if [[ -f "$REPORT_PATH" ]]; then
     retry_queue_remove
     SUMMARY="$(summarize_report "$REPORT_PATH")"
     notify_success "$SUMMARY"
-    printf '\n%s✓ レポート生成完了: %s%s\n' "$C_GREEN" "$REPORT_PATH" "$C_RESET"
+    log "report generated: $REPORT_PATH"
     post_process "$REPORT_PATH"
-    sleep 2
     exit 0
 fi
 
@@ -400,17 +385,11 @@ if [[ -n "$LAST_MSG_CONTENT" ]] && printf '%s' "$LAST_MSG_CONTENT" | head -1 | g
     retry_queue_remove
     SUMMARY="$(summarize_report "$REPORT_PATH")"
     notify_success "$SUMMARY"
-    printf '\n%s✓ レポート生成完了（フォールバック経路）: %s%s\n' "$C_GREEN" "$REPORT_PATH" "$C_RESET"
     post_process "$REPORT_PATH"
-    sleep 2
     exit 0
 fi
 
 log "warn: codex produced no report; last message: $LAST_MSG_CONTENT"
 retry_queue_upsert "no_report"
-notify_failure "codexがレポートを生成しませんでした。ログ: $LOG_FILE"
-printf '\n%s✗ codexがレポートを生成しませんでした%s\n' "$C_RED" "$C_RESET"
-printf '%s次回 SessionStart で自動リトライされます。%s\n' "$C_YELLOW" "$C_RESET"
-printf '\n%s(このウィンドウは失敗時に残ります。閉じるには Enter を押してください)%s\n' "$C_YELLOW" "$C_RESET"
-read -r _ || true
+notify_failure "codex がレポートを生成しませんでした。次回 SessionStart で自動リトライ。ログ: $LOG_FILE"
 exit 2

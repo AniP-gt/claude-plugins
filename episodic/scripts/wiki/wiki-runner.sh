@@ -62,7 +62,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -d "${CLAUDE_PLUGIN_ROOT}/scripts/lib" ]]; then
     PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
     RUNTIME_ROOT="${CLAUDE_PLUGIN_ROOT}/scripts"
+elif [[ -d "${SCRIPT_DIR}/../../scripts/lib" ]]; then
+    # repo 構造: episodic/scripts/wiki/ から起動。PLUGIN_ROOT は episodic/、RUNTIME_ROOT は episodic/scripts/。
+    PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+    RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
 elif [[ -d "${SCRIPT_DIR}/../lib" ]]; then
+    # codex-hook-runtime mirror: <runtime>/wiki/ から起動。PLUGIN_ROOT == RUNTIME_ROOT == <runtime>。
     RUNTIME_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
     PLUGIN_ROOT="$RUNTIME_ROOT"
 else

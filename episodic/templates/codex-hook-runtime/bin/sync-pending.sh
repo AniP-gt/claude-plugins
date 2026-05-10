@@ -67,29 +67,16 @@ _escape_for_osascript() {
 }
 
 notify() {
-    # 引数: notify <subtitle> <msg> [sound] [urgency]
-    #   urgency = "alert" の場合は System Events 経由で display alert を表示し、
-    #             OK ボタンを押すまで残す（手動で消すまで持続）。
-    #   それ以外（既定 "info"）は通常の display notification（バナー、自動消失）。
+    # 引数: notify <subtitle> <msg> [sound]
+    #   バックグラウンド実行で OK ボタン待ちブロッキングが起きないよう、
+    #   display alert / dialog は使わず display notification（バナー、自動消失）に統一する。
     if ! command -v osascript >/dev/null 2>&1; then
         log "notify skipped (osascript not found): $1 / $2"
         return
     fi
-    local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
-    local sub_esc msg_esc sound_clause=""
+    local subtitle="$1" msg="$2" sound="${3:-}" sub_esc msg_esc sound_clause=""
     sub_esc="$(_escape_for_osascript "$subtitle")"
     msg_esc="$(_escape_for_osascript "$msg")"
-    if [[ "$urgency" == "alert" ]]; then
-        # System Events 経由 → 起動アプリのフォーカスを奪わずモーダル表示できる
-        # (macOS バージョンにより一部フォーカス挙動が異なるが、通知センターには
-        #  流れず手動で閉じるまで残るのが本旨)。
-        osascript <<APPLE >/dev/null 2>&1 || true
-tell application "System Events"
-    display alert "$sub_esc" message "$msg_esc" as critical buttons {"OK"} default button "OK"
-end tell
-APPLE
-        return
-    fi
     if [[ -n "$sound" ]]; then
         sound_clause=" sound name \"$sound\""
     fi

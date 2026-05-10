@@ -5,12 +5,12 @@
   1. stdin JSONからsession_id / cwd / transcript_pathを取得
   2. JSONLをjsonl-to-markdown.pyでMarkdown化
   3. 先頭にcodex向け命令プロンプトとメタデータを埋め込んで同梱Markdownを生成
-  4. `.command` ランチャーを生成し `open -g -a Terminal` でTerminal.appに渡す
-     - `-g` フラグでフォーカスを奪わずバックグラウンド起動
-     - ランチャーは runner.sh 実行後に osascript で自ウィンドウを自動クローズ
-  5. 失敗時は runner.sh が macOS 通知を出す
+  4. runner.sh を `subprocess.Popen` でバックグラウンド起動（Terminal.app は使わない）
+     - stdin=DEVNULL, stdout/stderr=session-runner.log, start_new_session=True で完全分離
+     - 進捗・完了・失敗はすべて macOS 通知センター（display notification）で通知
+  5. 失敗時の詳細は /tmp/episodic/session-runner.log に残る
 
-中間ファイルは `/tmp/{session_id}/{ts}.{md,codex.md,codex.meta.json,runner.command}` に
+中間ファイルは `/tmp/{session_id}/{ts}.{md,codex.md,codex.meta.json}` に
 集約し、runner.sh の trap EXIT がディレクトリごと削除する。
 
 Stop hook は応答ごとに発火するため、本スクリプトは debounce タイマーを使い
@@ -28,7 +28,6 @@ import json
 import os
 import re
 import shlex
-import shutil
 import signal
 import subprocess
 import sys
@@ -328,105 +327,27 @@ def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
     return sidecar
 
 
-def build_launcher(runner: Path, combined_md: Path, report_path: Path,
-                   session_id: str, is_staged: bool, meta_path: Path,
-                   launcher: Path) -> Path:
-    """Terminal.appで起動する .command ランチャースクリプトを生成する。
+def spawn_runner(meta_path: Path) -> None:
+    """meta sidecar から runner 引数を組み立てて runner.sh をバックグラウンド起動する。
 
-    ランチャーは runner.sh が成功した場合のみ osascript で自ウィンドウを閉じる。
-    失敗時（RC != 0）はウィンドウを残し、ユーザーが原因調査できるようにする。
-    自ウィンドウの特定には `tty` を使うため他のTerminalウィンドウを誤爆しない。
+    Terminal.app は使わない。stdin は DEVNULL、stdout/stderr は session-runner.log に
+    redirect し、start_new_session=True / close_fds=True で親プロセス（hook.py、ひいては
+    Claude Code）から完全に切り離す。hook はこの関数から即座に return する。
 
-    第3引数 is_staged は runner.sh に "staged"/"normal" を渡し、wiki enqueue や
-    cocoindex update を行うかの分岐を runner 側で行わせる。
-    第4引数 meta_path は runner.sh が retry queue を更新するために参照する meta JSON。
+    meta_path 隣接の `{ts}.codex.md` を combined md として渡し、report_path / is_staged は
+    meta sidecar の JSON から読み出す。Codex 失敗時の retry_queue 連携も runner.sh が
+    meta_path 経由で参照する。
     """
-    runner_q = shlex.quote(str(runner))
-    combined_q = shlex.quote(str(combined_md))
-    report_q = shlex.quote(str(report_path))
-    staged_q = shlex.quote("staged" if is_staged else "normal")
-    meta_q = shlex.quote(str(meta_path))
-    script = f"""#!/bin/bash
-LOG_DIR="/tmp/episodic"
-LOG_FILE="$LOG_DIR/session-runner.log"
-mkdir -p "$LOG_DIR"
-OWN_TTY=$(tty)
-printf '[%s] launcher start: launcher=%s tty=%s pid=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$OWN_TTY" "$$" >> "$LOG_FILE"
-{runner_q} {combined_q} {report_q} {staged_q} {meta_q}
-RC=$?
-printf '[%s] launcher finished: launcher=%s rc=%s\\n' "$(date '+%Y-%m-%dT%H:%M:%S')" {shlex.quote(str(launcher))} "$RC" >> "$LOG_FILE"
-if [[ $RC -eq 0 ]]; then
-    ( osascript <<APPLE 2>/dev/null &
-tell application "Terminal"
-    repeat with w in windows
-        try
-            if tty of (selected tab of w) is "$OWN_TTY" then
-                close w saving no
-                exit repeat
-            end if
-        end try
-    end repeat
-end tell
-APPLE
-    )
-fi
-exit $RC
-"""
-    launcher.write_text(script, encoding="utf-8")
-    # 所有者のみ rwx（/tmp は world-readable のためグループ・他者から実行可能にしない）。
-    launcher.chmod(0o700)
-    return launcher
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    report_path = meta.get("report_path") or ""
+    staged = "staged" if meta.get("is_staged") else "normal"
+    combined = meta_path.parent / meta_path.name.replace(".codex.meta.json", ".codex.md")
 
-
-def spawn_terminal(launcher: Path) -> None:
-    """`.command` ランチャーをTerminal.appでバックグラウンド起動する（macOS 既定経路）。
-
-    `open -g` だけだとTerminalの内部activateでフォーカスが奪われる場合があるため、
-    起動前のフロントアプリを保存し、短い遅延後に System Events で復帰させる。
-    hookはこの関数から即座にreturnし、Claude Codeのセッション終了処理をブロックしない。
-
-    osascript / open が無い環境（macOS 以外）では Terminal を開かず、launcher を直接
-    バックグラウンドで起動するフォールバックを使う。Codex の stdout は通常通り runner.sh
-    内で LOG_FILE に追記されるため、ターミナル可視化が無くてもログは残る。
-    """
     log_path = LOG_DIR / "session-runner.log"
     log_fp = log_path.open("a", encoding="utf-8")
-
-    if not (shutil.which("osascript") and shutil.which("open")):
-        log("non-mac fallback: spawning launcher directly in background (no Terminal window)")
-        try:
-            subprocess.Popen(
-                ["/bin/bash", str(launcher)],
-                stdin=subprocess.DEVNULL,
-                stdout=log_fp,
-                stderr=log_fp,
-                start_new_session=True,
-                close_fds=True,
-            )
-        finally:
-            log_fp.close()
-        return
-
-    terminal_command = f"/bin/bash {shlex.quote(str(launcher))}"
-    applescript = f'''
-tell application "System Events"
-    set frontApp to name of first application process whose frontmost is true
-end tell
-tell application "Terminal"
-    activate
-    do script {json.dumps(terminal_command)}
-end tell
--- Terminalの遅延activateに対処するため複数回フォーカスを復帰する
-repeat 3 times
-    delay 0.3
-    try
-        tell application "System Events" to tell process frontApp to set frontmost to true
-    end try
-end repeat
-'''
     try:
         subprocess.Popen(
-            ["osascript", "-e", applescript],
+            [str(RUNNER), str(combined), report_path, staged, str(meta_path)],
             stdin=subprocess.DEVNULL,
             stdout=log_fp,
             stderr=log_fp,
@@ -610,9 +531,11 @@ def resolve_session_format(payload: dict[str, Any], session_id: str, cwd: str,
 def prepare_payload_artifacts(payload: dict[str, Any],
                               jsonl_to_md: Path = JSONL_TO_MD,
                               ) -> Path | None:
-    """payload を解析して `/tmp/{session_id}/{ts}.*` 一式を書き出し、launcher パスを返す。
+    """payload を解析して `/tmp/{session_id}/{ts}.*` 一式を書き出し、meta sidecar パスを返す。
 
-    None を返した場合は呼び出し側で何もせず終了する（JSONL 不在・user 発話なし等）。
+    呼び出し側は meta sidecar から runner.sh の起動情報（combined md / report_path /
+    is_staged）を引き出す。None を返した場合は呼び出し側で何もせず終了する
+    （JSONL 不在・user 発話なし等）。
     """
     session_id_raw = payload.get("session_id") or payload.get("sessionId") or ""
     session_id = session_id_raw.lower() if is_valid_session_id(session_id_raw) else ""
@@ -650,7 +573,6 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     session_md = session_dir / f"{ts}.md"
     combined = session_dir / f"{ts}.codex.md"
     meta_path = session_dir / f"{ts}.codex.meta.json"
-    launcher = session_dir / f"{ts}.runner.command"
 
     try:
         session_format.write_markdown(jsonl, session_md, jsonl_to_md)
@@ -682,10 +604,8 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     log(f"report target: {report_path} staged={is_staged}")
 
     build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged, meta_path)
-    log(f"meta sidecar: {meta_path}")
-    build_launcher(RUNNER, combined, report_path, session_id, is_staged, meta_path, launcher)
-    log(f"launcher: {launcher} ts={ts}")
-    return launcher
+    log(f"meta sidecar: {meta_path} ts={ts}")
+    return meta_path
 
 
 def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
@@ -713,15 +633,15 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
         log(f"skip: stop_hook_active=true session={sid} (debounce not reset)")
         return 0
 
-    launcher = prepare_payload_artifacts(payload, jsonl_to_md)
-    if launcher is None:
+    meta_path = prepare_payload_artifacts(payload, jsonl_to_md)
+    if meta_path is None:
         return 0
 
-    session_id = launcher.parent.name
+    session_id = meta_path.parent.name
     is_retry = payload.get("source") == "retry"
     if is_retry:
-        log(f"is_retry=True session={session_id} -> spawn launcher immediately")
-        spawn_terminal(launcher)
+        log(f"is_retry=True session={session_id} -> spawn runner immediately")
+        spawn_runner(meta_path)
         return 0
 
     debounce_seconds = memcfg.resolve_stop_debounce_seconds()
@@ -730,18 +650,18 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
 
 
 def finalize(session_id: str) -> int:
-    """debounce タイマーが満了したときに呼ばれる。最新 launcher で Codex を起動する。"""
+    """debounce タイマーが満了したときに呼ばれる。最新 meta sidecar で Codex を起動する。"""
     sid = sanitize_session_id(session_id)
     session_dir = TMP_DIR / sid
     if not session_dir.exists():
         log(f"finalize: session dir not found: {session_dir}")
         return 0
 
-    launchers = sorted(session_dir.glob("*.runner.command"))
-    if not launchers:
-        log(f"finalize: no launcher found in {session_dir}")
+    metas = sorted(session_dir.glob("*.codex.meta.json"))
+    if not metas:
+        log(f"finalize: no meta sidecar found in {session_dir}")
         return 0
-    latest = launchers[-1]
+    latest = metas[-1]
 
     # 処理中ロック取得（取れなければ runner.sh の trap EXIT が再 spawn する経路に委ねる）。
     lock_dir = session_dir / ".lock"
@@ -756,8 +676,8 @@ def finalize(session_id: str) -> int:
     except OSError:
         pass
 
-    log(f"finalize: spawning launcher session={sid} latest={latest.name}")
-    spawn_terminal(latest)
+    log(f"finalize: spawning runner session={sid} latest={latest.name}")
+    spawn_runner(latest)
     return 0
 
 
