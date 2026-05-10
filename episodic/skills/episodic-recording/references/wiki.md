@@ -62,7 +62,7 @@
 - `CODEX_MEMORY_WIKI_MODEL`: 後方互換。設定すると全 kind の既定値を上書き
 - `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
 - `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
-- `MEMORIES_LOG_ROTATE_BYTES`: `/tmp/memories/*.log` ローテーション閾値（既定 5242880）
+- `MEMORIES_LOG_ROTATE_BYTES`: `/tmp/episodic/*.log` ローテーション閾値（既定 5242880）
 - `MEMORIES_LOG_ROTATE_KEEP`: 同上の保持世代数（既定 3）
 
 ## ファイル配置
@@ -83,10 +83,11 @@
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending エントリ、kind 含む）
 └── lock.d/                                                # 排他ロック（mkdir 方式、中に pid ファイル）
 
-/tmp/memories/                                             # ローカル揮発（OS 再起動で消える）
+/tmp/episodic/                                             # ローカル揮発（OS 再起動で消える）
 ├── session-hook.log                                       # Stop hook ログ
 ├── session-runner.log                                     # runner ログ
-├── memory-wiki-runner.log                                 # wiki-runner ログ
+├── wiki-runner.log                                        # wiki-runner ログ
+├── cocoindex-update.log                                   # cocoindex update ログ
 └── smb-mount.log                                          # SMB マウント結果ログ
 ```
 
@@ -96,7 +97,7 @@
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
-( nohup "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh" >> /tmp/memories/memory-wiki-runner.log 2>&1 & )
+( nohup "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh" >> /tmp/episodic/wiki-runner.log 2>&1 & )
 ```
 
 JSONL への append-only 追記は POSIX 上で原子的なので、複数プロセス並行でも壊れない（ロック不要）。`wiki-runner.sh` は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。`codex` コマンドが PATH 上に無い環境では自動的に `--no-codex` モードへ降格し、キュー消化のみ行う。
@@ -142,7 +143,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
 
 ## ログ・トラブルシューティング
 
-- 実行ログ: `/tmp/memories/memory-wiki-runner.log`
+- 実行ログ: `/tmp/episodic/wiki-runner.log`
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/recording/state/lock.d`
 - Codex 失敗で pending が残る: log を確認し、`--no-codex` でキューだけ消化するか、queue から該当エントリを手動で削除する（`jq` または `python3` で `raw_path` 一致行をフィルタ）
 - 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md`）を一度削除して再構築する

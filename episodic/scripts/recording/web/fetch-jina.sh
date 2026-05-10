@@ -232,14 +232,14 @@ chmod 600 "$OUT_PATH" 2>/dev/null || true
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 ENQUEUE="$PLUGIN_ROOT/scripts/wiki/enqueue.py"
 WIKI_RUNNER="$PLUGIN_ROOT/scripts/wiki/wiki-runner.sh"
-LOG_DIR_LOCAL="/tmp/memories"
+LOG_DIR_LOCAL="/tmp/episodic"
 mkdir -p "$LOG_DIR_LOCAL" 2>/dev/null || true
 if [[ $IS_STAGED -eq 1 ]]; then
     echo "warn: SMB share not mounted; saved to staging at $OUT_PATH" >&2
     echo "      sync-pending.sh will move it to $MEMORIES_DIR/raw/web/ on next mount." >&2
 elif [[ -f "$ENQUEUE" && -x "$WIKI_RUNNER" ]]; then
     python3 "$ENQUEUE" "$OUT_PATH" --kind web >/dev/null 2>&1 || true
-    ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+    ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 fi
 
 echo "$OUT_PATH"

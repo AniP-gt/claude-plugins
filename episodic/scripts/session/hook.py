@@ -58,7 +58,7 @@ def sanitize_session_id(raw: str | None) -> str:
 
 HOME = Path.home()
 TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消える）
-LOG_DIR = Path("/tmp/memories")  # hook/runner のログ集約先（揮発・OS再起動で消える）
+LOG_DIR = Path("/tmp/episodic")  # hook/runner のログ集約先（揮発・OS再起動で消える）
 LOG_FILE = LOG_DIR / "session-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
 RUNNER = SCRIPTS_DIR / "runner.sh"
@@ -392,7 +392,7 @@ def build_launcher(runner: Path, combined_md: Path, report_path: Path,
     staged_q = shlex.quote("staged" if is_staged else "normal")
     meta_q = shlex.quote(str(meta_path))
     script = f"""#!/bin/bash
-LOG_DIR="/tmp/memories"
+LOG_DIR="/tmp/episodic"
 LOG_FILE="$LOG_DIR/session-runner.log"
 mkdir -p "$LOG_DIR"
 OWN_TTY=$(tty)

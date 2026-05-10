@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # memory プラグイン共通: ログファイルのサイズ超過時に gzip ローテーションする。
 #
-# /tmp/memories/*.log は再起動で消える揮発領域だが、運用中（数日〜数週間）には
+# /tmp/episodic/*.log は再起動で消える揮発領域だが、運用中（数日〜数週間）には
 # Codex プロンプト全文・cocoindex 進捗・stack trace が積み重なって GB 級まで肥大する
 # 可能性がある。各 runner の起動直後に rotate_log_if_needed を 1 回呼ぶ運用で抑える。
 #

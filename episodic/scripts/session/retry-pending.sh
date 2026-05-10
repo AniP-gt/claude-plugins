@@ -26,7 +26,7 @@ set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
-LOG_DIR_LOCAL="/tmp/memories"
+LOG_DIR_LOCAL="/tmp/episodic"
 LOG_FILE="$LOG_DIR_LOCAL/session-retry.log"
 mkdir -p "$LOG_DIR_LOCAL"
 

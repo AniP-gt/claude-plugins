@@ -77,6 +77,6 @@ stop_debounce_seconds = 15
 #   export MEMORIES_TRASHBOX_RETAIN_DAYS=30   # 保持日数（既定 30、0 で無効化）
 #   export MEMORIES_TRASHBOX_DRY_RUN=1        # 1 で削除せずログのみ
 
-# /tmp/memories/*.log のローテーション（各 runner 起動時に閾値超過なら gzip 退避）。
+# /tmp/episodic/*.log のローテーション（各 runner 起動時に閾値超過なら gzip 退避）。
 #   export MEMORIES_LOG_ROTATE_BYTES=5242880  # 既定 5MB
 #   export MEMORIES_LOG_ROTATE_KEEP=3         # 保持世代数

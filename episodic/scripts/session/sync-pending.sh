@@ -27,7 +27,7 @@ set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
-LOG_DIR_LOCAL="/tmp/memories"
+LOG_DIR_LOCAL="/tmp/episodic"
 LOG_FILE="$LOG_DIR_LOCAL/session-sync.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
@@ -207,7 +207,7 @@ if [[ ${#MOVED_TSV[@]} -gt 0 ]]; then
                 log "warn: enqueue failed (kind=$kind) for $p"
         done
         if [[ -x "$WIKI_RUNNER" ]]; then
-            ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+            ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
         fi
     else
         log "warn: enqueue script not found: $ENQUEUE"

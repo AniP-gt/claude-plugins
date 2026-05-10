@@ -52,7 +52,7 @@ STATE_DIR="${HOME}/.local/share/recording/state"
 LEGACY_STATE_DIR="/tmp/memories/state"
 QUEUE="$STATE_DIR/ingest-queue.jsonl"
 LOCK_DIR="$STATE_DIR/lock.d"
-LOG_FILE="/tmp/memories/memory-wiki-runner.log"
+LOG_FILE="/tmp/episodic/wiki-runner.log"
 WIKI_DIR="$MEMORIES_DIR/wiki"
 TRASHBOX_DIR="$MEMORIES_DIR/trashbox"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -65,12 +65,12 @@ INSTRUCTION_MINUTES="$SCRIPT_DIR/codex-instruction-minutes.md"
 mkdir -p "$STATE_DIR" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$(dirname "$LOG_FILE")"
 
 # log ファイル肥大化を防ぐため、起動直後に rotate を試みる。
-# wiki-runner と cocoindex update は同じ /tmp/memories/ に書き込むので両方を見る。
+# wiki-runner と cocoindex update は同じ /tmp/episodic/ に書き込むので両方を見る。
 if [[ -f "$LOG_ROTATE_LIB" ]]; then
     # shellcheck source=../lib/log_rotate.sh
     source "$LOG_ROTATE_LIB"
     rotate_log_if_needed "$LOG_FILE" || true
-    rotate_log_if_needed "$(dirname "$LOG_FILE")/cocoindex-memories-update.log" || true
+    rotate_log_if_needed "$(dirname "$LOG_FILE")/cocoindex-update.log" || true
 fi
 
 log() {

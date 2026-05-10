@@ -21,7 +21,7 @@ MODEL="${CODEX_RECORDING_MODEL:-gpt-5.4-mini}"
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
-LOG_DIR_LOCAL="/tmp/memories"
+LOG_DIR_LOCAL="/tmp/episodic"
 LOG_FILE="$LOG_DIR_LOCAL/session-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
@@ -277,7 +277,7 @@ trigger_memory_wiki() {
     log "enqueued to wiki ingest: $raw_path"
 
     # fire-and-forget で wiki-runner を起動（Raw 生成 Terminal を待たない）
-    ( nohup "$wiki_runner" >> "$LOG_DIR_LOCAL/memory-wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+    ( nohup "$wiki_runner" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 }
 
 # cocoindex update は wiki-runner.sh の処理完了後に 1 回だけ呼ぶ設計に統一済み。

@@ -4,7 +4,7 @@
 # このファイルは source して使う。呼び出し元で以下を事前に設定しておくこと:
 #   PLUGIN_ROOT      memory プラグインのルート（${CLAUDE_PLUGIN_ROOT} 相当）
 #   MEMORIES_DIR     memories ルート（既定 /Volumes/memory）
-#   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 /tmp/memories）
+#   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 /tmp/episodic）
 #
 # log() 関数が定義されていればそれを使い、無ければ printf でフォールバックする。
 #
@@ -23,9 +23,9 @@ trigger_cocoindex_update() {
     local memories_dir="${1:-${MEMORIES_DIR:-/Volumes/memory}}"
     local memory_scripts="${PLUGIN_ROOT}/scripts"
     local recording_scripts="${memory_scripts}/recording"
-    local log_dir="${LOG_DIR_LOCAL:-/tmp/memories}"
+    local log_dir="${LOG_DIR_LOCAL:-/tmp/episodic}"
     mkdir -p "$log_dir" 2>/dev/null || true
-    local cocoindex_log="$log_dir/cocoindex-memories-update.log"
+    local cocoindex_log="$log_dir/cocoindex-update.log"
 
     _ct_log() {
         if declare -F log >/dev/null 2>&1; then
