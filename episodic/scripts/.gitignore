@@ -1,7 +1,7 @@
-# memory プラグイン専用 venv（uv が自動生成）
+# episodic プラグイン専用 venv（uv が自動生成）
 .venv/
 
-# cocoindex 1.0 が COCOINDEX_DB の URL をパス解釈した際の副産物
+# 過去バージョンが COCOINDEX_DB に Postgres URL を渡したことで作られた LMDB ゴミ
 postgres:/
 
 # Python キャッシュ

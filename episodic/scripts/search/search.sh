@@ -86,7 +86,6 @@ RAW_OUTPUT=$(cd "$EPISODIC_SCRIPTS_DIR" && \
     EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
     EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
     uv run python "$SEARCH_PY" "$QUERY" \
-    --project-dir "$MEMORIES_DIR" \
     --top "$((TOP * 3))" \
     --low-score-threshold "$LOW_SCORE_THRESHOLD" 2>"$STDERR_FILE")
 RC=$?

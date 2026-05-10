@@ -170,9 +170,16 @@ DATABASE_URL = os.environ.get(
     "postgres://postgres:postgres@localhost:15432/episodic",
 )
 
-# cocoindex 1.0 は自身の tracking テーブルを格納する DB を COCOINDEX_DB から取得する。
-# episodic プラグインは episodic database 内に tracking も置くため、未設定なら DATABASE_URL に揃える。
-os.environ.setdefault("COCOINDEX_DB", DATABASE_URL)
+# cocoindex 1.0 は 2 種類の状態保管先を持つ:
+#   - COCOINDEX_DB        : LMDB のローカルディレクトリ（ファイル処理状態キャッシュ）
+#   - COCOINDEX_DATABASE_URL : Postgres tracking メタデータ (cocoindex_setup_metadata) の DB
+# 両者が一致しないと「テーブル空なのに unchanged」「メタデータが別 DB にはみ出す」が発生する。
+# cocoindex プラグイン側 secrets.env が COCOINDEX_DATABASE_URL を後勝ちで上書きしてくる
+# 経路があるため、明示的にここで強制上書きする。
+_COCOINDEX_LMDB_DIR = pathlib.Path.home() / ".local" / "share" / "episodic" / "cocoindex"
+_COCOINDEX_LMDB_DIR.mkdir(parents=True, exist_ok=True)
+os.environ["COCOINDEX_DB"] = str(_COCOINDEX_LMDB_DIR)
+os.environ["COCOINDEX_DATABASE_URL"] = DATABASE_URL
 
 
 def _build_embedder() -> LiteLLMEmbedder:

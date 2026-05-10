@@ -32,18 +32,15 @@ load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / ".env", override=True)
 load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / "secrets.env", override=True)
 
 
-def get_table_name(project_dir: str) -> str:
-    """プロジェクトディレクトリからテーブル名を計算（hostname prefix付き）。
+def get_table_name() -> str:
+    """テーブル名を計算（hostname prefix付き）。
 
     main_episodic.py の TABLE 命名規約と一致させる:
-      episodicindex_<sanitized_host>_<sanitized_name>__chunks
+      episodicindex_<sanitized_host>_episodic__chunks
     """
     import socket
     host_prefix = re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
-    name = Path(project_dir).name
-    index_name = f"{host_prefix}_{name}"
-    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name)
-    return f"episodicindex_{sanitized}__chunks".lower()
+    return f"episodicindex_{host_prefix}_episodic__chunks".lower()
 
 
 def embed_query(query: str) -> list[float]:
@@ -128,7 +125,6 @@ def dedup_by_filename(ordered_ids: list[str], by_id: dict[str, tuple], limit: in
 def main() -> int:
     p = argparse.ArgumentParser(description="episodic-search hybrid+rerank")
     p.add_argument("query")
-    p.add_argument("--project-dir", required=True)
     p.add_argument("--top", type=int, default=10)
     p.add_argument(
         "--candidates",
@@ -150,7 +146,7 @@ def main() -> int:
     )
     args = p.parse_args()
 
-    table = get_table_name(args.project_dir)
+    table = get_table_name()
     db_url = os.environ.get(
         "EPISODIC_DATABASE_URL",
         "postgres://postgres:postgres@localhost:15432/episodic",
