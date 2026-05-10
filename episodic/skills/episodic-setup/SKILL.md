@@ -154,6 +154,14 @@ episodic プラグイン専用 database（`episodic`）と pgvector 拡張を冪
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup_db.sh"
 ```
 
+Codex の `SessionStart` hook から staging 同期を使う場合は、同梱 template を `~/.config/episodic/codex-hook-runtime/` に展開する:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/install-bin.sh"
+```
+
+コピー元は `${CLAUDE_PLUGIN_ROOT}/templates/codex-hook-runtime/`。Codex hook の command は `~/.config/episodic/codex-hook-runtime/bin/session-start.sh` を指す。
+
 このスクリプトが行うこと（既存は触らない）:
 
 1. `~/.config/episodic/.env`（接続 URL の雛形）を生成

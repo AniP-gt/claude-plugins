@@ -39,9 +39,9 @@ fallback_dir = "~/.local/share/recording/raw-staging"
 auto_remount = true
 
 # remount に使うスクリプト（mount_smbfs を呼ぶラッパー）。
-# 既定はプラグイン同梱の mount-memory-share.sh（${CLAUDE_PLUGIN_ROOT}/scripts/recording/）。
+# 既定はプラグイン同梱の mount-memory-share.sh。
 # 環境に合わせて任意のスクリプトに差し替え可能。
-remount_script = "${CLAUDE_PLUGIN_ROOT}/scripts/recording/mount-memory-share.sh"
+remount_script = "${CLAUDE_PLUGIN_ROOT}/scripts/mount-memory-share.sh"
 
 # マウント検証用 canary ファイル名。ファイル名のみ指定し、配置場所は memories_dir 直下固定。
 # 共有側（SMB サーバ）で1度だけ touch しておけば以後は変更不要。
