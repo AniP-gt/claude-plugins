@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code / Codex Stop hook: 会話履歴をcodexで要約しレポート化する。
+"""Claude Code / Codex session hooks: 会話履歴をcodexで要約しレポート化する。
 
 フロー:
   1. stdin JSONからsession_id / cwd / transcript_pathを取得
@@ -17,6 +17,9 @@ Stop hook は応答ごとに発火するため、本スクリプトは debounce 
 最後の Stop から `stop_debounce_seconds` 静寂が続いたときに 1 度だけ Codex を起動する。
 処理中（runner.sh 実行中）に新たな Stop が来た場合はロックで skip し、runner.sh の
 trap EXIT が `--finalize` を再 spawn して取り残しを救済する。
+
+UserPromptSubmit hook では、ユーザーが続きの入力を送った時点で pending debounce を
+キャンセルし、会話途中の要約起動を抑止する。
 """
 
 from __future__ import annotations
@@ -260,6 +263,23 @@ def session_dir_for(session_id: str) -> Path:
     except OSError as e:
         log(f"warn: chmod 700 failed for {d}: {e}")
     return d
+
+
+def valid_session_id_from_payload(payload: dict[str, Any]) -> str:
+    """payload 内の session_id/sessionId を UUID として検証し、使える場合のみ返す。
+
+    Claude Code の common input では session_id が渡るが、欠けた場合は transcript_path
+    のファイル名（<session_id>.jsonl）から同じ UUID を復元する。
+    """
+    raw = payload.get("session_id") or payload.get("sessionId") or ""
+    if is_valid_session_id(raw):
+        return raw.lower()
+    transcript_path = payload.get("transcript_path")
+    if isinstance(transcript_path, str) and transcript_path:
+        stem = Path(transcript_path).expanduser().stem
+        if is_valid_session_id(stem):
+            return stem.lower()
+    return ""
 
 
 def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path: Path,
@@ -533,6 +553,41 @@ def schedule_debounce(session_id: str, seconds: int) -> None:
     log(f"schedule_debounce: scheduled finalize in {seconds}s pid={proc.pid} session={session_id}")
 
 
+def cancel_debounce(session_id: str, reason: str) -> None:
+    """pending debounce タイマーを停止し、UserPromptSubmit などで finalize 到達を抑止する。"""
+    if not is_valid_session_id(session_id):
+        log(f"cancel_debounce: invalid session_id; skip reason={reason} raw={session_id!r}")
+        return
+
+    pid_file = TMP_DIR / session_id / ".debounce.pid"
+    if not pid_file.exists():
+        log(f"cancel_debounce: no pending debounce session={session_id} reason={reason}")
+        return
+
+    try:
+        old_pid = int(pid_file.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        old_pid = 0
+
+    if old_pid > 0:
+        try:
+            os.killpg(old_pid, signal.SIGTERM)
+            log(f"cancel_debounce: terminated debounce process group pgid={old_pid} session={session_id} reason={reason}")
+        except ProcessLookupError:
+            try:
+                os.kill(old_pid, signal.SIGTERM)
+                log(f"cancel_debounce: terminated debounce pid={old_pid} session={session_id} reason={reason}")
+            except (ProcessLookupError, PermissionError, OSError):
+                pass
+        except (PermissionError, OSError):
+            pass
+
+    try:
+        pid_file.unlink(missing_ok=True)
+    except OSError as e:
+        log(f"warn: cancel_debounce: pid_file unlink failed session={session_id}: {e}")
+
+
 def resolve_session_format(payload: dict[str, Any], session_id: str, cwd: str,
                            transcript_path: str | None) -> tuple[Any, Path | None]:
     """payloadからClaude/Codex形式を判定し、対応モジュールとJSONLパスを返す。"""
@@ -636,6 +691,15 @@ def prepare_payload_artifacts(payload: dict[str, Any],
 def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    hook_event_name = payload.get("hook_event_name") or payload.get("hookEventName")
+    if hook_event_name == "UserPromptSubmit":
+        session_id = valid_session_id_from_payload(payload)
+        if session_id:
+            cancel_debounce(session_id, "UserPromptSubmit")
+        else:
+            log("UserPromptSubmit: valid session_id not found; debounce cancellation skipped")
+        return 0
 
     if os.environ.get("EPISODIC_RECORDING_ACTIVE") in ("1", "true", "yes", "on"):
         sid = sanitize_session_id(payload.get("session_id") or payload.get("sessionId") or "")

@@ -227,7 +227,7 @@ SRC_URL="<Notion URL>"
 
 ## 自動化パイプライン（kind: session のみ）
 
-`episodic` プラグインの `Stop` hook が `${CLAUDE_PLUGIN_ROOT}/scripts/session-stop.sh` を起動し、`scripts/session/hook.py` が debounce タイマーを噛ませて最後の応答が落ち着いてから 1 度だけ `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。詳細は `references/architecture.md`。
+`episodic` プラグインの `Stop` hook が `${CLAUDE_PLUGIN_ROOT}/scripts/session-stop.sh` を起動し、`scripts/session/hook.py` が debounce タイマーを噛ませて最後の応答が落ち着いてから 1 度だけ `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。`UserPromptSubmit` hook はユーザーが続きの入力を送った時点で pending debounce をキャンセルする。詳細は `references/architecture.md`。
 
 ## 初期設定
 

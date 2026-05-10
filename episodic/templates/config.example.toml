@@ -53,6 +53,7 @@ hostname_hash_length = 8
 
 # Stop hook 起動から Codex 要約までの debounce 秒数。
 # Stop が連続発火した場合は最後の Stop から本秒数経過後に 1 回だけ Codex が走る。
+# debounce 満了前に UserPromptSubmit が発火した場合はキャンセルされます。
 # 環境変数 MEMORIES_STOP_DEBOUNCE_SECONDS で上書き可能（範囲 0-600）。
 stop_debounce_seconds = 30
 
