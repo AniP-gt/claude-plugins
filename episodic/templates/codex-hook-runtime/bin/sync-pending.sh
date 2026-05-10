@@ -18,7 +18,7 @@
 #       a. 移送先 <memories_dir>/raw/<kind>/YYYY-MM-DD/<base>.md を計算（命名規則上絶対衝突しない）
 #       b. 移送先がなければ atomic rename（同一 FS）or cp -p && rm（FS 跨ぎ）で移送
 #       c. 移送先が存在 → ハッシュ完全一致なら staging 削除（成功）、不一致なら staging 保全＋通知
-#   4. 移送成功した Raw について enqueue.py を kind 指定で呼び wiki キューに追加 + wiki-runner を起動
+#   4. 移送成功した Raw について enqueue.py を kind 指定で呼び wiki キューに追加 + debounced launcher を起動
 #      （wiki-runner.sh が処理完了後に cocoindex update を 1 回キックする統一経路）
 #
 # macOS 以外の環境では osascript / open / mount_smbfs などが無く、通知やマウント関連処理は
@@ -212,9 +212,9 @@ find "$FALLBACK_DIR" -mindepth 1 -type d -empty -delete 2>/dev/null || true
 
 log "sync done: moved=$MOVED duplicate=$DUPLICATE collided=$COLLIDED failed=$FAILED"
 
-# 移送成功分を kind 指定で wiki キューへ enqueue → wiki-runner を起動
+# 移送成功分を kind 指定で wiki キューへ enqueue → debounced launcher を起動
 ENQUEUE="${RUNTIME_ROOT}/wiki/enqueue.py"
-WIKI_RUNNER="${RUNTIME_ROOT}/wiki/wiki-runner.sh"
+WIKI_KICKER="${RUNTIME_ROOT}/wiki/kick-runner.sh"
 
 if [[ ${#MOVED_TSV[@]} -gt 0 ]]; then
     if [[ -f "$ENQUEUE" ]]; then
@@ -224,8 +224,8 @@ if [[ ${#MOVED_TSV[@]} -gt 0 ]]; then
             python3 "$ENQUEUE" "$p" --kind "$kind" >> "$LOG_FILE" 2>&1 || \
                 log "warn: enqueue failed (kind=$kind) for $p"
         done
-        if [[ -x "$WIKI_RUNNER" ]]; then
-            ( nohup "$WIKI_RUNNER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+        if [[ -x "$WIKI_KICKER" ]]; then
+            ( nohup "$WIKI_KICKER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
         fi
     else
         log "warn: enqueue script not found: $ENQUEUE"

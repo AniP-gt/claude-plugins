@@ -31,6 +31,7 @@ for src in "$TEMPLATE_ROOT"/lib/*; do
 done
 
 for src in "$TEMPLATE_ROOT"/wiki/enqueue.py \
+           "$TEMPLATE_ROOT"/wiki/kick-runner.sh \
            "$TEMPLATE_ROOT"/wiki/wiki-runner.sh \
            "$TEMPLATE_ROOT"/wiki/codex-instruction.md \
            "$TEMPLATE_ROOT"/wiki/codex-instruction-web.md \

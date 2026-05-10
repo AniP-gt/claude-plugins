@@ -151,7 +151,7 @@ printf '%s' '{"session_id":"<UUID>","cwd":"<CWD>","transcript_path":"<JSONL>","s
 
 スクリプトは `https://r.jina.ai/<URL>` から Markdown を取得し、`<memories_dir>/raw/web/YYYY-MM-DD/HHMMSS_<slug>.md` に frontmatter 付きで保存する。`JINA_API_KEY` が `~/.config/jina/secrets.env` または環境変数にあれば Bearer 付与。
 
-保存成功直後に `wiki/enqueue.py --kind web` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が `wiki/references.md` をテーマ別 + 時系列で更新する（詳細は `references/wiki.md`）。cocoindex は変更検知で自動再インデックス。
+保存成功直後に `wiki/enqueue.py --kind web` を実行し、`wiki/kick-runner.sh` を fire-and-forget で起動する（debounce 経由で `wiki-runner.sh` が駆動される）。Codex が `wiki/references.md` をテーマ別 + 時系列で更新する（詳細は `references/wiki.md`）。cocoindex は変更検知で自動再インデックス。
 
 成功時、保存パスを stdout に返す。
 
@@ -188,7 +188,7 @@ EOF
 
 スクリプトは `<memories_dir>/raw/minutes/YYYY-MM-DD/HHMMSS_<slug>.md` に frontmatter 付きで保存する。要約・整形は行わず、渡された本文をそのまま保存する（議事録の生情報を保持する設計）。
 
-保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki-runner.sh` を fire-and-forget で起動する。Codex が議事録の `date` から `YYYYMM` を抽出して `wiki/minutes/<YYYYMM>.md` を月次集約フォーマットで更新する（詳細は `references/wiki.md`）。
+保存成功直後に `wiki/enqueue.py --kind minutes` を実行し、`wiki/kick-runner.sh` を fire-and-forget で起動する（debounce 経由で `wiki-runner.sh` が駆動される）。Codex が議事録の `date` から `YYYYMM` を抽出して `wiki/minutes/<YYYYMM>.md` を月次集約フォーマットで更新する（詳細は `references/wiki.md`）。
 
 成功時、保存パスを stdout に返す。
 
@@ -223,7 +223,7 @@ SRC_URL="<Notion URL>"
 
 > 設計メモ: `save.sh` は frontmatter に任意キーを追加する API を持たないため、出典 URL は本文冒頭の引用ブロックで残す。Wiki 統合（Codex）はこの引用を見出し近傍の典拠として扱う。
 
-成功時、保存パスを stdout に返す。Wiki 連携は通常の minutes と同じく `enqueue.py --kind minutes` → `wiki-runner.sh` が走る。
+成功時、保存パスを stdout に返す。Wiki 連携は通常の minutes と同じく `enqueue.py --kind minutes` → `kick-runner.sh`（→ `wiki-runner.sh`）が走る。
 
 ## 自動化パイプライン（kind: session のみ）
 

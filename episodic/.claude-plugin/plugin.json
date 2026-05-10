@@ -1,6 +1,6 @@
 {
   "name": "episodic",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。Notion URL から議事録への取込みフロー対応。",
   "author": { "name": "miya" },
   "keywords": ["episodic", "memory", "claude-code", "session", "codex", "vector-search", "jina-reader", "minutes", "notion"]

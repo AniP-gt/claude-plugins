@@ -74,6 +74,15 @@ stop_debounce_seconds = 30
 #   export CODEX_MEMORY_WIKI_MODEL_MINUTES="gpt-5.4-mini"
 # 後方互換: CODEX_MEMORY_WIKI_MODEL を設定すると全 kind の既定値を上書きします。
 
+# Wiki queue 処理制御（wiki-runner.sh / kick-runner.sh が参照）。
+#   export MEMORIES_WIKI_BATCH_SIZE=8                       # 同一 Wiki target にまとめる Raw 数
+#   export MEMORIES_WIKI_PARALLELISM=2                      # 別 Wiki target の同時処理数
+#   export MEMORIES_WIKI_MAX_ATTEMPTS=5                     # 失敗時の最大試行回数（超過で dead-letter）
+#   export MEMORIES_WIKI_RETRY_BASE_SECONDS=300             # 指数 backoff の初期秒数（上限 86400）
+#   export MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS=3600    # status: processing を stuck と判定する経過秒数
+#   export MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS=7200   # target lock 取得待ちの最大秒数
+#   export MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS=5            # enqueue 後の runner 起動 debounce 秒数
+
 # trashbox 自動削除（wiki-runner.sh 起動時に mtime ベースで実行）。
 #   export MEMORIES_TRASHBOX_RETAIN_DAYS=30   # 保持日数（既定 30、0 で無効化）
 #   export MEMORIES_TRASHBOX_DRY_RUN=1        # 1 で削除せずログのみ
