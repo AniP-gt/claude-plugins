@@ -18,6 +18,7 @@ install_file() {
 mkdir -p "$BIN_DIR" "$LIB_DIR" "$WIKI_DIR"
 chmod 700 "$CONFIG_ROOT" "$RUNTIME_ROOT" "$BIN_DIR" "$LIB_DIR" "$WIKI_DIR" 2>/dev/null || true
 
+install_file "$TEMPLATE_ROOT/README.md" "$RUNTIME_ROOT/README.md" 644
 install_file "$TEMPLATE_ROOT/bin/session-start.sh" "$BIN_DIR/session-start.sh" 755
 install_file "$TEMPLATE_ROOT/bin/mount-memory-share.sh" "$BIN_DIR/mount-memory-share.sh" 755
 install_file "$TEMPLATE_ROOT/bin/sync-pending.sh" "$BIN_DIR/sync-pending.sh" 755
