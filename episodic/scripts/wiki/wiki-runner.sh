@@ -193,6 +193,9 @@ fi
 
 # pending エントリ取り出し関数（kind 含む TSV: <raw_path>\t<kind>）。
 # self-poll ループで毎イテレーション再 scan するため関数化する。
+# 同一 raw_path が複数 pending として残っている場合（旧 enqueue.py で発生し得た）は
+# 最初の 1 件だけ採用して残りはスキップし、codex 二重実行を防ぐ。
+# 残った重複エントリは処理後の queue 書き戻し（rp in processed_paths）でまとめて削除される。
 # QUEUE は環境変数経由で渡す（シェル変数の Python ソース直接展開を避けてインジェクション耐性を上げる）。
 read_pending_entries() {
     QUEUE_PATH="$QUEUE" python3 -c '
@@ -201,6 +204,7 @@ from pathlib import Path
 q = Path(os.environ["QUEUE_PATH"])
 if not q.exists():
     sys.exit(0)
+seen = set()
 for line in q.read_text(encoding="utf-8").splitlines():
     line = line.strip()
     if not line:
@@ -212,6 +216,9 @@ for line in q.read_text(encoding="utf-8").splitlines():
     if d.get("status") != "pending":
         continue
     raw = d.get("raw_path", "")
+    if raw in seen:
+        continue
+    seen.add(raw)
     kind = d.get("kind") or "session"
     print(f"{raw}\t{kind}")
 '

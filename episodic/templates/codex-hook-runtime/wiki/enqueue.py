@@ -2,8 +2,9 @@
 """Raw レポート（kind: session/web/minutes）1件分のエントリを ingest-queue.jsonl に追記する。
 
 呼び出し側（runner.sh / fetch-jina.sh / save.sh）が保存成功直後に実行。
-JSONL への append-only 書き込みを使うため、複数プロセス並行でも安全
-（POSIX 上、PIPE_BUF=512 以下の write は原子的）。
+同一 raw_path の pending エントリが既にあれば追記をスキップする（dedupe）。
+追記前に flock(LOCK_EX) を取って read→check→append を直列化し、
+複数プロセス並行 enqueue でも重複を生まない。
 
 kind は引数 --kind 優先、未指定時は raw_path から自動推定する
 （`raw/session/` `raw/web/` `raw/minutes/` のいずれを含むか）。
@@ -11,11 +12,16 @@ kind は引数 --kind 優先、未指定時は raw_path から自動推定する
 Usage:
     enqueue.py <raw_path> [--kind session|web|minutes] [--memories-dir PATH]
 
-Stdout: 追記した行（デバッグ用）
+終了コード:
+    0 → 追記成功 または 重複スキップ（どちらも正常終了）
+    2 → raw_path が存在しない
+
+Stdout: 追記した行（デバッグ用）。重複スキップ時は "skip: ..." を stderr に出力。
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import sys
@@ -78,8 +84,23 @@ def main() -> int:
     }
     line = json.dumps(entry, ensure_ascii=False) + "\n"
 
-    # append-only。短い書き込みは POSIX で原子的なので flock 不要。
-    with queue_path.open("a", encoding="utf-8") as f:
+    # flock で read→check→append を直列化して並行 enqueue 競合と重複を防ぐ。
+    # ファイルが無くても a+ で作成されるため、queue_path 不在時も問題なし。
+    with queue_path.open("a+", encoding="utf-8") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        f.seek(0)
+        for existing in f:
+            existing = existing.strip()
+            if not existing:
+                continue
+            try:
+                d = json.loads(existing)
+            except json.JSONDecodeError:
+                continue
+            if d.get("raw_path") == str(raw_path) and d.get("status") == "pending":
+                print(f"skip: duplicate pending entry for {raw_path}", file=sys.stderr)
+                return 0
+        f.seek(0, os.SEEK_END)
         f.write(line)
 
     print(line, end="")
