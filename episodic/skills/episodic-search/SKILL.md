@@ -18,7 +18,7 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
-- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/scripts/.venv`）と memory データベース（`postgres://...:15432/memory`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
+- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/scripts/.venv`）と episodic データベース（`postgres://...:15432/episodic`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
 - **インデックスは episodic-recording 側で管理**: Stop hook 経路の runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
@@ -47,10 +47,10 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 環境変数（任意）:
 
 - `MEMORIES_DIR`: memories ディレクトリの絶対パス（既定: `/Volumes/memory`）
-- `MEMORY_DATABASE_URL`: memory 専用 PostgreSQL 接続 URL（既定: `postgres://postgres:postgres@localhost:15432/memory`）。`~/.config/memory/.env` でも設定可能
-- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`episodic-recording` の `main_memory.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
+- `EPISODIC_DATABASE_URL`: episodic 専用 PostgreSQL 接続 URL（既定: `postgres://postgres:postgres@localhost:15432/episodic`）。`~/.config/episodic/.env` でも設定可能
+- `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`episodic-recording` の `main_episodic.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
 - `MEMORIES_EMBEDDING_PROVIDER`: 埋め込みプロバイダー（既定: `voyage`）
-- `VOYAGE_API_KEY`: voyage embedding / rerank API キー。`~/.config/memory/secrets.env` で設定可能。未設定の場合は `~/.config/cocoindex/secrets.env` を fallback で読む
+- `VOYAGE_API_KEY`: voyage embedding / rerank API キー。`~/.config/episodic/secrets.env` で設定可能。未設定の場合は `~/.config/cocoindex/secrets.env` を fallback で読む
 
 ## 返却値
 
@@ -133,7 +133,7 @@ stdout に以下を出力する。
 ## トラブルシューティング
 
 - `connection refused: localhost:15432` → PostgreSQL 起動。`docker compose -f ~/.config/cocoindex/compose.yml up -d`
-- `relation "memoryindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/scripts/recording/main_memory.py:MemoryIndex_<host>_<name>` でインデックスを構築する
+- `relation "episodicindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/scripts/recording/main_episodic.py:EpisodicIndex_<host>_episodic` でインデックスを構築する
 - インデックスが空 / 古い → Stop hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
 - `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`episodic-recording` skill から手動保存する）

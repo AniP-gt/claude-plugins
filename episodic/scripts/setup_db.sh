@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# memory プラグイン専用 PostgreSQL データベースのセットアップ。
+# episodic プラグイン専用 PostgreSQL データベースのセットアップ。
 #
 # 役割:
-#   1. ~/.config/memory/.env と secrets.env を雛形から auto-provision（既存は上書きしない）
-#   2. PostgreSQL に "memory" データベースを冪等作成（CREATE DATABASE IF NOT EXISTS 相当）
-#   3. memory DB に pgvector 拡張を冪等作成（CREATE EXTENSION IF NOT EXISTS vector）
+#   1. ~/.config/episodic/.env と secrets.env を雛形から auto-provision（既存は上書きしない）
+#   2. PostgreSQL に "episodic" データベースを冪等作成（CREATE DATABASE IF NOT EXISTS 相当）
+#   3. episodic DB に pgvector 拡張を冪等作成（CREATE EXTENSION IF NOT EXISTS vector）
 #
 # 前提:
 #   - cocoindex プラグインの compose.yml で PostgreSQL コンテナ "cocoindex" が起動済み
-#   - 接続情報は MEMORY_DATABASE_URL（未設定なら ~/.config/memory/.env、さらに既定値）から解決
+#   - 接続情報は EPISODIC_DATABASE_URL（未設定なら ~/.config/episodic/.env、さらに既定値）から解決
 #
 # 設計上の安全策:
-#   - .env を `source` しない（任意のシェルコード実行を防ぐ）。MEMORY_DATABASE_URL の値だけを抽出する
+#   - .env を `source` しない（任意のシェルコード実行を防ぐ）。値だけを抽出する
 #   - python3 の出力を eval しない（パスワードに含まれるシェルメタ文字によるコード実行を防ぐ）
 #   - SQL に DB_NAME を文字列展開しない。psql の -v バインド変数 + quote_ident で渡す
 #   - URL 全体をログに出さない（パスワード混入を避ける）
@@ -23,17 +23,17 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATES_DIR="${SCRIPT_DIR}/templates"
-CONFIG_DIR="${HOME}/.config/memory"
+CONFIG_DIR="${HOME}/.config/episodic"
 ENV_FILE="${CONFIG_DIR}/.env"
 SECRETS_FILE="${CONFIG_DIR}/secrets.env"
 
 CHECK_ONLY=0
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
 
-log() { printf '[memory:setup_db] %s\n' "$*" >&2; }
-err() { printf '[memory:setup_db] ERROR: %s\n' "$*" >&2; }
+log() { printf '[episodic:setup_db] %s\n' "$*" >&2; }
+err() { printf '[episodic:setup_db] ERROR: %s\n' "$*" >&2; }
 
-# 1. 雛形を ~/.config/memory/ に展開（既存は触らない）
+# 1. 雛形を ~/.config/episodic/ に展開（既存は触らない）
 provision_config() {
     mkdir -p "$CONFIG_DIR"
     chmod 700 "$CONFIG_DIR"
@@ -42,7 +42,7 @@ provision_config() {
             log "missing: $ENV_FILE"
             return 1
         fi
-        cp "${TEMPLATES_DIR}/memory.env.example" "$ENV_FILE"
+        cp "${TEMPLATES_DIR}/episodic.env.example" "$ENV_FILE"
         chmod 600 "$ENV_FILE"
         log "created $ENV_FILE"
     fi
@@ -51,22 +51,20 @@ provision_config() {
             log "missing: $SECRETS_FILE"
             return 1
         fi
-        cp "${TEMPLATES_DIR}/memory_secrets.env.example" "$SECRETS_FILE"
+        cp "${TEMPLATES_DIR}/episodic_secrets.env.example" "$SECRETS_FILE"
         chmod 600 "$SECRETS_FILE"
         log "created $SECRETS_FILE"
     fi
 }
 
-# .env から MEMORY_DATABASE_URL の値だけを抽出する（source しない）。
-# 行頭の MEMORY_DATABASE_URL=... を最後の 1 行勝ち（後勝ち）で採用し、両端の引用符を剥がす。
+# .env から EPISODIC_DATABASE_URL の値だけを抽出する（source しない）。
+# 行頭の EPISODIC_DATABASE_URL=... を最後の 1 行勝ち（後勝ち）で採用し、両端の引用符を剥がす。
 extract_env_value() {
     local file="$1" key="$2" line value
     [[ -f "$file" ]] || return 0
-    # コメント行を除外し、KEY= で始まる最後の行を採用
     line=$(grep -E "^[[:space:]]*${key}=" "$file" | grep -vE "^[[:space:]]*#" | tail -1)
     [[ -z "$line" ]] && return 0
     value="${line#*=}"
-    # 両端のシングル/ダブルクォートを剥がす
     if [[ "$value" =~ ^\"(.*)\"$ ]]; then
         value="${BASH_REMATCH[1]}"
     elif [[ "$value" =~ ^\'(.*)\'$ ]]; then
@@ -76,18 +74,18 @@ extract_env_value() {
 }
 
 resolve_db_url() {
-    # 優先順位: 既存 env > ~/.config/memory/.env > 既定値
-    if [[ -n "${MEMORY_DATABASE_URL:-}" ]]; then
-        printf '%s' "$MEMORY_DATABASE_URL"
+    # 優先順位: 既存 env > ~/.config/episodic/.env > 既定値
+    if [[ -n "${EPISODIC_DATABASE_URL:-}" ]]; then
+        printf '%s' "$EPISODIC_DATABASE_URL"
         return
     fi
     local from_file
-    from_file=$(extract_env_value "$ENV_FILE" "MEMORY_DATABASE_URL")
+    from_file=$(extract_env_value "$ENV_FILE" "EPISODIC_DATABASE_URL")
     if [[ -n "$from_file" ]]; then
         printf '%s' "$from_file"
         return
     fi
-    printf '%s' "postgres://postgres:postgres@localhost:15432/memory"
+    printf '%s' "postgres://postgres:postgres@localhost:15432/episodic"
 }
 
 # URL から接続パラメータを 1 変数ずつ標準出力に出す。read で 1 行ずつ受け取るので

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# memory プラグイン共通: cocoindex update を非同期キックする。
+# episodic プラグイン共通: cocoindex update を非同期キックする。
 #
 # このファイルは source して使う。呼び出し元で以下を事前に設定しておくこと:
-#   PLUGIN_ROOT      memory プラグインのルート（${CLAUDE_PLUGIN_ROOT} 相当）
+#   PLUGIN_ROOT      episodic プラグインのルート（${CLAUDE_PLUGIN_ROOT} 相当）
 #   MEMORIES_DIR     memories ルート（既定 /Volumes/memory）
 #   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 /tmp/episodic）
 #
@@ -15,14 +15,14 @@
 
 trigger_cocoindex_update() {
     # 新規/更新された raw / wiki ファイルを cocoindex に反映（best effort / 非同期）。
-    # memory プラグイン専用エントリポイント（main_memory.py）を memory 自身の venv で実行する。
-    # cocoindex 1.0 CLI 形式（cocoindex update -f main_memory.py:<AppName>）で起動。
+    # episodic プラグイン専用エントリポイント（main_episodic.py）を episodic 自身の venv で実行する。
+    # cocoindex 1.0 CLI 形式（cocoindex update -f main_episodic.py:<AppName>）で起動。
     #
     # ドメイン固有設定（embedding model/dimension, chunk size, exclude）は
-    # ~/.config/memory/cocoindex.toml の [embedding]/[chunk]/[index] セクションで管理する。
+    # ~/.config/episodic/cocoindex.toml の [embedding]/[chunk]/[index] セクションで管理する。
     local memories_dir="${1:-${MEMORIES_DIR:-/Volumes/memory}}"
-    local memory_scripts="${PLUGIN_ROOT}/scripts"
-    local recording_scripts="${memory_scripts}/recording"
+    local episodic_scripts="${PLUGIN_ROOT}/scripts"
+    local recording_scripts="${episodic_scripts}/recording"
     local log_dir="${LOG_DIR_LOCAL:-/tmp/episodic}"
     mkdir -p "$log_dir" 2>/dev/null || true
     local cocoindex_log="$log_dir/cocoindex-update.log"
@@ -35,12 +35,12 @@ trigger_cocoindex_update() {
         fi
     }
 
-    if [[ ! -f "$recording_scripts/main_memory.py" ]]; then
-        _ct_log "cocoindex update skipped: main_memory.py not found ($recording_scripts/main_memory.py)"
+    if [[ ! -f "$recording_scripts/main_episodic.py" ]]; then
+        _ct_log "cocoindex update skipped: main_episodic.py not found ($recording_scripts/main_episodic.py)"
         return
     fi
-    if [[ ! -f "$memory_scripts/pyproject.toml" ]]; then
-        _ct_log "cocoindex update skipped: memory pyproject not found ($memory_scripts/pyproject.toml)"
+    if [[ ! -f "$episodic_scripts/pyproject.toml" ]]; then
+        _ct_log "cocoindex update skipped: episodic pyproject not found ($episodic_scripts/pyproject.toml)"
         return
     fi
     if ! command -v uv >/dev/null 2>&1; then
@@ -48,22 +48,21 @@ trigger_cocoindex_update() {
         return
     fi
 
-    # MEMORIES_DIR=`/Volumes/memory` の場合 INDEX_NAME=memory、AppName と table 名は
-    # main_memory.py が hostname プレフィックス付きで自動計算する（MemoryIndex_<host>_<name>）。
-    local index_name
-    index_name="$(basename "$memories_dir")"
+    # INDEX_NAME は固定 "episodic"。AppName と table 名は main_episodic.py が
+    # hostname プレフィックス付きで自動計算する（EpisodicIndex_<host>_episodic / episodicindex_<host>_episodic__chunks）。
+    local index_name="episodic"
     local host_prefix
     host_prefix="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
-    local app_name="MemoryIndex_${host_prefix}_${index_name}"
+    local app_name="EpisodicIndex_${host_prefix}_${index_name}"
 
-    _ct_log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=memory/cocoindex.toml [memory])"
-    # main_memory.py は memory プラグイン専用 venv（uv 管理）で実行する。
+    _ct_log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=~/.config/episodic/cocoindex.toml)"
+    # main_episodic.py は episodic プラグイン専用 venv（uv 管理）で実行する。
     (
-        cd "$memory_scripts" \
+        cd "$episodic_scripts" \
         && SOURCE_PATH="$memories_dir" \
             INDEX_NAME="$index_name" \
             PATTERNS="**/*.md" \
-            nohup uv run cocoindex update -f "${recording_scripts}/main_memory.py:${app_name}" \
+            nohup uv run cocoindex update -f "${recording_scripts}/main_episodic.py:${app_name}" \
             >> "$cocoindex_log" 2>&1 &
     ) >/dev/null 2>&1 || true
 }

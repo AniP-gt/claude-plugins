@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""memory-search 専用ベクトル検索（dense + BM25 RRF → rerank-2）。
+"""episodic-search 専用ベクトル検索（dense + BM25 RRF → rerank-2）。
 
-- 対象テーブル `memoryindex_<host>_<name>__chunks`（main_memory.py が memory DB に作成）
-- 前提: chunk_tsv (tsvector) 列と GIN index は main_memory.py の declare_sql_command_attachment
+- 対象テーブル `episodicindex_<host>_<name>__chunks`（main_episodic.py が episodic DB に作成）
+- 前提: chunk_tsv (tsvector) 列と GIN index は main_episodic.py の declare_sql_command_attachment
   により自動的に作成・維持される
 - 出力フォーマットは `[<score>] <filename>` の単純形式（同階層の format.py が消費する）
 
 依存: voyageai / psycopg2 / python-dotenv
-memory プラグイン専用 venv（memory/scripts/.venv）で実行する（search.sh が `uv run` でラップ）。
+episodic プラグイン専用 venv（episodic/scripts/.venv）で実行する（search.sh が `uv run` でラップ）。
 """
 from __future__ import annotations
 
@@ -22,28 +22,28 @@ import psycopg2
 import voyageai
 from psycopg2 import sql
 
-_MEMORY_CFG_DIR = Path.home() / ".config" / "memory"
+_EPISODIC_CFG_DIR = Path.home() / ".config" / "episodic"
 _COCOINDEX_CFG_DIR = Path.home() / ".config" / "cocoindex"
 
 # プラグイン管理下にある secrets.env で確実に上書きする（古い ~/.env 等を排除）。
-# 優先順位: memory 側で明示設定した値 > cocoindex 側 secrets.env > プロセス起動時の env。
+# 優先順位: episodic 側で明示設定した値 > cocoindex 側 secrets.env > プロセス起動時の env。
 load_dotenv(dotenv_path=_COCOINDEX_CFG_DIR / "secrets.env", override=True)
-load_dotenv(dotenv_path=_MEMORY_CFG_DIR / ".env", override=True)
-load_dotenv(dotenv_path=_MEMORY_CFG_DIR / "secrets.env", override=True)
+load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / ".env", override=True)
+load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / "secrets.env", override=True)
 
 
 def get_table_name(project_dir: str) -> str:
     """プロジェクトディレクトリからテーブル名を計算（hostname prefix付き）。
 
-    main_memory.py の TABLE 命名規約と一致させる:
-      memoryindex_<sanitized_host>_<sanitized_name>__chunks
+    main_episodic.py の TABLE 命名規約と一致させる:
+      episodicindex_<sanitized_host>_<sanitized_name>__chunks
     """
     import socket
     host_prefix = re.sub(r"[^a-zA-Z0-9]", "_", socket.gethostname()).lower()
     name = Path(project_dir).name
     index_name = f"{host_prefix}_{name}"
     sanitized = re.sub(r"[^a-zA-Z0-9]", "_", index_name)
-    return f"memoryindex_{sanitized}__chunks".lower()
+    return f"episodicindex_{sanitized}__chunks".lower()
 
 
 def embed_query(query: str) -> list[float]:
@@ -126,7 +126,7 @@ def dedup_by_filename(ordered_ids: list[str], by_id: dict[str, tuple], limit: in
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="memory-search hybrid+rerank")
+    p = argparse.ArgumentParser(description="episodic-search hybrid+rerank")
     p.add_argument("query")
     p.add_argument("--project-dir", required=True)
     p.add_argument("--top", type=int, default=10)
@@ -152,8 +152,8 @@ def main() -> int:
 
     table = get_table_name(args.project_dir)
     db_url = os.environ.get(
-        "MEMORY_DATABASE_URL",
-        "postgres://postgres:postgres@localhost:15432/memory",
+        "EPISODIC_DATABASE_URL",
+        "postgres://postgres:postgres@localhost:15432/episodic",
     )
 
     try:
@@ -162,10 +162,10 @@ def main() -> int:
         msg = str(e).strip()
         if "could not connect" in msg.lower() or "connection refused" in msg.lower():
             sys.stderr.write(
-                "[memory-search] PostgreSQL に接続できません（既定: localhost:15432）。\n"
+                "[episodic-search] PostgreSQL に接続できません（既定: localhost:15432）。\n"
                 "  起動コマンド:\n"
                 "    docker compose -f ~/.config/cocoindex/compose.yml up -d\n"
-                "  別ホストの場合は COCOINDEX_DATABASE_URL を設定してください。\n"
+                "  別ホストの場合は EPISODIC_DATABASE_URL を設定してください。\n"
             )
             return 4
         raise

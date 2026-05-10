@@ -1,6 +1,6 @@
-"""memories 専用 cocoindex 1.0 インデクサー（frontmatter prepend 対応版）
+"""episodic 専用 cocoindex 1.0 インデクサー（frontmatter prepend 対応版）
 
-エピソード記憶（/Volumes/memory 配下）専用のフロー定義。プラグイン本体（汎用 main.py）
+エピソード記憶（既定 /Volumes/memory 配下）専用のフロー定義。プラグイン本体（汎用 main.py）
 をベースに、検索精度向上のため以下を組み込む:
 
   1. frontmatter（title / tags / keywords）を embedding 入力に prepend
@@ -8,14 +8,14 @@
   2. chunk_text には素の本文だけを格納（embed/store 分離）
      → 検索結果のスニペット表示が綺麗になる
   3. chunk_size は prepend 分（~100字）を補償して 1300 程度に拡張可能
-     （MEMORIES 用途は 1200 + prepend が体感最良）
+     （episodic 用途は 1200 + prepend が体感最良）
 
 cocoindex 1.0 CLI で起動:
-  cocoindex update -f main_memory.py:<AppName>
+  cocoindex update -f main_episodic.py:<AppName>
 
-設定は環境変数 + ~/.config/cocoindex/config.toml + secrets.env で渡す:
+設定は環境変数 + ~/.config/episodic/cocoindex.toml + secrets.env で渡す:
   SOURCE_PATH               (必須) インデックス対象 (例: /Volumes/memory)
-  INDEX_NAME                プロジェクト名 (省略時は SOURCE_PATH のベース名)
+  INDEX_NAME                プロジェクト名 (省略時は固定値 "episodic")
   PATTERNS                  csv (既定: "**/*.md")
   EXCLUDE                   csv (既定: 主要 trash/draft 除外)
   CHUNK_SIZE                既定 1200
@@ -23,7 +23,7 @@ cocoindex 1.0 CLI で起動:
   EMBEDDING_PROVIDER        既定 voyage
   EMBEDDING_MODEL           既定 voyage-3-large
   EMBEDDING_DIMENSION       既定 1024
-  COCOINDEX_DATABASE_URL    DB 接続先 (config.py が COCOINDEX_DB に展開)
+  EPISODIC_DATABASE_URL     DB 接続先（既定 postgres://.../episodic）
   VOYAGE_API_KEY            secrets.env で管理
 """
 from __future__ import annotations
@@ -48,38 +48,34 @@ from cocoindex.resources.file import FileLike, PatternFilePathMatcher
 from cocoindex.resources.id import IdGenerator
 from numpy.typing import NDArray
 
-# 1) memory プラグイン専用の env / secrets を読み込む。
-#    優先順位: 既存環境変数 > ~/.config/memory/.env / secrets.env > ~/.config/cocoindex/secrets.env (fallback)
-#    cocoindex プラグインの config.py は依存しない（独立化済み）。
+# 1) episodic プラグイン専用の env / secrets を読み込む。
+#    優先順位: 既存環境変数 > ~/.config/episodic/.env / secrets.env > ~/.config/cocoindex/secrets.env (fallback)
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # scripts/ を import path に追加
 
 from dotenv import load_dotenv  # noqa: E402
 
-_MEMORY_CFG_DIR = pathlib.Path.home() / ".config" / "memory"
+_EPISODIC_CFG_DIR = pathlib.Path.home() / ".config" / "episodic"
 _COCOINDEX_CFG_DIR = pathlib.Path.home() / ".config" / "cocoindex"
 
 # cocoindex CLI が先に ~/.env を読み込んで古い VOYAGE_API_KEY 等が紛れ込むことがあるため、
-# プラグイン管理下にある secrets.env で確実に上書きする。
-# 優先順位は「memory 側で明示設定した値」を最優先にしたいので、cocoindex 側を先に override=True
-# で読み込み、その後 memory 側を override=True で読む。memory 側でコメントアウトされたキーは
-# 何も書き換えないので、cocoindex 側で読み込んだ値が残る。
+# プラグイン管理下にある secrets.env で確実に上書きする。cocoindex 側を先に override=True で
+# 読み込み、続いて episodic 側を読むことで episodic 側を最優先にする。
 load_dotenv(dotenv_path=_COCOINDEX_CFG_DIR / "secrets.env", override=True)
-load_dotenv(dotenv_path=_MEMORY_CFG_DIR / ".env", override=True)
-load_dotenv(dotenv_path=_MEMORY_CFG_DIR / "secrets.env", override=True)
+load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / ".env", override=True)
+load_dotenv(dotenv_path=_EPISODIC_CFG_DIR / "secrets.env", override=True)
 
 
-# 2) memory プラグイン専用設定 ~/.config/memory/cocoindex.toml を auto-provision して読み込む
+# 2) episodic プラグイン専用設定 ~/.config/episodic/cocoindex.toml を auto-provision して読み込む
 #    テンプレ参照先は本ファイルと同じ scripts/ 配下（scripts/templates/cocoindex.toml.example）。
-_MEMORY_CONFIG_DIR = pathlib.Path.home() / ".config" / "memory"
-_MEMORY_CONFIG = _MEMORY_CONFIG_DIR / "cocoindex.toml"
+_EPISODIC_CONFIG = _EPISODIC_CFG_DIR / "cocoindex.toml"
 _TEMPLATE = pathlib.Path(__file__).resolve().parent.parent / "templates" / "cocoindex.toml.example"
 
-if not _MEMORY_CONFIG.exists() and _TEMPLATE.exists():
-    _MEMORY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    _MEMORY_CONFIG.write_text(_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
+if not _EPISODIC_CONFIG.exists() and _TEMPLATE.exists():
+    _EPISODIC_CFG_DIR.mkdir(parents=True, exist_ok=True)
+    _EPISODIC_CONFIG.write_text(_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
 
-# recording 用 toml -> MEMORIES_* env への展開。優先順位は MEMORIES_* env > toml > 既定値。
-_MEMORY_MAPPINGS: list[tuple[tuple[str, ...], str]] = [
+# episodic 用 toml -> MEMORIES_* env への展開。優先順位は MEMORIES_* env > toml > 既定値。
+_EPISODIC_CONFIG_MAPPINGS: list[tuple[tuple[str, ...], str]] = [
     (("embedding", "provider"), "MEMORIES_EMBEDDING_PROVIDER"),
     (("embedding", "model"), "MEMORIES_EMBEDDING_MODEL"),
     (("embedding", "dimension"), "MEMORIES_EMBEDDING_DIMENSION"),
@@ -88,18 +84,18 @@ _MEMORY_MAPPINGS: list[tuple[tuple[str, ...], str]] = [
     (("index", "exclude"), "MEMORIES_EXCLUDE"),
 ]
 
-if _MEMORY_CONFIG.exists():
+if _EPISODIC_CONFIG.exists():
     if sys.version_info >= (3, 11):
         import tomllib  # type: ignore
     else:  # pragma: no cover
         import tomli as tomllib  # type: ignore
     try:
-        with _MEMORY_CONFIG.open("rb") as _f:
-            _memcfg = tomllib.load(_f)
-        for _path, _env_key in _MEMORY_MAPPINGS:
+        with _EPISODIC_CONFIG.open("rb") as _f:
+            _epicfg = tomllib.load(_f)
+        for _path, _env_key in _EPISODIC_CONFIG_MAPPINGS:
             if _env_key in os.environ:
                 continue
-            _cur: object = _memcfg
+            _cur: object = _epicfg
             for _k in _path:
                 if not isinstance(_cur, dict) or _k not in _cur:
                     _cur = None
@@ -108,10 +104,10 @@ if _MEMORY_CONFIG.exists():
             if _cur is not None:
                 os.environ[_env_key] = str(_cur)
     except Exception as _e:
-        print(f"[recording] warn: failed to parse {_MEMORY_CONFIG}: {_e}", file=sys.stderr)
+        print(f"[episodic] warn: failed to parse {_EPISODIC_CONFIG}: {_e}", file=sys.stderr)
 
 
-# memory ドメイン向けの除外（trashbox / 下書き / 隠し）
+# episodic ドメイン向けの除外（trashbox / 下書き / 隠し）
 DEFAULT_EXCLUDES = [
     "trashbox/**",
     "**/_*.md",
@@ -132,12 +128,10 @@ SOURCE_PATH = os.environ.get("SOURCE_PATH")
 if not SOURCE_PATH:
     raise RuntimeError("SOURCE_PATH 環境変数が必要です（例: SOURCE_PATH=/Volumes/memory）")
 
-# memory ドメイン専用設定。優先順位は MEMORIES_* env > 共通 env > 既定値。
-# ~/.config/cocoindex/config.toml の [memory] セクションは config.py 経由で
-# MEMORIES_* env として展開済み（`apply_config_to_env()` 完了後にこのコードが走る）。
-def _mem_env(memory_key: str, fallback_key: str | None, default: str) -> str:
-    if memory_key in os.environ:
-        return os.environ[memory_key]
+# episodic ドメイン専用設定。優先順位は MEMORIES_* env > 共通 env > 既定値。
+def _ep_env(primary_key: str, fallback_key: str | None, default: str) -> str:
+    if primary_key in os.environ:
+        return os.environ[primary_key]
     if fallback_key and fallback_key in os.environ:
         return os.environ[fallback_key]
     return default
@@ -149,9 +143,9 @@ EXCLUDED = ([] if _bool_env("NO_DEFAULT_EXCLUDES") else list(DEFAULT_EXCLUDES))
 EXCLUDED.extend(_csv("EXCLUDE"))
 EXCLUDED.extend([s.strip() for s in os.environ.get("MEMORIES_EXCLUDE", "").split(",") if s.strip()])
 
-CHUNK_SIZE = int(_mem_env("MEMORIES_CHUNK_SIZE", "CHUNK_SIZE", "1200"))
-CHUNK_OVERLAP = int(_mem_env("MEMORIES_CHUNK_OVERLAP", "CHUNK_OVERLAP", "300"))
-EMBEDDING_DIMENSION = int(_mem_env("MEMORIES_EMBEDDING_DIMENSION", "EMBEDDING_DIMENSION", "1024"))
+CHUNK_SIZE = int(_ep_env("MEMORIES_CHUNK_SIZE", "CHUNK_SIZE", "1200"))
+CHUNK_OVERLAP = int(_ep_env("MEMORIES_CHUNK_OVERLAP", "CHUNK_OVERLAP", "300"))
+EMBEDDING_DIMENSION = int(_ep_env("MEMORIES_EMBEDDING_DIMENSION", "EMBEDDING_DIMENSION", "1024"))
 
 
 def _host_prefix() -> str:
@@ -159,32 +153,31 @@ def _host_prefix() -> str:
 
 
 def _index_name() -> str:
-    raw = os.environ.get("INDEX_NAME") or pathlib.Path(SOURCE_PATH).resolve().name
+    # 既定値は固定 "episodic"（旧版は SOURCE_PATH の basename を使っていたが、命名統一のため固定化）。
+    raw = os.environ.get("INDEX_NAME") or "episodic"
     host = _host_prefix()
     return raw if raw.startswith(f"{host}_") else f"{host}_{raw}"
 
 
 INDEX = _index_name()
-TABLE = f"memoryindex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX).lower()}__chunks"
-APP = f"MemoryIndex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX)}"
+TABLE = f"episodicindex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX).lower()}__chunks"
+APP = f"EpisodicIndex_{re.sub(r'[^a-zA-Z0-9]', '_', INDEX)}"
 
-# memory 専用 database への接続 URL。MEMORY_DATABASE_URL を最優先し、
-# 未設定の場合は localhost の memory DB を既定値とする。
-# cocoindex プラグインと DB を共有していた旧構成からの移行は、setup_db.sh と
-# 新規 cocoindex update により行う（旧テーブルは別途 drop）。
+# episodic 専用 database への接続 URL。EPISODIC_DATABASE_URL を最優先し、未設定なら
+# localhost の episodic DB を既定値とする。
 DATABASE_URL = os.environ.get(
-    "MEMORY_DATABASE_URL",
-    "postgres://postgres:postgres@localhost:15432/memory",
+    "EPISODIC_DATABASE_URL",
+    "postgres://postgres:postgres@localhost:15432/episodic",
 )
 
 # cocoindex 1.0 は自身の tracking テーブルを格納する DB を COCOINDEX_DB から取得する。
-# memory プラグインは memory database 内に tracking も置くため、未設定なら DATABASE_URL に揃える。
+# episodic プラグインは episodic database 内に tracking も置くため、未設定なら DATABASE_URL に揃える。
 os.environ.setdefault("COCOINDEX_DB", DATABASE_URL)
 
 
 def _build_embedder() -> LiteLLMEmbedder:
-    provider = _mem_env("MEMORIES_EMBEDDING_PROVIDER", "EMBEDDING_PROVIDER", "voyage").lower()
-    model = _mem_env("MEMORIES_EMBEDDING_MODEL", "EMBEDDING_MODEL", "voyage-3-large")
+    provider = _ep_env("MEMORIES_EMBEDDING_PROVIDER", "EMBEDDING_PROVIDER", "voyage").lower()
+    model = _ep_env("MEMORIES_EMBEDDING_MODEL", "EMBEDDING_MODEL", "voyage-3-large")
     kwargs: dict = {"input_type": "document", "dimensions": EMBEDDING_DIMENSION}
     if provider == "voyage":
         litellm_model = f"voyage/{model}"
@@ -233,7 +226,7 @@ def _strip_frontmatter(content: str) -> str:
 
 
 @dataclass
-class MemoryChunk:
+class EpisodicChunk:
     id: int
     filename: str
     chunk_text: str  # スニペット表示用に prepend 抜きの素の本文 chunk
@@ -254,7 +247,7 @@ async def _process_chunk(
     fm_prefix: str,
     filename: pathlib.PurePath,
     id_gen: IdGenerator,
-    table: postgres.TableTarget[MemoryChunk],
+    table: postgres.TableTarget[EpisodicChunk],
 ) -> None:
     """1 チャンクを embed して TableTarget に declare する。
 
@@ -265,7 +258,7 @@ async def _process_chunk(
     embedder = coco.use_context(EMBEDDER)
     embed_input = f"{fm_prefix}\n\n{chunk.text}" if fm_prefix else chunk.text
     table.declare_row(
-        row=MemoryChunk(
+        row=EpisodicChunk(
             id=await id_gen.next_id(chunk.text),
             filename=str(filename),
             chunk_text=chunk.text,  # スニペット表示には prepend 抜きの素の本文
@@ -277,7 +270,7 @@ async def _process_chunk(
 @coco.fn(memo=True)
 async def _process_file(
     file: FileLike,
-    table: postgres.TableTarget[MemoryChunk],
+    table: postgres.TableTarget[EpisodicChunk],
 ) -> None:
     text = await file.read_text()
     fm_prefix = _extract_fm_prefix(text)
@@ -302,7 +295,7 @@ async def _app_main(sourcedir: pathlib.Path) -> None:
         PG_DB,
         table_name=TABLE,
         table_schema=await postgres.TableSchema.from_class(
-            MemoryChunk, primary_key=["id"]
+            EpisodicChunk, primary_key=["id"]
         ),
         pg_schema_name="public",
     )

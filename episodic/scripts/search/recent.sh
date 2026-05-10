@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# memory-search/recent: memories/raw 配下を時系列で一覧する（セマンティック検索ではない）。
+# episodic-search/recent: memories/raw 配下を時系列で一覧する（セマンティック検索ではない）。
 #
 # kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / all に切替可能。
 #

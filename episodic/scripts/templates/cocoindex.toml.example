@@ -1,9 +1,9 @@
-# recording スキル専用 cocoindex 設定
+# episodic プラグイン専用 cocoindex 設定
 #
-# このファイルは ~/.config/memory/cocoindex.toml に自動コピーされます。
+# このファイルは ~/.config/episodic/cocoindex.toml に自動コピーされます。
 # 既存の cocoindex.toml は上書きされません（自由に編集してください）。
 #
-# 優先順位（強い順）: 環境変数 > このファイル > main_memory.py の既定値
+# 優先順位（強い順）: 環境変数 > このファイル > main_episodic.py の既定値
 # 環境変数で上書きする場合は MEMORIES_* プレフィックスを使用（例: MEMORIES_CHUNK_SIZE=1500）。
 #
 # API キーは共通の ~/.config/cocoindex/secrets.env で管理します（このファイルには書かない）。
