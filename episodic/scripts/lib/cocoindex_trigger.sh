@@ -57,12 +57,54 @@ trigger_cocoindex_update() {
 
     _ct_log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=~/.config/episodic/cocoindex.toml)"
     # main_episodic.py は episodic プラグイン専用 venv（uv 管理）で実行する。
+    # サブシェル内で update の終了コードを受け取り、完了通知（macOS osascript）を出す。
     (
-        cd "$episodic_scripts" \
-        && SOURCE_PATH="$memories_dir" \
+        cd "$episodic_scripts" || exit 1
+        SOURCE_PATH="$memories_dir" \
             INDEX_NAME="$index_name" \
             PATTERNS="**/*.md" \
             nohup uv run cocoindex update -f "${recording_scripts}/main_episodic.py:${app_name}" \
-            >> "$cocoindex_log" 2>&1 &
-    ) >/dev/null 2>&1 || true
+            >> "$cocoindex_log" 2>&1
+        rc=$?
+        if [[ $rc -eq 0 ]]; then
+            _ct_log "cocoindex update finished: rc=0 app=$app_name"
+            _ct_notify "完了" "cocoindex update 成功 (app=${app_name})" "Glass" info
+        else
+            _ct_log "cocoindex update failed: rc=$rc app=$app_name"
+            _ct_notify "失敗" "cocoindex update 失敗 (rc=${rc})。ログ: $cocoindex_log" "Basso" alert
+        fi
+    ) >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+}
+
+# macOS 通知ヘルパー。osascript 不在環境（Linux 等）ではログだけ残してスキップする。
+# 引数: _ct_notify <subtitle> <message> [sound] [info|alert]
+_ct_notify() {
+    local subtitle="$1" msg="$2" sound="${3:-}" urgency="${4:-info}"
+    if ! command -v osascript >/dev/null 2>&1; then
+        return
+    fi
+    if [[ "$urgency" == "alert" ]]; then
+        osascript \
+            -e 'on run argv' \
+            -e 'tell application "System Events"' \
+            -e 'display alert (item 1 of argv) message (item 2 of argv) as critical buttons {"OK"} default button "OK"' \
+            -e 'end tell' \
+            -e 'end run' \
+            "$subtitle" "$msg" >/dev/null 2>&1
+        return
+    fi
+    if [[ -n "$sound" ]]; then
+        osascript \
+            -e 'on run argv' \
+            -e 'display notification (item 1 of argv) with title "Episodic Cocoindex" subtitle (item 2 of argv) sound name (item 3 of argv)' \
+            -e 'end run' \
+            "$msg" "$subtitle" "$sound" >/dev/null 2>&1
+    else
+        osascript \
+            -e 'on run argv' \
+            -e 'display notification (item 1 of argv) with title "Episodic Cocoindex" subtitle (item 2 of argv)' \
+            -e 'end run' \
+            "$msg" "$subtitle" >/dev/null 2>&1
+    fi
 }
