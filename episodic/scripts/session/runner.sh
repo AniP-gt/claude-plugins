@@ -231,6 +231,15 @@ if [[ ! "$SESSION_ID_FROM_DIR" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
     SESSION_ID_FROM_DIR=""
 fi
 
+# finalize が取得した処理中ロックの所有者を、この runner に移す。
+# finalize 側の Python プロセスは launcher 起動後すぐ終了するため、その PID のままだと
+# runner 実行中に stale lock と誤判定され、同一セッションの Codex が多重起動する。
+if [[ -n "$SESSION_ID_FROM_DIR" && -d "${SESSION_DIR}/.lock" ]]; then
+    printf '%s\n' "$$" > "${SESSION_DIR}/.lock/pid" 2>/dev/null || true
+    touch "${SESSION_DIR}/.lock" 2>/dev/null || true
+    log "runner claimed lock: session=$SESSION_ID_FROM_DIR pid=$$"
+fi
+
 cleanup_session_dir() {
     cleanup_meta_sidecar
     [[ -z "$SESSION_DIR" || ! -d "$SESSION_DIR" ]] && return 0
@@ -305,10 +314,11 @@ CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
 
 print_banner
-log "codex exec start"
+log "codex exec start (hooks disabled)"
 
 set -o pipefail
-codex exec \
+EPISODIC_RECORDING_ACTIVE=1 codex exec \
+    --disable hooks \
     --skip-git-repo-check \
     --sandbox workspace-write \
     --dangerously-bypass-approvals-and-sandbox \

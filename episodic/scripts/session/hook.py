@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code Stop hook: 会話履歴をcodexで要約しレポート化する。
+"""Claude Code / Codex Stop hook: 会話履歴をcodexで要約しレポート化する。
 
 フロー:
   1. stdin JSONからsession_id / cwd / transcript_pathを取得
@@ -33,15 +33,20 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 SCRIPTS_DIR = Path(__file__).resolve().parent  # <PLUGIN_ROOT>/scripts/session
 LIB_PARENT = SCRIPTS_DIR.parent                # <PLUGIN_ROOT>/scripts （lib が直下にある）
 if str(LIB_PARENT) not in sys.path:
     sys.path.insert(0, str(LIB_PARENT))
+FORMAT_DIR = SCRIPTS_DIR / "hook"
+if str(FORMAT_DIR) not in sys.path:
+    sys.path.insert(0, str(FORMAT_DIR))
 
 from lib import config as memcfg  # noqa: E402  -- 上で sys.path に追加した直後に import
 from lib import path_resolver  # noqa: E402
+import claude as claude_hook  # noqa: E402
+import codex as codex_hook  # noqa: E402
 
 # stdin から渡される session_id は untrusted。`/tmp/{session_id}/...`
 # のようなパス組み立てに使うため、UUID 形式以外を受け入れない。
@@ -56,14 +61,17 @@ def sanitize_session_id(raw: str | None) -> str:
     log(f"warn: invalid session_id; falling back to random UUID: raw={raw!r} fallback={fallback}")
     return fallback
 
-HOME = Path.home()
+
+def is_valid_session_id(raw: str | None) -> bool:
+    return isinstance(raw, str) and bool(_SESSION_ID_RE.match(raw))
+
 TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消える）
 LOG_DIR = Path("/tmp/episodic")  # hook/runner のログ集約先（揮発・OS再起動で消える）
 LOG_FILE = LOG_DIR / "session-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
 RUNNER = SCRIPTS_DIR / "runner.sh"
 
-LOCK_STALE_SEC = 600  # PID 不明かつ 600 秒以上経過したロックは奪取
+LOCK_STALE_SEC = 600  # PID 不在かつ 600 秒以上経過したロックは奪取
 
 
 def log(msg: str) -> None:
@@ -83,79 +91,6 @@ def read_hook_input() -> dict[str, Any]:
     except (json.JSONDecodeError, ValueError) as e:
         log(f"warn: hook input parse failed: {e}")
         return {}
-
-
-def encode_cwd(cwd: str) -> str:
-    """cwdをClaude Codeのprojectsディレクトリ命名規則に変換する。"""
-    return cwd.replace("/", "-")
-
-
-def find_jsonl(session_id: str, cwd: str, transcript_path: str | None) -> Path | None:
-    if transcript_path:
-        p = Path(transcript_path).expanduser()
-        if p.exists():
-            return p
-    if session_id and cwd:
-        candidate = HOME / ".claude" / "projects" / encode_cwd(cwd) / f"{session_id}.jsonl"
-        if candidate.exists():
-            return candidate
-    return None
-
-
-def scan_metadata(jsonl: Path) -> dict[str, Any]:
-    first_ts: str | None = None
-    last_ts: str | None = None
-    git_branch: str | None = None
-    cwd: str | None = None
-    message_count = 0
-    user_prompt_count = 0
-    model_counts: dict[str, int] = {}
-
-    with jsonl.open(encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                d = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            ts = d.get("timestamp")
-            if ts:
-                first_ts = first_ts or ts
-                last_ts = ts
-
-            git_branch = git_branch or d.get("gitBranch")
-            cwd = cwd or d.get("cwd")
-
-            rtype = d.get("type")
-            if rtype in ("user", "assistant") and not d.get("isMeta"):
-                msg = d.get("message", {})
-                content = msg.get("content")
-                if isinstance(content, str):
-                    if "<local-command-caveat>" in content or "<command-name>" in content \
-                            or "<local-command-stdout>" in content:
-                        continue
-                    stripped = content.lstrip()
-                    if stripped.startswith("❯ /") or stripped.startswith("> /"):
-                        continue
-                message_count += 1
-                if rtype == "user":
-                    user_prompt_count += 1
-                model = (d.get("message") or {}).get("model")
-                if model:
-                    model_counts[model] = model_counts.get(model, 0) + 1
-
-    model = max(model_counts, key=model_counts.get) if model_counts else "unknown"
-    return {
-        "first_ts": first_ts,
-        "last_ts": last_ts,
-        "git_branch": git_branch or "unknown",
-        "cwd": cwd or "",
-        "message_count": message_count,
-        "user_prompt_count": user_prompt_count,
-        "model": model,
-    }
 
 
 def iso_to_local(ts: str | None) -> str:
@@ -180,9 +115,9 @@ def duration_minutes(first: str | None, last: str | None) -> int:
 
 
 CODEX_INSTRUCTION_TEMPLATE = """<!-- CODEX-INSTRUCTION-START -->
-# 命令: Claude Codeセッションのエピソード記憶化
+# 命令: Claude Code / Codex セッションのエピソード記憶化
 
-あなたはClaude Codeの会話ログ分析者です。本ファイル末尾の「会話履歴」セクションを解析し、指定パスに**エピソード記憶（時間軸つきの作業記録Markdown）**を書き出してください。
+あなたはClaude Code / Codex の会話ログ分析者です。本ファイル末尾の「会話履歴」セクションを解析し、指定パスに**エピソード記憶（時間軸つきの作業記録Markdown）**を書き出してください。
 
 このレポートは「いつ・何をしたか」のエピソード記憶層であり、普遍的なルール（意味/手続き記憶）や意思決定（ADR）とは別レイヤーです。将来検索・参照される資産として、出典と状態を持たせて記録してください。
 
@@ -504,7 +439,7 @@ def try_auto_remount() -> None:
 
 
 def acquire_lock(lock_dir: Path) -> bool:
-    """mkdir 方式の処理中ロックを取得する。stale ロックは pid 不在 or age 超過で奪取。
+    """mkdir 方式の処理中ロックを取得する。stale ロックは pid 不在かつ age 超過で奪取。
 
     `retry-pending.sh:71-87` の pattern を Python に移植したもの。
     """
@@ -531,7 +466,7 @@ def acquire_lock(lock_dir: Path) -> bool:
     except OSError:
         age = 0.0
 
-    if stale or age > LOCK_STALE_SEC:
+    if stale and age > LOCK_STALE_SEC:
         log(f"acquire_lock: stale lock detected (pid={old_pid} age={age:.0f}s); reclaiming")
         try:
             if pid_file.exists():
@@ -563,8 +498,12 @@ def schedule_debounce(session_id: str, seconds: int) -> None:
         try:
             old_pid = int(pid_file.read_text(encoding="utf-8").strip())
             if old_pid > 0:
-                os.kill(old_pid, signal.SIGTERM)
-                log(f"schedule_debounce: terminated previous debounce pid={old_pid} session={session_id}")
+                try:
+                    os.killpg(old_pid, signal.SIGTERM)
+                    log(f"schedule_debounce: terminated previous debounce process group pgid={old_pid} session={session_id}")
+                except ProcessLookupError:
+                    os.kill(old_pid, signal.SIGTERM)
+                    log(f"schedule_debounce: terminated previous debounce pid={old_pid} session={session_id}")
         except (ValueError, ProcessLookupError, PermissionError, OSError):
             pass
 
@@ -594,29 +533,58 @@ def schedule_debounce(session_id: str, seconds: int) -> None:
     log(f"schedule_debounce: scheduled finalize in {seconds}s pid={proc.pid} session={session_id}")
 
 
+def resolve_session_format(payload: dict[str, Any], session_id: str, cwd: str,
+                           transcript_path: str | None) -> tuple[Any, Path | None]:
+    """payloadからClaude/Codex形式を判定し、対応モジュールとJSONLパスを返す。"""
+    if transcript_path:
+        p = Path(transcript_path).expanduser()
+        if p.exists():
+            if codex_hook.looks_like_codex_jsonl(p):
+                return codex_hook, p
+            return claude_hook, p
+
+    codex_first = payload.get("runtime") == "codex" or payload.get("tool") == "codex"
+    formats = (codex_hook, claude_hook) if codex_first else (claude_hook, codex_hook)
+    for fmt in formats:
+        jsonl = fmt.find_jsonl(session_id, cwd, transcript_path)
+        if jsonl is not None:
+            return fmt, jsonl
+    return claude_hook, None
+
+
 def prepare_payload_artifacts(payload: dict[str, Any],
                               jsonl_to_md: Path = JSONL_TO_MD,
-                              metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata,
                               ) -> Path | None:
     """payload を解析して `/tmp/{session_id}/{ts}.*` 一式を書き出し、launcher パスを返す。
 
     None を返した場合は呼び出し側で何もせず終了する（JSONL 不在・user 発話なし等）。
     """
-    session_id_raw = payload.get("session_id") or ""
-    session_id = sanitize_session_id(session_id_raw)
+    session_id_raw = payload.get("session_id") or payload.get("sessionId") or ""
+    session_id = session_id_raw.lower() if is_valid_session_id(session_id_raw) else ""
     cwd = payload.get("cwd") or os.getcwd()
     transcript_path = payload.get("transcript_path")
 
     log(f"prepare artifacts: session={session_id} cwd={cwd} transcript={transcript_path}")
 
-    jsonl = find_jsonl(session_id, cwd, transcript_path)
+    session_format, jsonl = resolve_session_format(payload, session_id, cwd, transcript_path)
     if jsonl is None:
         log(f"error: JSONL not found for session={session_id}")
         return None
+    log(f"session format: {session_format.__name__} jsonl={jsonl}")
 
-    meta = metadata_scanner(jsonl)
+    meta = session_format.scan_metadata(jsonl)
+    if meta.get("session_id"):
+        session_id = sanitize_session_id(meta.get("session_id"))
+    elif session_id:
+        session_id = sanitize_session_id(session_id)
+    else:
+        session_id = sanitize_session_id(None)
+
     if meta.get("user_prompt_count", 0) == 0:
         log(f"skip: no user prompts in {jsonl}")
+        return None
+    if not meta.get("first_ts"):
+        log(f"skip: first_ts not found in {jsonl}")
         return None
 
     effective_cwd = meta["cwd"] or cwd
@@ -630,11 +598,7 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     launcher = session_dir / f"{ts}.runner.command"
 
     try:
-        subprocess.run(
-            ["python3", str(jsonl_to_md), str(jsonl), str(session_md)],
-            check=True,
-            timeout=60,
-        )
+        session_format.write_markdown(jsonl, session_md, jsonl_to_md)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         log(f"error: jsonl-to-markdown failed: {e}")
         return None
@@ -669,10 +633,14 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     return launcher
 
 
-def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
-        metadata_scanner: Callable[[Path], dict[str, Any]] = scan_metadata) -> int:
+def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    if os.environ.get("EPISODIC_RECORDING_ACTIVE") in ("1", "true", "yes", "on"):
+        sid = sanitize_session_id(payload.get("session_id") or payload.get("sessionId") or "")
+        log(f"skip: EPISODIC_RECORDING_ACTIVE=true session={sid}")
+        return 0
 
     # Stop hook の無限ループ防止（Anthropic 公式推奨パターン）。
     # 連投 Stop と区別がつかないため、debounce タイマー reset 副作用を許容して early return する。
@@ -681,7 +649,7 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD,
         log(f"skip: stop_hook_active=true session={sid} (debounce not reset)")
         return 0
 
-    launcher = prepare_payload_artifacts(payload, jsonl_to_md, metadata_scanner)
+    launcher = prepare_payload_artifacts(payload, jsonl_to_md)
     if launcher is None:
         return 0
 

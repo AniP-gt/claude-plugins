@@ -62,7 +62,7 @@ cp ~/.claude/plugins/cache/hidetsugu-miya/episodic/templates/config.example.toml
 | `remount_script` | プラグイン同梱の `mount-memory-share.sh` | 自前のマウントスクリプトに差し替え可能 |
 | `mount_canary_filename` | `.mount-canary` | `memories_dir` 直下に置く判定ファイル名 |
 | `hostname_hash_length` | `8` | 複数マシン共有の衝突確率調整 |
-| `stop_debounce_seconds` | `15` | Stop hook 連投から Codex 起動までの debounce 秒数（0-600） |
+| `stop_debounce_seconds` | `30` | Stop hook 連投から Codex 起動までの debounce 秒数（0-600） |
 
 ### 環境変数による上書き
 

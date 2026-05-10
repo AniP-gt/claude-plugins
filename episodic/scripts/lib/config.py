@@ -41,7 +41,7 @@ DEFAULTS: dict[str, Any] = {
     "remount_script": str(plugin_root() / "scripts/recording/mount-memory-share.sh"),
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
-    "stop_debounce_seconds": 15,
+    "stop_debounce_seconds": 30,
 }
 
 
@@ -141,8 +141,8 @@ def effective_raw_root() -> tuple[Path, bool]:
 
 
 def resolve_stop_debounce_seconds() -> int:
-    """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 15）。"""
-    return int(load_config().get("stop_debounce_seconds", 15))
+    """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 30）。"""
+    return int(load_config().get("stop_debounce_seconds", 30))
 
 
 @lru_cache(maxsize=1)
