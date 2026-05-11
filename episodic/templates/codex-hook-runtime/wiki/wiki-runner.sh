@@ -1,1 +1,0 @@
-../../../scripts/wiki/wiki-runner.sh

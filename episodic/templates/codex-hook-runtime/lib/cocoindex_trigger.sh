@@ -1,1 +1,0 @@
-../../../scripts/lib/cocoindex_trigger.sh

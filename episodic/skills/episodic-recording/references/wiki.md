@@ -14,9 +14,9 @@
 
 | kind | 統合先 | Codex 呼び出し | instruction template |
 |---|---|---|---|
-| `session` | `wiki/projects/<project>.md`（project 単位通史） | あり | `scripts/wiki/codex-instruction.md` |
-| `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `scripts/wiki/codex-instruction-web.md` |
-| `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `scripts/wiki/codex-instruction-minutes.md` |
+| `session` | `wiki/projects/<project>.md`（project 単位通史） | あり | `wiki/codex-instruction.md` |
+| `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `wiki/codex-instruction-web.md` |
+| `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `wiki/codex-instruction-minutes.md` |
 
 3 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。
 
@@ -30,13 +30,12 @@
 - **キュー駆動**: 処理対象は `~/.local/share/episodic/state/ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` を経過したエントリ。`status: processing` でも `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS`（既定 3600s）を超えたものは stuck 扱いで再処理対象に戻る
 - **失敗時 retry / dead-letter**: Codex 失敗エントリは `status: pending` に戻して `attempt_count` 加算 + 指数 backoff（`MEMORIES_WIKI_RETRY_BASE_SECONDS` × 2^(n-1)、上限 86400s）の `retry_after_epoch` を付ける。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に移送
 - **debounce 起動**: enqueue 後の起動は `kick-runner.sh` 経由で `MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS`（既定 5s）デバウンスし、同時複数 enqueue を 1 回の runner 起動に折り畳む。runner 実行中の追加 kick は完了待ちしてから再起動を判定する
-- **state 永続化**: `~/.local/share/episodic/state/` 配下に置く（OS 再起動でも pending を保持）。旧 `/tmp/memories/state/` は wiki-runner.sh 起動時に自動マージ
+- **state 永続化**: `~/.local/share/episodic/state/` 配下に置く（OS 再起動でも pending を保持）
 - **kind 別 Codex モデル**: 統合難易度が kind ごとに異なるため、既定値を分離している:
     - `session`: `gpt-5.4`（project 通史統合は重複排除・通史化が必要で推論強度高め）
     - `web`: `gpt-5.4-mini`（要約・テーマ分類は軽量モデルで十分）
     - `minutes`: `gpt-5.4-mini`（議事録の構造保持はテンプレ寄り）
   - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES`
-  - 後方互換: `CODEX_MEMORY_WIKI_MODEL` を設定すれば全 kind の既定値を一括上書き
 - **kind 別リンク相対パス**:
     - `wiki/projects/<project>.md` → session へは `../../raw/session/YYYY-MM-DD/file.md`（2 階層上る）
     - `wiki/references.md` → web へは `../raw/web/YYYY-MM-DD/file.md`（1 階層上る）
@@ -63,7 +62,6 @@
 - `CODEX_MEMORY_WIKI_MODEL_SESSION`: session 統合用 Codex モデル（既定 `gpt-5.4`）
 - `CODEX_MEMORY_WIKI_MODEL_WEB`: web 統合用 Codex モデル（既定 `gpt-5.4-mini`）
 - `CODEX_MEMORY_WIKI_MODEL_MINUTES`: minutes 統合用 Codex モデル（既定 `gpt-5.4-mini`）
-- `CODEX_MEMORY_WIKI_MODEL`: 後方互換。設定すると全 kind の既定値を上書き
 - `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
 - `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
 - `MEMORIES_LOG_ROTATE_BYTES`: `~/.local/state/episodic/logs/*.log` ローテーション閾値（既定 5242880）
@@ -112,8 +110,8 @@
 `recording` の `runner.sh`（kind: session）/ `fetch-jina.sh`（kind: web）/ `save.sh`（kind: minutes）が Raw を書いた直後に、以下を fire-and-forget で実行する:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
-( nohup "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/kick-runner.sh" >> ~/.local/state/episodic/logs/wiki-runner.log 2>&1 & )
+python3 "${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
+( nohup "${CLAUDE_PLUGIN_ROOT}/wiki/kick-runner.sh" >> ~/.local/state/episodic/logs/wiki-runner.log 2>&1 & )
 ```
 
 JSONL への append-only 追記は POSIX 上で原子的なので、複数プロセス並行でも壊れない（ロック不要）。`kick-runner.sh` は debounce ロックで束ね、`wiki-runner.sh` 自体は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。`codex` コマンドが PATH 上に無い環境では自動的に `--no-codex` モードへ降格し、キュー消化のみ行う。
@@ -127,18 +125,17 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
 ### wiki-runner.sh 動作内容
 
 1. `mkdir .state/lock.d` で排他取得（取れなければ即終了。死んだプロセスのロックは PID 生存確認で奪取）
-2. 旧 `/tmp/memories/state/ingest-queue.jsonl` に残りがあれば新 state へマージ（互換移行）
-3. `ingest-queue.jsonl` から ready entry を抽出（`status: pending` で `retry_after_epoch` 到達済み、または `status: processing` で `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS` 超過の stuck）
-4. 抽出した entry を `status: processing` に書き戻して claim（`processing_started_epoch` / `runner_pid` を付与、flock で排他更新）
-5. (kind, wiki_target, instruction, model) で group 化し、各 group を `MEMORIES_WIKI_BATCH_SIZE` 件ごとの batch に分割
-6. batch ごとに `wiki-target-locks/<sha256>.lock.d` を取り、`MEMORIES_WIKI_PARALLELISM` 並列で Codex 呼び出し:
+2. `ingest-queue.jsonl` から ready entry を抽出（`status: pending` で `retry_after_epoch` 到達済み、または `status: processing` で `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS` 超過の stuck）
+3. 抽出した entry を `status: processing` に書き戻して claim（`processing_started_epoch` / `runner_pid` を付与、flock で排他更新）
+4. (kind, wiki_target, instruction, model) で group 化し、各 group を `MEMORIES_WIKI_BATCH_SIZE` 件ごとの batch に分割
+5. batch ごとに `wiki-target-locks/<sha256>.lock.d` を取り、`MEMORIES_WIKI_PARALLELISM` 並列で Codex 呼び出し:
    - `kind: session`: frontmatter から `project` 抽出 → `wiki/projects/<project>.md`（`codex-instruction.md`）
    - `kind: web`: → `wiki/references.md`（`codex-instruction-web.md`）
    - `kind: minutes`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/minutes/<YYYYMM>.md`（`codex-instruction-minutes.md`、月次集約）
-7. 結果反映: 成功は queue から削除、失敗は `attempt_count` 加算 + 指数 backoff の `retry_after_epoch` を付けて `status: pending` に戻す。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に append
-8. self-poll で次イテレーションへ（pending hash が変化しなければ break、上限は `MEMORIES_WIKI_MAX_SELF_POLL`）
-9. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
-10. `PROCESSED_COUNT > 0` なら **`scripts/lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
+6. 結果反映: 成功は queue から削除、失敗は `attempt_count` 加算 + 指数 backoff の `retry_after_epoch` を付けて `status: pending` に戻す。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に append
+7. self-poll で次イテレーションへ（pending hash が変化しなければ break、上限は `MEMORIES_WIKI_MAX_SELF_POLL`）
+8. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
+9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
 
@@ -146,7 +143,7 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
 
 ```bash
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
-ENQUEUE="${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py"
+ENQUEUE="${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py"
 
 # kind 別に raw を再投入（隠しファイル・AppleDouble は除外）
 for kind in session web minutes; do
@@ -155,15 +152,15 @@ for kind in session web minutes; do
 done
 
 # 実行
-"${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh"
+"${CLAUDE_PLUGIN_ROOT}/wiki/wiki-runner.sh"
 ```
 
 特定 1 ファイルのみの再処理:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
+python3 "${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py" \
     "/Volumes/memory/raw/web/2026-04-29/HHMMSS_xxx.md" --kind web
-"${CLAUDE_PLUGIN_ROOT}/scripts/wiki/wiki-runner.sh"
+"${CLAUDE_PLUGIN_ROOT}/wiki/wiki-runner.sh"
 ```
 
 ## ログ・トラブルシューティング

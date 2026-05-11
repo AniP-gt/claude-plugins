@@ -1,1 +1,0 @@
-../../../../scripts/recording/web/fetch-jina.sh

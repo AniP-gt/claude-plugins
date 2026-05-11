@@ -1,1 +1,0 @@
-../../../scripts/recording/main_episodic.py

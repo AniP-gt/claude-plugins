@@ -1,1 +1,0 @@
-../../../scripts/wiki/kick-runner.sh

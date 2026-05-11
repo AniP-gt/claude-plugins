@@ -1,1 +1,0 @@
-../../../scripts/session-user-prompt-submit.sh

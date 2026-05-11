@@ -1,1 +1,0 @@
-../../../scripts/session-stop.sh

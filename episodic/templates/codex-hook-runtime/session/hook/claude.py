@@ -1,1 +1,0 @@
-../../../../scripts/session/hook/claude.py

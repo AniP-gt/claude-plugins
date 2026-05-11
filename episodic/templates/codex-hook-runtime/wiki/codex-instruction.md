@@ -1,1 +1,0 @@
-../../../scripts/wiki/codex-instruction.md

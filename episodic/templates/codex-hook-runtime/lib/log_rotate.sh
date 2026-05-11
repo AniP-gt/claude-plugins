@@ -1,1 +1,0 @@
-../../../scripts/lib/log_rotate.sh

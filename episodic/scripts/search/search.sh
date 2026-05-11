@@ -16,7 +16,6 @@ set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
-EPISODIC_SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 FORMATTER="${SCRIPTS_DIR}/format.py"
@@ -69,7 +68,7 @@ done
 
 [[ -z "$QUERY" ]] && usage
 [[ ! -f "$SEARCH_PY" ]] && { echo "search.py not found: $SEARCH_PY" >&2; exit 3; }
-[[ ! -f "$EPISODIC_SCRIPTS_DIR/pyproject.toml" ]] && { echo "episodic pyproject not found: $EPISODIC_SCRIPTS_DIR" >&2; exit 3; }
+[[ ! -f "$PLUGIN_ROOT/pyproject.toml" ]] && { echo "episodic pyproject not found: $PLUGIN_ROOT/pyproject.toml" >&2; exit 3; }
 [[ ! -d "$MEMORIES_DIR" ]] && { echo "memories dir not found: $MEMORIES_DIR" >&2; exit 3; }
 
 # episodic プラグイン専用設定（cocoindex プラグインに依存しない）
@@ -82,7 +81,7 @@ STDERR_FILE=$(mktemp)
 trap 'rm -f "$STDERR_FILE"' EXIT
 
 # 候補は format.py 側で scope/status フィルタを適用する分も見越して 3 倍取得。
-RAW_OUTPUT=$(cd "$EPISODIC_SCRIPTS_DIR" && \
+RAW_OUTPUT=$(cd "$PLUGIN_ROOT" && \
     EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
     EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
     uv run python "$SEARCH_PY" "$QUERY" \

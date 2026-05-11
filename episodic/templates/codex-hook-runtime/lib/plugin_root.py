@@ -1,1 +1,0 @@
-../../../scripts/lib/plugin_root.py

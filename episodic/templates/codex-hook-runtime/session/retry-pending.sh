@@ -1,1 +1,0 @@
-../../../scripts/session/retry-pending.sh

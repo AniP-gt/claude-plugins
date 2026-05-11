@@ -74,7 +74,10 @@ extract_env_value() {
 }
 
 resolve_db_url() {
-    # 優先順位: 既存 env > ~/.config/episodic/.env > 既定値
+    # 優先順位: 既存 env > ~/.config/episodic/.env
+    # 認証情報をシェルスクリプトに直書きしないため、未解決ならエラー終了する。
+    # provision_config が ~/.config/episodic/.env を雛形からコピー済みの前提なので、
+    # 通常はファイル経由で解決される。
     if [[ -n "${EPISODIC_DATABASE_URL:-}" ]]; then
         printf '%s' "$EPISODIC_DATABASE_URL"
         return
@@ -85,7 +88,9 @@ resolve_db_url() {
         printf '%s' "$from_file"
         return
     fi
-    printf '%s' "postgres://postgres:postgres@localhost:15432/episodic"
+    err "EPISODIC_DATABASE_URL が解決できません（環境変数 / $ENV_FILE のいずれも空）。"
+    err "$ENV_FILE を編集して EPISODIC_DATABASE_URL=... を設定してください。"
+    exit 4
 }
 
 # URL から接続パラメータを 1 変数ずつ標準出力に出す。read で 1 行ずつ受け取るので

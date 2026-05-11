@@ -7,7 +7,7 @@
 - 出力フォーマットは `[<score>] <filename>` の単純形式（同階層の format.py が消費する）
 
 依存: voyageai / psycopg2 / python-dotenv
-episodic プラグイン専用 venv（episodic/scripts/.venv）で実行する（search.sh が `uv run` でラップ）。
+episodic プラグイン専用 venv（episodic/.venv）で実行する（search.sh が `uv run` でラップ）。
 """
 from __future__ import annotations
 
@@ -147,10 +147,16 @@ def main() -> int:
     args = p.parse_args()
 
     table = get_table_name()
-    db_url = os.environ.get(
-        "EPISODIC_DATABASE_URL",
-        "postgres://postgres:postgres@localhost:15432/episodic",
-    )
+    # setup_db.sh が ~/.config/episodic/.env を雛形から生成し EPISODIC_DATABASE_URL を定義する。
+    # 認証情報のソース直書きを避けるため、未設定は fail-fast で弾く。
+    db_url = os.environ.get("EPISODIC_DATABASE_URL")
+    if not db_url:
+        sys.stderr.write(
+            "[episodic-search] EPISODIC_DATABASE_URL が未設定です。\n"
+            "  `episodic/scripts/setup_db.sh` を実行して ~/.config/episodic/.env を生成するか、\n"
+            "  環境変数 EPISODIC_DATABASE_URL を明示的に設定してください。\n"
+        )
+        sys.exit(4)
 
     try:
         conn = psycopg2.connect(db_url)
@@ -158,10 +164,10 @@ def main() -> int:
         msg = str(e).strip()
         if "could not connect" in msg.lower() or "connection refused" in msg.lower():
             sys.stderr.write(
-                "[episodic-search] PostgreSQL に接続できません（既定: localhost:15432）。\n"
+                "[episodic-search] PostgreSQL に接続できません。\n"
                 "  起動コマンド:\n"
                 "    docker compose -f ~/.config/cocoindex/compose.yml up -d\n"
-                "  別ホストの場合は EPISODIC_DATABASE_URL を設定してください。\n"
+                "  別ホストの場合は EPISODIC_DATABASE_URL を ~/.config/episodic/.env で設定してください。\n"
             )
             return 4
         raise
