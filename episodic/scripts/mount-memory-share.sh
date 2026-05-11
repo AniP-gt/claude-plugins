@@ -1,6 +1,6 @@
 #!/bin/bash
 # SMB 共有を memories マウントポイントへマウントする macOS 用ヘルパー。
-# 設定の優先順位: 環境変数 > ~/.config/recording/secrets.env > ~/.config/recording/config.toml > プレースホルダ既定
+# 設定の優先順位: 環境変数 > ~/.config/episodic/secrets.env > ~/.config/episodic/config.toml > プレースホルダ既定
 #
 # - 公開可能な設定（共有 URL / ping host）は config.toml に書く。
 # - シークレット情報（user 名、将来的なパスワード等）は secrets.env に書き、chmod 600 を必須とする。
@@ -13,7 +13,7 @@
 
 set -uo pipefail
 
-CONFIG_DIR="${MEMORIES_CONFIG_DIR:-$HOME/.config/recording}"
+CONFIG_DIR="${MEMORIES_CONFIG_DIR:-$HOME/.config/episodic}"
 CONFIG_TOML="$CONFIG_DIR/config.toml"
 SECRETS_ENV="$CONFIG_DIR/secrets.env"
 LOG_FILE="/tmp/episodic/smb-mount.log"

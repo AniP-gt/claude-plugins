@@ -27,10 +27,10 @@
 - **排他制御必須**: `mkdir .state/lock.d` で原子的にロックを取得した1プロセスだけが queue を claim する（macOS に flock がないため mkdir 方式）。プロセス異常終了でロックが残った場合は次回起動時に PID 生存確認で自動奪取
 - **target 別ロック**: runner 内部では Wiki target（`projects/<project>.md` / `references.md` / `minutes/<YYYYMM>.md`）単位で sub-lock を取り、別 target は並列処理する。同じ target への同時書き込みは sub-lock で直列化
 - **batch 化**: 同一 target に複数 Raw が pending している場合、最大 `MEMORIES_WIKI_BATCH_SIZE` 件まで 1 回の Codex 呼び出しに束ねる（API 呼び出し回数削減）
-- **キュー駆動**: 処理対象は `~/.local/share/recording/state/ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` を経過したエントリ。`status: processing` でも `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS`（既定 3600s）を超えたものは stuck 扱いで再処理対象に戻る
+- **キュー駆動**: 処理対象は `~/.local/share/episodic/state/ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` を経過したエントリ。`status: processing` でも `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS`（既定 3600s）を超えたものは stuck 扱いで再処理対象に戻る
 - **失敗時 retry / dead-letter**: Codex 失敗エントリは `status: pending` に戻して `attempt_count` 加算 + 指数 backoff（`MEMORIES_WIKI_RETRY_BASE_SECONDS` × 2^(n-1)、上限 86400s）の `retry_after_epoch` を付ける。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に移送
 - **debounce 起動**: enqueue 後の起動は `kick-runner.sh` 経由で `MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS`（既定 5s）デバウンスし、同時複数 enqueue を 1 回の runner 起動に折り畳む。runner 実行中の追加 kick は完了待ちしてから再起動を判定する
-- **state 永続化**: `~/.local/share/recording/state/` 配下に置く（OS 再起動でも pending を保持）。旧 `/tmp/memories/state/` は wiki-runner.sh 起動時に自動マージ
+- **state 永続化**: `~/.local/share/episodic/state/` 配下に置く（OS 再起動でも pending を保持）。旧 `/tmp/memories/state/` は wiki-runner.sh 起動時に自動マージ
 - **kind 別 Codex モデル**: 統合難易度が kind ごとに異なるため、既定値を分離している:
     - `session`: `gpt-5.4`（project 通史統合は重複排除・通史化が必要で推論強度高め）
     - `web`: `gpt-5.4-mini`（要約・テーマ分類は軽量モデルで十分）
@@ -90,7 +90,7 @@
     ├── references.md                                      # Codex が統合・更新（kind: web）
     └── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
 
-~/.local/share/recording/state/                            # 永続 state（OS 再起動でも保持）
+~/.local/share/episodic/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending / processing、kind / attempt_count / retry_after_epoch を含む）
 ├── ingest-deadletter.jsonl                                # MAX_ATTEMPTS 超過の dead-letter（手動復旧用）
 ├── lock.d/                                                # runner 全体ロック（mkdir 方式、中に pid ファイル）
@@ -167,7 +167,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
 ## ログ・トラブルシューティング
 
 - 実行ログ: `/tmp/episodic/wiki-runner.log`（kick-runner.sh も同じファイルに append する）
-- ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/recording/state/lock.d ~/.local/share/recording/state/wiki-runner-kick.lock.d ~/.local/share/recording/state/wiki-target-locks`
+- ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/episodic/state/lock.d ~/.local/share/episodic/state/wiki-runner-kick.lock.d ~/.local/share/episodic/state/wiki-target-locks`
 - Codex 失敗で pending が残る: 失敗エントリは指数 backoff で `retry_after_epoch` を付けて待機する。即時再試行したい場合は queue から該当エントリの `retry_after_epoch` を 0 にするか、`--no-codex` でキューだけ消化する
 - dead-letter に積まれた: `ingest-deadletter.jsonl` の `raw_path` を確認し、根本原因を解消したうえで再 enqueue する（`enqueue.py` でキュー末尾に追加すれば再処理される）
 - 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md`）を一度削除して再構築する

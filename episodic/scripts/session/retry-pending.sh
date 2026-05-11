@@ -52,7 +52,7 @@ if [[ -f "$LOG_ROTATE_LIB" ]]; then
     rotate_log_if_needed "$LOG_FILE" || true
 fi
 
-STATE_DIR="${HOME}/.local/share/recording/state"
+STATE_DIR="${HOME}/.local/share/episodic/state"
 LOCK_DIR="$STATE_DIR/retry-pending.lock.d"
 RETRY_QUEUE_PY="$SCRIPTS_DIR/retry_queue.py"
 HOOK_PY="$SCRIPTS_DIR/hook.py"

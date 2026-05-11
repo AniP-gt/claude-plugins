@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Codex セッション要約失敗のリトライキュー操作 CLI / ライブラリ。
 
-`~/.local/share/recording/state/session-retry-queue.jsonl` を atomic rewrite で
+`~/.local/share/episodic/state/session-retry-queue.jsonl` を atomic rewrite で
 管理する（最終行勝ち方式の append-only ではなく、effective state を 1 entry/session_id で保持）。
 同時実行は `state/retry-queue.lock.d` の mkdir 方式で直列化する（macOS に flock がないため）。
 
@@ -38,7 +38,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-STATE_DIR = Path.home() / ".local" / "share" / "recording" / "state"
+STATE_DIR = Path.home() / ".local" / "share" / "episodic" / "state"
 QUEUE_PATH = STATE_DIR / "session-retry-queue.jsonl"
 DEAD_LETTER_PATH = STATE_DIR / "session-retry-deadletter.jsonl"
 LOCK_DIR = STATE_DIR / "retry-queue.lock.d"

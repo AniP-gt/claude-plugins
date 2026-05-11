@@ -38,7 +38,7 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 
 ## 保存先と命名規則
 
-設定 `<memories_dir>` 既定 `/Volumes/memory`、`~/.config/recording/config.toml` で変更可。
+設定 `<memories_dir>` 既定 `/Volumes/memory`、`~/.config/episodic/config.toml` で変更可。
 
 ```text
 <memories_dir>/raw/
@@ -47,11 +47,11 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes
 ```
 
-session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/recording/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
+session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
 
 ### Codex 失敗時の自動リトライ
 
-Codex の usage limit / API エラー / 一時的な障害で要約生成が失敗した場合、`runner.sh` が失敗内容を `~/.local/share/recording/state/session-retry-queue.jsonl` に永続化する。次回 SessionStart の `retry-pending.sh` hook が以下の方針でキューを消化する。
+Codex の usage limit / API エラー / 一時的な障害で要約生成が失敗した場合、`runner.sh` が失敗内容を `~/.local/share/episodic/state/session-retry-queue.jsonl` に永続化する。次回 SessionStart の `retry-pending.sh` hook が以下の方針でキューを消化する。
 
 - 期待 `report_path` がすでに存在 → 別経路で生成済みとみなしキューから除去
 - `transcript_path` が消失 → 再生成不能のため dead_letter にせず静かに除去

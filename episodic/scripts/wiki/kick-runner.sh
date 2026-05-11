@@ -7,7 +7,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WIKI_RUNNER="${SCRIPT_DIR}/wiki-runner.sh"
-STATE_DIR="${HOME}/.local/share/recording/state"
+STATE_DIR="${HOME}/.local/share/episodic/state"
 QUEUE="$STATE_DIR/ingest-queue.jsonl"
 RUNNER_LOCK_DIR="$STATE_DIR/lock.d"
 KICK_LOCK_DIR="$STATE_DIR/wiki-runner-kick.lock.d"

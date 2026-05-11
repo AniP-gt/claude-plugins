@@ -67,7 +67,9 @@ def sanitize_session_id(raw: str | None) -> str:
 def is_valid_session_id(raw: str | None) -> bool:
     return isinstance(raw, str) and bool(_SESSION_ID_RE.match(raw))
 
-TMP_DIR = Path("/tmp")  # 分析用Markdownの作業領域（OS再起動で消える）
+# 分析用Markdownの作業領域。PC シャットダウンで debounce 中の sync を失わないよう
+# /tmp ではなく永続ディレクトリに置く（次回 SessionStart で pending finalize を検出する）。
+TMP_DIR = Path.home() / ".local" / "share" / "episodic" / "pending"
 LOG_DIR = Path("/tmp/episodic")  # hook/runner のログ集約先（揮発・OS再起動で消える）
 LOG_FILE = LOG_DIR / "session-hook.log"
 JSONL_TO_MD = SCRIPTS_DIR / "jsonl-to-markdown.py"
@@ -254,7 +256,13 @@ def project_name(cwd: str) -> str:
 
 
 def session_dir_for(session_id: str) -> Path:
-    """`/tmp/{session_id}/` を返す。chmod 700 で作成する。"""
+    """`{TMP_DIR}/{session_id}/` を返す。pending ルートと session_id 配下を chmod 700 で作成する。"""
+    # pending ルート自体を所有者専用に固定する（umask 依存を断つ）。
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        TMP_DIR.chmod(0o700)
+    except OSError as e:
+        log(f"warn: chmod 700 failed for {TMP_DIR}: {e}")
     d = TMP_DIR / session_id
     d.mkdir(parents=True, exist_ok=True)
     try:

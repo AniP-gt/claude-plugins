@@ -47,9 +47,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# state ディレクトリは ~/.local/share/recording/state に永続化（OS 再起動後も pending を保持）。
+# state ディレクトリは ~/.local/share/episodic/state に永続化（OS 再起動後も pending を保持）。
 # 旧 /tmp/memories/state に残った pending は起動時にマージする（移行ロジック）。
-STATE_DIR="${HOME}/.local/share/recording/state"
+STATE_DIR="${HOME}/.local/share/episodic/state"
 LEGACY_STATE_DIR="/tmp/memories/state"
 QUEUE="$STATE_DIR/ingest-queue.jsonl"
 DEADLETTER="$STATE_DIR/ingest-deadletter.jsonl"

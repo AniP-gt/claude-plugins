@@ -1,9 +1,9 @@
 # episodic プラグイン設定ファイル
-# 配置先: ~/.config/recording/config.toml
+# 配置先: ~/.config/episodic/config.toml
 #
 # 設定の優先順位（高い順）:
 #   1. 環境変数（MEMORIES_DIR / MEMORIES_SMB_SHARE / MEMORIES_SMB_USER 等）
-#   2. ~/.config/recording/secrets.env（chmod 600 必須。シークレット情報のみ）
+#   2. ~/.config/episodic/secrets.env（chmod 600 必須。シークレット情報のみ）
 #   3. 本ファイル（公開可能な設定）
 #
 # 例: SMB の user 名はシークレット扱いなので secrets.env で MEMORIES_SMB_USER=... と書き、
@@ -32,7 +32,7 @@ memories_dir = "/Volumes/memory"
 # マウント未確立時に session レポートを退避する fallback ディレクトリ（ローカル永続）。
 # 後続の SessionStart hook で sync-pending.sh が走り、マウント成功時に
 # <memories_dir>/raw/session/ 配下へ移送します。
-fallback_dir = "~/.local/share/recording/raw-staging"
+fallback_dir = "~/.local/share/episodic/raw-staging"
 
 # Stop hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
 # false にすると検出のみで remount は行わず staging へ即フォールバックします。
@@ -55,11 +55,14 @@ hostname_hash_length = 8
 # Stop が連続発火した場合は最後の Stop から本秒数経過後に 1 回だけ Codex が走る。
 # debounce 満了前に UserPromptSubmit が発火した場合はキャンセルされます。
 # 環境変数 MEMORIES_STOP_DEBOUNCE_SECONDS で上書き可能（範囲 0-600）。
-stop_debounce_seconds = 30
+# 既定 60: ユーザーの応答インターバルより長く取り、会話ターン跨ぎでも sync を 1 回に抑える。
+# pending 中の中間ファイルは ~/.local/share/episodic/pending/ に永続化されるため、
+# debounce 中に PC を切っても次回 SessionStart で finalize が再開される。
+stop_debounce_seconds = 60
 
 # ============================================================================
 # 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。
-# シークレット情報は ~/.config/recording/secrets.env（chmod 600）に書く運用を推奨します。
+# シークレット情報は ~/.config/episodic/secrets.env（chmod 600）に書く運用を推奨します。
 # secrets.env の例は templates/secrets.env.example を参照してください。
 # ============================================================================
 
@@ -67,6 +70,12 @@ stop_debounce_seconds = 30
 # パスワードは macOS キーチェーンから自動解決されるため、user 名のみで十分です。
 #   secrets.env: MEMORIES_SMB_USER=admin
 #   または環境変数: export MEMORIES_SMB_USER="admin"
+
+# Session 要約 Codex 設定（runner.sh が参照）。
+#   export CODEX_RECORDING_MODEL="gpt-5.4-mini"   # 既定 gpt-5.4-mini
+#   export CODEX_RECORDING_EFFORT="low"           # 既定 low（low/medium/high/xhigh、モデルが対応する値）
+# session 要約はテンプレ埋め寄りのため low で十分高速・高品質。
+# 要約品質が落ちる場合は medium に戻し、深い分析が必要なら high を試す。
 
 # kind 別 Codex モデル（wiki-runner.sh が参照）。
 #   export CODEX_MEMORY_WIKI_MODEL_SESSION="gpt-5.4"

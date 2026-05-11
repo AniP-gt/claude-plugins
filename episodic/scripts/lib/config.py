@@ -2,8 +2,8 @@
 
 設定の優先順位（先勝ち）:
   1. 環境変数（MEMORIES_DIR / MEMORIES_FALLBACK_DIR / MEMORIES_AUTO_REMOUNT 等）
-  2. ~/.config/recording/config.toml
-  3. 既定値（/Volumes/memory, ~/.local/share/recording/raw-staging）
+  2. ~/.config/episodic/config.toml
+  3. 既定値（/Volumes/memory, ~/.local/share/episodic/raw-staging）
 
 公開 API:
   - load_config()                  -> dict
@@ -31,7 +31,7 @@ else:  # pragma: no cover - Python 3.10 互換用フォールバック
 from .plugin_root import plugin_root
 
 
-CONFIG_PATH = Path.home() / ".config" / "recording" / "config.toml"
+CONFIG_PATH = Path.home() / ".config" / "episodic" / "config.toml"
 
 
 def _default_remount_script() -> str:
@@ -48,13 +48,13 @@ def _default_remount_script() -> str:
 
 DEFAULTS: dict[str, Any] = {
     "memories_dir": "/Volumes/memory",
-    "fallback_dir": "~/.local/share/recording/raw-staging",
+    "fallback_dir": "~/.local/share/episodic/raw-staging",
     "auto_remount": True,
     # repo 内 scripts/ 配置と ~/.config/episodic/codex-hook-runtime 配置の両方を許容する。
     "remount_script": _default_remount_script(),
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
-    "stop_debounce_seconds": 30,
+    "stop_debounce_seconds": 60,
 }
 
 
@@ -154,8 +154,8 @@ def effective_raw_root() -> tuple[Path, bool]:
 
 
 def resolve_stop_debounce_seconds() -> int:
-    """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 30）。"""
-    return int(load_config().get("stop_debounce_seconds", 30))
+    """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 60）。"""
+    return int(load_config().get("stop_debounce_seconds", 60))
 
 
 @lru_cache(maxsize=1)

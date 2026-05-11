@@ -9,6 +9,10 @@
 #   $2: 保存先レポートパス（マウント時は memories_dir/raw/session/...、staged 時は fallback_dir/...）
 #   $3: "staged" or "normal"（staged の場合は wiki enqueue / cocoindex update を抑止）
 #   $4: meta sidecar（retry queue 連携で参照する JSON）
+#
+# 環境変数:
+#   CODEX_RECORDING_MODEL    使用モデル（既定 gpt-5.4-mini）
+#   CODEX_RECORDING_EFFORT   model_reasoning_effort（既定 low、minimal/low/medium/high/xhigh）
 set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -34,6 +38,14 @@ REPORT_PATH="${2:?usage: $0 <combined_md> <report_path> <staged|normal> [meta_js
 STAGE_MODE="${3:-normal}"
 META_PATH="${4:-}"
 MODEL="${CODEX_RECORDING_MODEL:-gpt-5.4-mini}"
+# 推論強度。session 要約はテンプレ埋めに近く深い推論を要さないため既定 low。
+# minimal / low / medium / high / xhigh のうちモデルが対応する値を指定する。
+EFFORT="${CODEX_RECORDING_EFFORT:-low}"
+# 値域検証: 想定外の文字列が codex CLI の引数パーサーに到達するのを防ぐ。
+case "$EFFORT" in
+    minimal|low|medium|high|xhigh) ;;
+    *) EFFORT="low" ;;
+esac
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
@@ -106,12 +118,12 @@ notify_skip()    { notify "スキップ" "$1"; }
 notify_failure() { notify "失敗" "$1" "Basso"; }
 
 log_run_header() {
-    log "model=$MODEL input=$INPUT_MD report=$REPORT_PATH"
+    log "model=$MODEL effort=$EFFORT input=$INPUT_MD report=$REPORT_PATH"
     log "codex exec を実行します"
 }
 
 log "---"
-log "runner start: input=$INPUT_MD report=$REPORT_PATH model=$MODEL stage=$STAGE_MODE meta=$META_PATH pid=$$ ts=${LATEST_TS:-?}"
+log "runner start: input=$INPUT_MD report=$REPORT_PATH model=$MODEL effort=$EFFORT stage=$STAGE_MODE meta=$META_PATH pid=$$ ts=${LATEST_TS:-?}"
 
 RETRY_QUEUE_PY="$SCRIPTS_DIR/retry_queue.py"
 
@@ -233,7 +245,11 @@ fi
 cleanup_session_dir() {
     cleanup_meta_sidecar
     [[ -z "$SESSION_DIR" || ! -d "$SESSION_DIR" ]] && return 0
-    [[ "$SESSION_DIR" != /tmp/* ]] && return 0
+    # 削除対象パスのトラバーサル防御。pending ディレクトリ配下、または旧 /tmp 配下のみ許可。
+    case "$SESSION_DIR" in
+        "$HOME/.local/share/episodic/pending/"*|/tmp/*) ;;
+        *) return 0 ;;
+    esac
 
     # 取り残し検出: 処理に使った {ts} より新しい {ts}.codex.md があれば再 finalize spawn。
     # finalize 中に新 Stop が来てロック取得失敗で skip された分を救済する。
@@ -330,6 +346,7 @@ EPISODIC_RECORDING_ACTIVE=1 "$CODEX_BIN" exec \
     --skip-git-repo-check \
     --sandbox workspace-write \
     --dangerously-bypass-approvals-and-sandbox \
+    -c model_reasoning_effort="$EFFORT" \
     -m "$MODEL" \
     -o "$CODEX_LAST_MSG" \
     < "$INPUT_MD" 2>&1 | tee -a "$LOG_FILE"
