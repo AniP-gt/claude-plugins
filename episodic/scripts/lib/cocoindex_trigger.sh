@@ -8,7 +8,7 @@
 #                      - codex-hook-runtime: <runtime>
 #                    未設定の場合は ${PLUGIN_ROOT}/scripts にフォールバックする（source repo 後方互換）。
 #   MEMORIES_DIR     memories ルート（既定 /Volumes/memory）
-#   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 /tmp/episodic）
+#   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 ~/.local/state/episodic/logs）
 #
 # log() 関数が定義されていればそれを使い、無ければ printf でフォールバックする。
 #
@@ -28,8 +28,9 @@ trigger_cocoindex_update() {
     # RUNTIME_ROOT 未設定なら source repo 配置 (<plugin>/scripts) にフォールバック。
     local episodic_scripts="${RUNTIME_ROOT:-${PLUGIN_ROOT}/scripts}"
     local recording_scripts="${episodic_scripts}/recording"
-    local log_dir="${LOG_DIR_LOCAL:-/tmp/episodic}"
+    local log_dir="${LOG_DIR_LOCAL:-$HOME/.local/state/episodic/logs}"
     mkdir -p "$log_dir" 2>/dev/null || true
+    chmod 700 "$log_dir" 2>/dev/null || true
     local cocoindex_log="$log_dir/cocoindex-update.log"
 
     _ct_log() {

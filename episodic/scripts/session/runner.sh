@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # hook.py から subprocess.Popen で直接バックグラウンド起動されるランナー。
-# stdin / stdout / stderr は呼び出し元で /tmp/episodic/session-runner.log に redirect されている前提。
+# stdin / stdout / stderr は呼び出し元で ~/.local/state/episodic/logs/session-runner.log に redirect されている前提。
 # 完了時の状況は macOS 通知センター（display notification）で通知する（成功・SKIP・失敗いずれも）。
 # osascript / codex などのコマンドが無い環境ではログだけ残して該当処理をスキップする。
 #
@@ -49,11 +49,12 @@ esac
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
-LOG_DIR_LOCAL="/tmp/episodic"
+LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/session-runner.log"
 mkdir -p "$LOG_DIR_LOCAL"
+chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 
-# /tmp/{session_id}/ から最新 timestamp を再選択する（trap EXIT 取り残し検出に必要）。
+# pending/{session_id}/ から最新 timestamp を再選択する（trap EXIT 取り残し検出に必要）。
 # Popen 起動から runner.sh が走り出すまでの僅かな遅延中に新しい Stop が来て
 # 新 timestamp が書かれた可能性があるため、INPUT_MD の親ディレクトリを SESSION_DIR とみなして
 # 最新 *.codex.md を選び直す。
@@ -245,9 +246,12 @@ fi
 cleanup_session_dir() {
     cleanup_meta_sidecar
     [[ -z "$SESSION_DIR" || ! -d "$SESSION_DIR" ]] && return 0
-    # 削除対象パスのトラバーサル防御。pending ディレクトリ配下、または旧 /tmp 配下のみ許可。
+    # 削除対象パスのトラバーサル防御。pending ディレクトリ配下のみ許可。
+    # 旧パス（~/.local/share/episodic/pending/）は SessionStart の migrate_legacy_pending() で
+    # 新パスへ移送されるが、移行未完の在庫データも runner が処理するため allowlist に残す。
     case "$SESSION_DIR" in
-        "$HOME/.local/share/episodic/pending/"*|/tmp/*) ;;
+        "$HOME/.local/state/episodic/pending/"*) ;;
+        "$HOME/.local/share/episodic/pending/"*) ;;
         *) return 0 ;;
     esac
 

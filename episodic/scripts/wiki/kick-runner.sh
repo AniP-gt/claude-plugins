@@ -11,11 +11,12 @@ STATE_DIR="${HOME}/.local/share/episodic/state"
 QUEUE="$STATE_DIR/ingest-queue.jsonl"
 RUNNER_LOCK_DIR="$STATE_DIR/lock.d"
 KICK_LOCK_DIR="$STATE_DIR/wiki-runner-kick.lock.d"
-LOG_DIR_LOCAL="/tmp/episodic"
+LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/wiki-runner.log"
 DEBOUNCE_SECONDS="${MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS:-5}"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR_LOCAL"
+chmod 700 "$STATE_DIR" "$LOG_DIR_LOCAL" 2>/dev/null || true
 
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"

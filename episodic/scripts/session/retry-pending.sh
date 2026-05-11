@@ -41,9 +41,10 @@ else
     PLUGIN_ROOT="$(cd "${SCRIPTS_DIR}/../.." && pwd)"
     RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
 fi
-LOG_DIR_LOCAL="/tmp/episodic"
+LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/session-retry.log"
 mkdir -p "$LOG_DIR_LOCAL"
+chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 
 LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"
 if [[ -f "$LOG_ROTATE_LIB" ]]; then
@@ -60,6 +61,7 @@ HOOK_PY="$SCRIPTS_DIR/hook.py"
 MAX_ATTEMPTS="${MEMORIES_RETRY_MAX_ATTEMPTS:-5}"
 
 mkdir -p "$STATE_DIR"
+chmod 700 "$STATE_DIR" 2>/dev/null || true
 
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"

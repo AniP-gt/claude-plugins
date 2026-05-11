@@ -16,9 +16,10 @@ set -uo pipefail
 CONFIG_DIR="${MEMORIES_CONFIG_DIR:-$HOME/.config/episodic}"
 CONFIG_TOML="$CONFIG_DIR/config.toml"
 SECRETS_ENV="$CONFIG_DIR/secrets.env"
-LOG_FILE="/tmp/episodic/smb-mount.log"
+LOG_FILE="$HOME/.local/state/episodic/logs/smb-mount.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
+chmod 700 "$(dirname "$LOG_FILE")" 2>/dev/null || true
 # ログには user 名や内部 IP が含まれ得るため、所有者のみ読み書き可に絞る。
 [[ -e "$LOG_FILE" ]] || : > "$LOG_FILE"
 chmod 600 "$LOG_FILE" 2>/dev/null || true

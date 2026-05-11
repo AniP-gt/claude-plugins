@@ -55,7 +55,7 @@ QUEUE="$STATE_DIR/ingest-queue.jsonl"
 DEADLETTER="$STATE_DIR/ingest-deadletter.jsonl"
 LOCK_DIR="$STATE_DIR/lock.d"
 TARGET_LOCK_ROOT="$STATE_DIR/wiki-target-locks"
-LOG_FILE="/tmp/episodic/wiki-runner.log"
+LOG_FILE="$HOME/.local/state/episodic/logs/wiki-runner.log"
 WIKI_DIR="$MEMORIES_DIR/wiki"
 TRASHBOX_DIR="$MEMORIES_DIR/trashbox"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -80,9 +80,10 @@ INSTRUCTION_WEB="$SCRIPT_DIR/codex-instruction-web.md"
 INSTRUCTION_MINUTES="$SCRIPT_DIR/codex-instruction-minutes.md"
 
 mkdir -p "$STATE_DIR" "$TARGET_LOCK_ROOT" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$(dirname "$LOG_FILE")"
+chmod 700 "$STATE_DIR" "$TARGET_LOCK_ROOT" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # log ファイル肥大化を防ぐため、起動直後に rotate を試みる。
-# wiki-runner と cocoindex update は同じ /tmp/episodic/ に書き込むので両方を見る。
+# wiki-runner と cocoindex update は同じ ~/.local/state/episodic/logs/ に書き込むので両方を見る。
 if [[ -f "$LOG_ROTATE_LIB" ]]; then
     # shellcheck source=../lib/log_rotate.sh
     source "$LOG_ROTATE_LIB"

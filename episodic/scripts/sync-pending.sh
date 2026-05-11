@@ -45,9 +45,10 @@ resolve_runtime_root() {
 }
 
 RUNTIME_ROOT="$(resolve_runtime_root)"
-LOG_DIR_LOCAL="/tmp/episodic"
+LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/session-sync.log"
 mkdir -p "$LOG_DIR_LOCAL"
+chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 
 # ログ肥大化を防ぐため、起動直後に rotate を試みる（best effort）。
 LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"

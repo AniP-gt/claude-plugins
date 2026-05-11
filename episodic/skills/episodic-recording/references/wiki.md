@@ -66,7 +66,7 @@
 - `CODEX_MEMORY_WIKI_MODEL`: 後方互換。設定すると全 kind の既定値を上書き
 - `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
 - `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
-- `MEMORIES_LOG_ROTATE_BYTES`: `/tmp/episodic/*.log` ローテーション閾値（既定 5242880）
+- `MEMORIES_LOG_ROTATE_BYTES`: `~/.local/state/episodic/logs/*.log` ローテーション閾値（既定 5242880）
 - `MEMORIES_LOG_ROTATE_KEEP`: 同上の保持世代数（既定 3）
 - `MEMORIES_WIKI_BATCH_SIZE`: 同一 target に束ねる Raw 件数の上限（既定 8）
 - `MEMORIES_WIKI_PARALLELISM`: 別 target の同時処理数（既定 2）
@@ -97,12 +97,14 @@
 ├── wiki-runner-kick.lock.d/                               # kick-runner デバウンスロック
 └── wiki-target-locks/<sha256>.lock.d/                     # Wiki target 別 sub-lock（並列処理時の直列化）
 
-/tmp/episodic/                                             # ローカル揮発（OS 再起動で消える）
-├── session-hook.log                                       # Stop hook ログ
-├── session-runner.log                                     # runner ログ
-├── wiki-runner.log                                        # wiki-runner ログ
-├── cocoindex-update.log                                   # cocoindex update ログ
-└── smb-mount.log                                          # SMB マウント結果ログ
+~/.local/state/episodic/                                   # XDG_STATE_HOME 配下（永続。所有者専用 chmod 700）
+├── pending/<session_id>/                                   # debounce 中の会話 Markdown 一時保存（runner.sh 完了で削除）
+└── logs/                                                   # 全 runner / hook の集約ログ（log_rotate.sh が gzip ローテーション）
+    ├── session-hook.log                                   # Stop hook ログ
+    ├── session-runner.log                                 # runner ログ
+    ├── wiki-runner.log                                    # wiki-runner ログ
+    ├── cocoindex-update.log                               # cocoindex update ログ
+    └── smb-mount.log                                      # SMB マウント結果ログ
 ```
 
 ## 自動起動の流れ
@@ -111,7 +113,7 @@
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
-( nohup "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/kick-runner.sh" >> /tmp/episodic/wiki-runner.log 2>&1 & )
+( nohup "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/kick-runner.sh" >> ~/.local/state/episodic/logs/wiki-runner.log 2>&1 & )
 ```
 
 JSONL への append-only 追記は POSIX 上で原子的なので、複数プロセス並行でも壊れない（ロック不要）。`kick-runner.sh` は debounce ロックで束ね、`wiki-runner.sh` 自体は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。`codex` コマンドが PATH 上に無い環境では自動的に `--no-codex` モードへ降格し、キュー消化のみ行う。
@@ -166,7 +168,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/wiki/enqueue.py" \
 
 ## ログ・トラブルシューティング
 
-- 実行ログ: `/tmp/episodic/wiki-runner.log`（kick-runner.sh も同じファイルに append する）
+- 実行ログ: `~/.local/state/episodic/logs/wiki-runner.log`（kick-runner.sh も同じファイルに append する）
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/episodic/state/lock.d ~/.local/share/episodic/state/wiki-runner-kick.lock.d ~/.local/share/episodic/state/wiki-target-locks`
 - Codex 失敗で pending が残る: 失敗エントリは指数 backoff で `retry_after_epoch` を付けて待機する。即時再試行したい場合は queue から該当エントリの `retry_after_epoch` を 0 にするか、`--no-codex` でキューだけ消化する
 - dead-letter に積まれた: `ingest-deadletter.jsonl` の `raw_path` を確認し、根本原因を解消したうえで再 enqueue する（`enqueue.py` でキュー末尾に追加すれば再処理される）

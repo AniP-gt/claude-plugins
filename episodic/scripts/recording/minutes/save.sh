@@ -186,8 +186,9 @@ chmod 600 "$OUT_PATH" 2>/dev/null || true
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 ENQUEUE="$PLUGIN_ROOT/scripts/wiki/enqueue.py"
 WIKI_KICKER="$PLUGIN_ROOT/scripts/wiki/kick-runner.sh"
-LOG_DIR_LOCAL="/tmp/episodic"
+LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 mkdir -p "$LOG_DIR_LOCAL" 2>/dev/null || true
+chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 if [[ $IS_STAGED -eq 1 ]]; then
     echo "warn: SMB share not mounted; saved to staging at $OUT_PATH" >&2
     echo "      sync-pending.sh will move it to $MEMORIES_DIR/raw/minutes/ on next mount." >&2

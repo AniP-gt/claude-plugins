@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # memory プラグイン共通: ログファイルのサイズ超過時に gzip ローテーションする。
 #
-# /tmp/episodic/*.log は再起動で消える揮発領域だが、運用中（数日〜数週間）には
+# ~/.local/state/episodic/logs/*.log は永続領域だが、運用中（数日〜数週間）には
 # Codex プロンプト全文・cocoindex 進捗・stack trace が積み重なって GB 級まで肥大する
 # 可能性がある。各 runner の起動直後に rotate_log_if_needed を 1 回呼ぶ運用で抑える。
 #
@@ -10,7 +10,7 @@
 #     active log を空にする
 #   - 同一 prefix の .gz は世代数（既定 3）で打ち切り、古いものから順に削除
 #   - ローテーション中の他 runner からの append とは競合し得るが、ロスが許容できる
-#     揮発ログ用途のため atomic 保証は行わない（best effort）
+#     ベストエフォート用途のため atomic 保証は行わない
 #
 # Usage:
 #   source "${PLUGIN_ROOT}/scripts/lib/log_rotate.sh"
