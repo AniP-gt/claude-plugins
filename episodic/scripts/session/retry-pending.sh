@@ -25,12 +25,27 @@
 set -uo pipefail
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
+# PLUGIN_ROOT / RUNTIME_ROOT を source repo と codex-hook-runtime 両配置で解決する。
+#   source repo:          SCRIPTS_DIR=<plugin>/scripts/session, PLUGIN_ROOT=<plugin>,  RUNTIME_ROOT=<plugin>/scripts
+#   codex-hook-runtime:   SCRIPTS_DIR=<runtime>/session,        PLUGIN_ROOT=<runtime>, RUNTIME_ROOT=<runtime>
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -d "${CLAUDE_PLUGIN_ROOT}/scripts/lib" ]]; then
+    PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+    RUNTIME_ROOT="${CLAUDE_PLUGIN_ROOT}/scripts"
+elif [[ -d "${SCRIPTS_DIR}/../../scripts/lib" ]]; then
+    PLUGIN_ROOT="$(cd "${SCRIPTS_DIR}/../.." && pwd)"
+    RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
+elif [[ -d "${SCRIPTS_DIR}/../lib" && -d "${SCRIPTS_DIR}/../wiki" ]]; then
+    RUNTIME_ROOT="$(cd "${SCRIPTS_DIR}/.." && pwd)"
+    PLUGIN_ROOT="$RUNTIME_ROOT"
+else
+    PLUGIN_ROOT="$(cd "${SCRIPTS_DIR}/../.." && pwd)"
+    RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
+fi
 LOG_DIR_LOCAL="/tmp/episodic"
 LOG_FILE="$LOG_DIR_LOCAL/session-retry.log"
 mkdir -p "$LOG_DIR_LOCAL"
 
-LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
+LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"
 if [[ -f "$LOG_ROTATE_LIB" ]]; then
     # shellcheck source=../lib/log_rotate.sh
     source "$LOG_ROTATE_LIB"

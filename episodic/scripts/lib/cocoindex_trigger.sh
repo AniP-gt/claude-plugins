@@ -3,6 +3,10 @@
 #
 # このファイルは source して使う。呼び出し元で以下を事前に設定しておくこと:
 #   PLUGIN_ROOT      episodic プラグインのルート（${CLAUDE_PLUGIN_ROOT} 相当）
+#   RUNTIME_ROOT     recording/main_episodic.py と pyproject.toml が直下に存在する場所
+#                      - source repo:        <plugin>/scripts
+#                      - codex-hook-runtime: <runtime>
+#                    未設定の場合は ${PLUGIN_ROOT}/scripts にフォールバックする（source repo 後方互換）。
 #   MEMORIES_DIR     memories ルート（既定 /Volumes/memory）
 #   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 /tmp/episodic）
 #
@@ -21,7 +25,8 @@ trigger_cocoindex_update() {
     # ドメイン固有設定（embedding model/dimension, chunk size, exclude）は
     # ~/.config/episodic/cocoindex.toml の [embedding]/[chunk]/[index] セクションで管理する。
     local memories_dir="${1:-${MEMORIES_DIR:-/Volumes/memory}}"
-    local episodic_scripts="${PLUGIN_ROOT}/scripts"
+    # RUNTIME_ROOT 未設定なら source repo 配置 (<plugin>/scripts) にフォールバック。
+    local episodic_scripts="${RUNTIME_ROOT:-${PLUGIN_ROOT}/scripts}"
     local recording_scripts="${episodic_scripts}/recording"
     local log_dir="${LOG_DIR_LOCAL:-/tmp/episodic}"
     mkdir -p "$log_dir" 2>/dev/null || true

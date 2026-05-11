@@ -67,7 +67,7 @@ elif [[ -d "${SCRIPT_DIR}/../../scripts/lib" ]]; then
     PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
     RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
 elif [[ -d "${SCRIPT_DIR}/../lib" ]]; then
-    # codex-hook-runtime mirror: <runtime>/wiki/ から起動。PLUGIN_ROOT == RUNTIME_ROOT == <runtime>。
+    # codex-hook-runtime 配置: <runtime>/wiki/ から起動。PLUGIN_ROOT == RUNTIME_ROOT == <runtime>。
     RUNTIME_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
     PLUGIN_ROOT="$RUNTIME_ROOT"
 else

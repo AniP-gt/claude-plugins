@@ -12,7 +12,22 @@
 set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
+# PLUGIN_ROOT / RUNTIME_ROOT を source repo と codex-hook-runtime 両配置で解決する。
+#   source repo:          SCRIPTS_DIR=<plugin>/scripts/session, PLUGIN_ROOT=<plugin>,  RUNTIME_ROOT=<plugin>/scripts
+#   codex-hook-runtime:   SCRIPTS_DIR=<runtime>/session,        PLUGIN_ROOT=<runtime>, RUNTIME_ROOT=<runtime>
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" && -d "${CLAUDE_PLUGIN_ROOT}/scripts/lib" ]]; then
+    PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+    RUNTIME_ROOT="${CLAUDE_PLUGIN_ROOT}/scripts"
+elif [[ -d "${SCRIPTS_DIR}/../../scripts/lib" ]]; then
+    PLUGIN_ROOT="$(cd "${SCRIPTS_DIR}/../.." && pwd)"
+    RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
+elif [[ -d "${SCRIPTS_DIR}/../lib" && -d "${SCRIPTS_DIR}/../wiki" ]]; then
+    RUNTIME_ROOT="$(cd "${SCRIPTS_DIR}/.." && pwd)"
+    PLUGIN_ROOT="$RUNTIME_ROOT"
+else
+    PLUGIN_ROOT="$(cd "${SCRIPTS_DIR}/../.." && pwd)"
+    RUNTIME_ROOT="${PLUGIN_ROOT}/scripts"
+fi
 
 INPUT_MD="${1:?usage: $0 <combined_md> <report_path> <staged|normal> [meta_json]}"
 REPORT_PATH="${2:?usage: $0 <combined_md> <report_path> <staged|normal> [meta_json]}"
@@ -46,7 +61,7 @@ if [[ -n "$LATEST_CODEX" ]]; then
 fi
 
 # ログ肥大化を防ぐため、起動直後に rotate を試みる（best effort）。
-LOG_ROTATE_LIB="$PLUGIN_ROOT/scripts/lib/log_rotate.sh"
+LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"
 if [[ -f "$LOG_ROTATE_LIB" ]]; then
     # shellcheck source=../lib/log_rotate.sh
     source "$LOG_ROTATE_LIB"
@@ -246,8 +261,8 @@ trigger_memory_wiki() {
     # 生成された Raw を Wiki ingest キューに enqueue し、debounced launcher を非同期起動。
     # wiki-runner は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。
     local raw_path="$1"
-    local enqueue="${PLUGIN_ROOT}/scripts/wiki/enqueue.py"
-    local wiki_kicker="${PLUGIN_ROOT}/scripts/wiki/kick-runner.sh"
+    local enqueue="${RUNTIME_ROOT}/wiki/enqueue.py"
+    local wiki_kicker="${RUNTIME_ROOT}/wiki/kick-runner.sh"
 
     if [[ ! -f "$enqueue" || ! -x "$wiki_kicker" ]]; then
         log "wiki scripts not found; skip enqueue (enqueue=$enqueue wiki_kicker=$wiki_kicker)"
