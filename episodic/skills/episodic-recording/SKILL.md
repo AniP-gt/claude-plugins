@@ -1,6 +1,6 @@
 ---
 name: episodic-recording
-description: "エピソード記憶（kind: session / web / minutes）の保存・参照・再調査を担当する skill。session（Claude Code セッション要約）は Stop hook + debounce で最後の応答が落ち着いたタイミングに自動生成される。web（外部 URL アーカイブ）と minutes（議事録）は本 skill から手動で保存する。minutes は Notion URL から本文を取り込んで保存することもできる。「webページを記録して」「議事録を残して」「Notion の議事録を取り込んで」「過去のセッション要約を探して」「このセッションの Bash 実行を全部見せて」などで起動する。"
+description: "エピソード記憶（session/web/minutes）の保存・参照 skill。session は自動、web/minutes は本 skill 経由（Notion URL 可）。「webページを記録して」「議事録を残して」「過去セッションを探して」で起動。"
 argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes | minutes from-notion <URL>"
 ---
 
@@ -18,23 +18,7 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 
 ## 記憶レイヤーの位置付け
 
-エージェントの記憶は性質ごとに別レイヤーへ分離する。本 skill は **エピソード記憶（過去の出来事の記録）** を担当する。他レイヤーと混同しないこと。
-
-| レイヤー | 担当 | 用途 |
-|---|---|---|
-| 意味記憶 / 手続き記憶 | auto memory（`memory/MEMORY.md` 配下） | ユーザー好み・コーディング規約・繰り返し参照する事実 |
-| 意思決定記録 | `adr` skill | 技術選定・アーキテクチャ判断の永続化 |
-| **エピソード記憶（kind: session）** | 本 skill（自動）+ `memories/raw/session/` | 過去セッションでの作業内容・判断・残課題 |
-| **エピソード記憶（kind: web）** | 本 skill（手動）+ `memories/raw/web/` | 外部 URL のスナップショット |
-| **エピソード記憶（kind: minutes）** | 本 skill（手動）+ `memories/raw/minutes/` | 議事録・指示・合意ログ |
-| エピソード記憶（Wiki） | wiki-runner（recording 経由で自動連携、再生成可） | プロジェクト通史・参照索引・議事索引 |
-| 教訓・改善 | `retrospective` skill | フェーズ完了後に skills/rules を更新 |
-
-**運用原則**:
-
-- 本 skill は「いつ・何をしたか／参照したか／決めたか」を保存する。普遍的なルール化が必要なら `retrospective` で意味/手続き記憶へ昇華する
-- 記録は `kind` と `status` を必ず持つ。古い記録は `superseded` へ降格し、ないより悪い状態にしない
-- session の再生成・上書きが起きたら、旧版との関係を `supersedes` フィールドで明示する
+本 skill は **エピソード記憶（過去の出来事の記録）** を担当する。auto memory（意味記憶）・`adr`（意思決定）・`retrospective`（教訓昇華）との責務境界、運用原則（status / supersedes の扱い）は `references/memory-layers.md` を参照する。
 
 ## 保存先と命名規則
 
@@ -49,16 +33,7 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 
 session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
 
-### Codex 失敗時の自動リトライ
-
-Codex の usage limit / API エラー / 一時的な障害で要約生成が失敗した場合、`runner.sh` が失敗内容を `~/.local/share/episodic/state/session-retry-queue.jsonl` に永続化する。次回 SessionStart の `retry-pending.sh` hook が以下の方針でキューを消化する。
-
-- 期待 `report_path` がすでに存在 → 別経路で生成済みとみなしキューから除去
-- `transcript_path` が消失 → 再生成不能のため dead_letter にせず静かに除去
-- `attempt_count >= 5`（既定）→ `session-retry-deadletter.jsonl` に降格し OSAlert 通知
-- 上記以外 → `hook.py` に `source: "retry"` 付き JSON stdin を渡して即起動（debounce バイパス）し、Terminal launcher 経由で Codex を再実行
-
-リトライ実行は `mkdir state/retry-pending.lock.d` のグローバル排他ロックで直列化される。複数 Claude Code セッションが同時に開いても重複起動しない。手動で全件再試行したい場合は `${CLAUDE_PLUGIN_ROOT}/session/retry-pending.sh` を直接起動する。
+Codex 要約生成が失敗した場合のリトライキュー消化（5 回で dead letter、debounce バイパスでの即時再実行など）は `references/architecture.md` の「Codex 失敗時の自動リトライ」を参照する。
 
 ## 使い方
 
