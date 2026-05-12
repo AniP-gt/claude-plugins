@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-import socket
+import subprocess
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -150,11 +150,40 @@ def resolve_stop_debounce_seconds() -> int:
 
 
 @lru_cache(maxsize=1)
+def _machine_id() -> str:
+    """macOS の IOPlatformUUID をマシン固有 ID として返す。
+
+    socket.gethostname() は Wi-Fi / DHCP / mDNS の状態によって動的に変動し、
+    同一マシン内でも値が揺れる（例: MacBookPro.local ↔ 別形式）。揺れると
+    host_hash も変わり、report_path のパス重複検知が空振りする。
+    IOPlatformUUID はハードウェア固有の不変値なので、これをハッシュ元にする。
+    """
+    try:
+        proc = subprocess.run(
+            ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError(f"failed to invoke ioreg: {exc}") from exc
+    for line in proc.stdout.splitlines():
+        if "IOPlatformUUID" in line:
+            parts = line.split('"')
+            if len(parts) >= 4 and parts[3]:
+                return parts[3]
+    raise RuntimeError("IOPlatformUUID not found in ioreg output")
+
+
+@lru_cache(maxsize=1)
 def host_hash(length: int | None = None) -> str:
-    """hostname の SHA-1 先頭 N 文字（小文字 hex）を返す。
+    """machine id (macOS IOPlatformUUID) の SHA-1 先頭 N 文字（小文字 hex）を返す。
 
     複数マシンが同じ MEMORIES_DIR を共有しても session_id 衝突に巻き込まれない。
+    socket.gethostname() ベースだと値が動的に揺れて report_path の重複検知が
+    壊れるため、ハードウェア固有 ID を採用する。
     """
     n = length or int(load_config()["hostname_hash_length"])
-    digest = hashlib.sha1(socket.gethostname().encode("utf-8")).hexdigest()
+    digest = hashlib.sha1(_machine_id().encode("utf-8")).hexdigest()
     return digest[:n]
