@@ -11,13 +11,13 @@
 
 ## パス解決
 
-Claude Code 内（hook / Bash ツール経由）では `${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh` でアクセスできる。外部アプリから呼ぶ場合は環境変数が無いため、プラグインのインストール先絶対パスを直接指定する:
+Claude Code 内（hook / Bash ツール経由）でも外部アプリからでも、runtime の絶対パスを指定する:
 
 ```bash
-~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh
+~/.config/episodic/codex-hook-runtime/scripts/search/search.sh
 ```
 
-`episodic` プラグインのバージョンが変わる場合、インストール先パスも変動する可能性がある。複数バージョン併存時は `ls ~/.claude/plugins/cache/hidetsugu-miya/episodic/` で確認する。
+`episodic/scripts/install-bin.sh` が plugin source を `~/.config/episodic/codex-hook-runtime/` にミラーコピーするため、Claude plugin cache のバージョン付きパスには依存しない。
 
 ## 最小実装パターン: Bash 実行可能なツールから直接叩く
 
@@ -58,7 +58,7 @@ tools = [
 
 
 SEARCH_SH = os.path.expanduser(
-    "~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh"
+    "~/.config/episodic/codex-hook-runtime/scripts/search/search.sh"
 )
 
 
@@ -103,7 +103,7 @@ def execute_tool_remote(args: dict) -> str:
     # リモートホスト側で展開させたいので "~/" のままシェルへ渡す（ssh 越しに展開される）
     cmd = [
         "ssh", "user@memories-host",
-        "~/.claude/plugins/cache/hidetsugu-miya/episodic/scripts/search/search.sh",
+        "~/.config/episodic/codex-hook-runtime/scripts/search/search.sh",
         args["query"],
         "--format", "json",
     ]

@@ -18,7 +18,7 @@ argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--inclu
 
 - **副作用なし**（読み取り専用）。memories 配下や DB を書き換えない
 - **stdin/stdout 完結**: 入力＝CLI 引数、出力＝stdout（Markdown または JSON）
-- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 venv（`episodic/.venv`）と episodic データベース（`postgres://...:15432/episodic`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
+- **依存**: PostgreSQL（localhost:15432、cocoindex プラグインの compose.yml で立ち上がるコンテナを共用）が起動していること。episodic プラグイン専用 Python 環境（既定 `~/.cache/episodic/venv`）と episodic データベース（`postgres://...:15432/episodic`）は `setup_db.sh` と初回 `cocoindex update` で自動構築される
 - **インデックスは episodic-recording 側で管理**: Stop hook 経路の runner.sh がインデックスを更新する（kind: session 経路）。kind: web / minutes は保存後の cocoindex 自動再インデックスに任せる。本 skill はインデックス構築は行わない
 - **scope フィルタは post-process**: cocoindex 自体に scope 概念はないため、結果取得後にパスでフィルタする
 - **既定で deprecated/superseded を除外**: 古い記録のヒットを避ける。明示的に `--include-superseded` を指定したときのみ含める
@@ -51,6 +51,7 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 - `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`episodic-recording` の `main_episodic.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
 - `MEMORIES_EMBEDDING_PROVIDER`: 埋め込みプロバイダー（既定: `voyage`）
 - `VOYAGE_API_KEY`: voyage embedding / rerank API キー。`~/.config/episodic/secrets.env` で設定可能。未設定の場合は `~/.config/cocoindex/secrets.env` を fallback で読む
+- `UV_PROJECT_ENVIRONMENT`: `uv run` の venv 配置先（既定: `~/.cache/episodic/venv`）
 
 ## 返却値
 
@@ -93,24 +94,24 @@ stdout に以下を出力する。
 
 ```bash
 # 標準的な検索（Markdown）
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "セッション要約の保存先"
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "セッション要約の保存先"
 
 # Wiki だけ、JSON、上位 5 件
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "コミット規約" \
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "コミット規約" \
     --scope wiki --top 5 --format json
 
 # kind: web だけで絞る
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "Jina Reader 仕様" --scope web
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "Jina Reader 仕様" --scope web
 
 # 過去版も含めて検索
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "episodic-recording" \
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "episodic-recording" \
     --include-superseded
 
 # 直近の作業を時系列で一覧（セマンティック検索ではない）
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind session --top 5
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind session --project agents --days 7
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind web --top 10 --format json
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind minutes --top 10
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind session --top 5
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind session --project agents --days 7
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind web --top 10 --format json
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind minutes --top 10
 ```
 
 メインコンテキストから呼ぶ場合は `cocoindex:cocoindex-runner` サブエージェントへ委譲してトークンを節約してもよいが、本 skill は出力が小さいので直接呼びでも問題ない。
@@ -121,7 +122,7 @@ stdout に以下を出力する。
 
 `references/api-usage.md` に Tool Use 経由のサンプルあり。要点:
 
-1. Bash MCP もしくは独自の shell 実行ツールで `${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh`（または絶対パス `~/.claude/plugins/cache/hidetsugu-miya/episodic/<version>/scripts/search/search.sh`）を起動
+1. Bash MCP もしくは独自の shell 実行ツールで `~/.config/episodic/codex-hook-runtime/scripts/search/search.sh` を起動
 2. `--format json` を指定して結果を JSON で受け取り、アプリ側で構造化処理する
 3. memories ディレクトリを別ホストに置く場合は `MEMORIES_DIR` 環境変数で上書き
 

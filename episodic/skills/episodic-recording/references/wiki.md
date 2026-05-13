@@ -110,8 +110,9 @@
 `recording` の `runner.sh`（kind: session）/ `fetch-jina.sh`（kind: web）/ `save.sh`（kind: minutes）が Raw を書いた直後に、以下を fire-and-forget で実行する:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
-( nohup "${CLAUDE_PLUGIN_ROOT}/wiki/kick-runner.sh" >> ~/.local/state/episodic/logs/wiki-runner.log 2>&1 & )
+EPISODIC_RUNTIME_ROOT="${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}"
+python3 "$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py" "$RAW_PATH" --kind <kind>
+( nohup "$EPISODIC_RUNTIME_ROOT/wiki/kick-runner.sh" >> ~/.local/state/episodic/logs/wiki-runner.log 2>&1 & )
 ```
 
 JSONL への append-only 追記は POSIX 上で原子的なので、複数プロセス並行でも壊れない（ロック不要）。`kick-runner.sh` は debounce ロックで束ね、`wiki-runner.sh` 自体は mkdir ロックで排他制御されるため、複数 Raw 同時生成でも安全。`codex` コマンドが PATH 上に無い環境では自動的に `--no-codex` モードへ降格し、キュー消化のみ行う。
@@ -143,7 +144,8 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
 
 ```bash
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
-ENQUEUE="${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py"
+EPISODIC_RUNTIME_ROOT="${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}"
+ENQUEUE="$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py"
 
 # kind 別に raw を再投入（隠しファイル・AppleDouble は除外）
 for kind in session web minutes; do
@@ -152,15 +154,16 @@ for kind in session web minutes; do
 done
 
 # 実行
-"${CLAUDE_PLUGIN_ROOT}/wiki/wiki-runner.sh"
+"$EPISODIC_RUNTIME_ROOT/wiki/wiki-runner.sh"
 ```
 
 特定 1 ファイルのみの再処理:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/wiki/enqueue.py" \
+EPISODIC_RUNTIME_ROOT="${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}"
+python3 "$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py" \
     "/Volumes/memory/raw/web/2026-04-29/HHMMSS_xxx.md" --kind web
-"${CLAUDE_PLUGIN_ROOT}/wiki/wiki-runner.sh"
+"$EPISODIC_RUNTIME_ROOT/wiki/wiki-runner.sh"
 ```
 
 ## ログ・トラブルシューティング

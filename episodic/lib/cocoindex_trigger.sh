@@ -59,13 +59,17 @@ trigger_cocoindex_update() {
     local app_name="EpisodicIndex_${host_prefix}_${index_name}"
 
     _ct_log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=~/.config/episodic/cocoindex.toml)"
-    # main_episodic.py は episodic プラグイン専用 venv（uv 管理）で実行する。
+    # main_episodic.py は uv 管理の episodic 専用 Python 環境で実行する。
+    # venv は config ではなく cache に置き、runtime 配置をコード・設定に限定する。
+    local uv_project_environment="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/episodic/venv}"
+    mkdir -p "$(dirname "$uv_project_environment")" 2>/dev/null || true
     # サブシェル内で update の終了コードを受け取り、完了通知（macOS osascript）を出す。
     (
         cd "$app_dir" || exit 1
         SOURCE_PATH="$memories_dir" \
             INDEX_NAME="$index_name" \
             PATTERNS="**/*.md" \
+            UV_PROJECT_ENVIRONMENT="$uv_project_environment" \
             nohup uv run cocoindex update -f "${recording_dir}/main_episodic.py:${app_name}" \
             >> "$cocoindex_log" 2>&1
         rc=$?

@@ -7,7 +7,7 @@
 #
 # Defaults: --top 10, --scope all, --format markdown, status=active のみ, threshold 0.3
 #
-# 同階層の search.py を episodic プラグイン専用 venv で実行する。
+# 同階層の search.py を uv 管理の episodic 専用 Python 環境で実行する。
 # dense + BM25 (RRF) → voyage rerank-2 のハイブリッド検索。chunk_tsv 列 + GIN index は
 # main_episodic.py の declare_sql_command_attachment で自動的に作成される。
 #
@@ -20,6 +20,7 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 FORMATTER="${SCRIPTS_DIR}/format.py"
 SEARCH_PY="${SCRIPTS_DIR}/search.py"
+UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/episodic/venv}"
 
 QUERY=""
 TOP=10
@@ -70,6 +71,7 @@ done
 [[ ! -f "$SEARCH_PY" ]] && { echo "search.py not found: $SEARCH_PY" >&2; exit 3; }
 [[ ! -f "$PLUGIN_ROOT/pyproject.toml" ]] && { echo "episodic pyproject not found: $PLUGIN_ROOT/pyproject.toml" >&2; exit 3; }
 [[ ! -d "$MEMORIES_DIR" ]] && { echo "memories dir not found: $MEMORIES_DIR" >&2; exit 3; }
+mkdir -p "$(dirname "$UV_PROJECT_ENVIRONMENT")" 2>/dev/null || true
 
 # episodic プラグイン専用設定（cocoindex プラグインに依存しない）
 EMBEDDING_MODEL_OVERRIDE="${MEMORIES_EMBEDDING_MODEL:-voyage-3-large}"
@@ -84,6 +86,7 @@ trap 'rm -f "$STDERR_FILE"' EXIT
 RAW_OUTPUT=$(cd "$PLUGIN_ROOT" && \
     EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
     EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
+    UV_PROJECT_ENVIRONMENT="$UV_PROJECT_ENVIRONMENT" \
     uv run python "$SEARCH_PY" "$QUERY" \
     --top "$((TOP * 3))" \
     --low-score-threshold "$LOW_SCORE_THRESHOLD" 2>"$STDERR_FILE")
