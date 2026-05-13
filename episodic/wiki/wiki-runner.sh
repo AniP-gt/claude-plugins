@@ -174,6 +174,77 @@ if [[ ! -s "$QUEUE" ]]; then
     exit 0
 fi
 
+# 起動時の永続失敗掃除: raw ファイルが消えた pending/processing エントリを即 dead-letter へ移送する。
+# - sync-pending.sh のスモークテストや手動削除で stale path が残ると、リトライしても永遠に成功しないため
+#   max_attempts を待たずに last_error="raw_missing" で確定させる
+# - 環境変数 QUEUE_PATH / DEADLETTER_PATH 経由で Python に渡し、シェル変数の直接展開を避ける
+purge_missing_entries() {
+    QUEUE_PATH="$QUEUE" DEADLETTER_PATH="$DEADLETTER" python3 -c '
+import fcntl, json, os, time
+from datetime import datetime, timezone
+from pathlib import Path
+
+q = Path(os.environ["QUEUE_PATH"])
+dead = Path(os.environ["DEADLETTER_PATH"])
+if not q.exists():
+    raise SystemExit(0)
+
+now_dt = datetime.fromtimestamp(time.time(), timezone.utc).astimezone()
+remaining = []
+dead_rows = []
+
+with q.open("a+", encoding="utf-8") as f:
+    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+    f.seek(0)
+    for line in f.read().splitlines():
+        if not line.strip():
+            continue
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            remaining.append(line)
+            continue
+        status = d.get("status") or "pending"
+        raw = d.get("raw_path", "")
+        if status in ("pending", "processing") and raw and not Path(raw).is_file():
+            d["status"] = "dead_letter"
+            d["last_error"] = "raw_missing"
+            d["last_failed_at"] = now_dt.isoformat(timespec="seconds")
+            d["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
+            d.pop("processing_started_at", None)
+            d.pop("processing_started_epoch", None)
+            d.pop("runner_pid", None)
+            d.pop("retry_after", None)
+            d.pop("retry_after_epoch", None)
+            dead_rows.append(json.dumps(d, ensure_ascii=False))
+            continue
+        remaining.append(json.dumps(d, ensure_ascii=False))
+    f.seek(0)
+    f.truncate()
+    if remaining:
+        f.write("\n".join(remaining) + "\n")
+
+if dead_rows:
+    dead.parent.mkdir(parents=True, exist_ok=True)
+    with dead.open("a", encoding="utf-8") as f:
+        for row in dead_rows:
+            f.write(row + "\n")
+
+print(len(dead_rows))
+'
+}
+
+PURGED_COUNT="$(purge_missing_entries || echo 0)"
+if [[ "${PURGED_COUNT:-0}" -gt 0 ]]; then
+    log "purge: dead-lettered $PURGED_COUNT raw_missing entries before pending scan"
+fi
+
+# 掃除後にキューが空になった場合はやることなし
+if [[ ! -s "$QUEUE" ]]; then
+    log "skip: queue is empty (after purge)"
+    exit 0
+fi
+
 # pending エントリ取り出し関数（kind 含む TSV: <raw_path>\t<kind>）。
 # self-poll ループで毎イテレーション再 scan するため関数化する。
 # 同一 raw_path が複数 pending として残っている場合（旧 enqueue.py で発生し得た）は
@@ -462,11 +533,25 @@ with q.open("a+", encoding="utf-8") as f:
         if raw in successes:
             continue
         if raw in failures:
-            attempts = int(d.get("attempt_count") or 0) + 1
-            d["attempt_count"] = attempts
+            label = failures.get(raw, "")
             d.pop("processing_started_at", None)
             d.pop("processing_started_epoch", None)
             d.pop("runner_pid", None)
+            # raw ファイル欠落（label が "missing:" プレフィックス）は永続失敗なので
+            # attempt_count を増やさず即 dead-letter へ。Codex 一時失敗 (codex_failed) のみ
+            # 指数バックオフでリトライする。
+            if label.startswith("missing:"):
+                d["last_error"] = "raw_missing"
+                d["last_failed_at"] = now_dt.isoformat(timespec="seconds")
+                d.pop("retry_after", None)
+                d.pop("retry_after_epoch", None)
+                dead_row = dict(d)
+                dead_row["status"] = "dead_letter"
+                dead_row["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
+                dead_rows.append(json.dumps(dead_row, ensure_ascii=False))
+                continue
+            attempts = int(d.get("attempt_count") or 0) + 1
+            d["attempt_count"] = attempts
             d["last_error"] = "codex_failed"
             d["last_failed_at"] = now_dt.isoformat(timespec="seconds")
             if attempts >= max_attempts:
