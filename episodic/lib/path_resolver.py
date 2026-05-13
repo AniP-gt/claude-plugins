@@ -68,3 +68,55 @@ def map_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path:
     date_dir = staged_path.parent.name
     normal_basename = to_normal_basename(staged_path.name)
     return memories_dir / "raw" / "session" / date_dir / normal_basename
+
+
+def _format_snapshot_basename(time_str: str, host8: str, sid8: str, staged: bool, ext: str) -> str:
+    suffix = STAGED_SUFFIX if staged else ""
+    return f"{time_str}_{host8}_{sid8}{suffix}{ext}"
+
+
+def _snapshot_ext(use_zstd: bool) -> str:
+    return ".jsonl.zst" if use_zstd else ".jsonl"
+
+
+def to_normal_snapshot_basename(staged_basename: str) -> str:
+    """staging snapshot のベース名から __staged サフィックスを取り除く。"""
+    for ext in (".jsonl.zst", ".jsonl"):
+        suffix = f"{STAGED_SUFFIX}{ext}"
+        if staged_basename.endswith(suffix):
+            return staged_basename[: -len(suffix)] + ext
+    return staged_basename
+
+
+def resolve_snapshot_path(started_at_iso: str, session_id: str,
+                          use_zstd: bool) -> tuple[Path, bool]:
+    """セッション開始 ISO8601 と session_id から元 JSONL snapshot の (path, is_staged) を返す。
+
+    snapshot root は config.effective_snapshot_root() で決定:
+      - マウント成立: <memories_dir>/raw/session-source/YYYY-MM-DD/<basename>.jsonl[.zst]
+      - 未成立      : <fallback_dir>/session-source/YYYY-MM-DD/<basename>__staged.jsonl[.zst]
+
+    時刻・host8・sid8 は session レポートと同じ規則で算出する。同じ session を再生成しても
+    snapshot は不変なので、命名衝突は命名規則上ありえないが、衝突時は呼び出し側で扱う。
+    """
+    started_dt = datetime.fromisoformat(started_at_iso.replace("Z", "+00:00")).astimezone()
+    date_dir = started_dt.strftime("%Y-%m-%d")
+    time_str = started_dt.strftime("%H%M%S")
+    host8 = cfg.host_hash()
+    sid8 = (session_id or "unknown00")[:8]
+
+    snap_root, is_staged = cfg.effective_snapshot_root()
+    ext = _snapshot_ext(use_zstd)
+    basename = _format_snapshot_basename(time_str, host8, sid8, staged=is_staged, ext=ext)
+    return snap_root / date_dir / basename, is_staged
+
+
+def map_snapshot_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path:
+    """staging snapshot の絶対パスを、正規 memories_dir/raw/session-source 配下へ写像する。
+
+    `<fallback_dir>/session-source/YYYY-MM-DD/<basename>__staged.jsonl[.zst]` を
+    `<memories_dir>/raw/session-source/YYYY-MM-DD/<basename>.jsonl[.zst]` へ変換する。
+    """
+    date_dir = staged_path.parent.name
+    normal_basename = to_normal_snapshot_basename(staged_path.name)
+    return memories_dir / "raw" / "session-source" / date_dir / normal_basename

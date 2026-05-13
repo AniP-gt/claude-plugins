@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes）を
+# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes / session-source）を
 # MEMORIES_DIR/raw/<kind>/ へ移送する。
 #
 # 起動条件:
@@ -7,9 +7,10 @@
 #   - 手動実行: bin/sync-pending.sh または ~/.config/episodic/codex-hook-runtime/bin/sync-pending.sh
 #
 # staging 配置:
-#   <fallback_dir>/YYYY-MM-DD/<base>__staged.md          # session（kind サブディレクトリ無し）
-#   <fallback_dir>/web/YYYY-MM-DD/<base>__staged.md      # web
-#   <fallback_dir>/minutes/YYYY-MM-DD/<base>__staged.md  # minutes
+#   <fallback_dir>/YYYY-MM-DD/<base>__staged.md                      # session（kind サブディレクトリ無し）
+#   <fallback_dir>/web/YYYY-MM-DD/<base>__staged.md                  # web
+#   <fallback_dir>/minutes/YYYY-MM-DD/<base>__staged.md              # minutes
+#   <fallback_dir>/session-source/YYYY-MM-DD/<base>__staged.jsonl[.zst]  # session-source（元 JSONL snapshot、wiki enqueue 対象外）
 #
 # 動作:
 #   1. canary でマウント有効性を確認。NG ならスキップ
@@ -112,6 +113,15 @@ for kind in web minutes; do
     done < <(find "$kind_root" -type f -name '*__staged.md' 2>/dev/null | sort)
 done
 
+# session-source 経路（元 JSONL snapshot、拡張子は .jsonl / .jsonl.zst）。
+# kind: session の永続 source として作られる不変コピー。wiki enqueue は不要。
+ss_root="$FALLBACK_DIR/session-source"
+if [[ -d "$ss_root" ]]; then
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && STAGED_TSV+=("${line}"$'\t'"session-source")
+    done < <(find "$ss_root" -type f \( -name '*__staged.jsonl' -o -name '*__staged.jsonl.zst' \) 2>/dev/null | sort)
+fi
+
 if [[ ${#STAGED_TSV[@]:-0} -eq 0 ]]; then
     log "skip: no staged files in $FALLBACK_DIR"
     exit 0
@@ -136,8 +146,18 @@ for entry in "${STAGED_TSV[@]}"; do
 
     date_dir="$(basename "$(dirname "$src")")"
     base="$(basename "$src")"
-    # __staged.md → .md
-    normal_base="${base%__staged.md}.md"
+    # __staged サフィックスを取り除く。kind により拡張子が異なる:
+    #   session / web / minutes → .md
+    #   session-source          → .jsonl / .jsonl.zst
+    case "$base" in
+        *__staged.md)        normal_base="${base%__staged.md}.md" ;;
+        *__staged.jsonl.zst) normal_base="${base%__staged.jsonl.zst}.jsonl.zst" ;;
+        *__staged.jsonl)     normal_base="${base%__staged.jsonl}.jsonl" ;;
+        *)
+            log "warn: unexpected staged basename, skip: $base"
+            continue
+            ;;
+    esac
     dst_dir="$MEMORIES_DIR/raw/$kind/$date_dir"
     dst="$dst_dir/$normal_base"
 
@@ -192,6 +212,8 @@ if [[ ${#MOVED_TSV[@]} -gt 0 ]]; then
         for entry in "${MOVED_TSV[@]}"; do
             p="${entry%$'\t'*}"
             kind="${entry##*$'\t'}"
+            # session-source は元 JSONL の不変 source であり wiki ingest 対象外。
+            [[ "$kind" == "session-source" ]] && continue
             python3 "$ENQUEUE" "$p" --kind "$kind" >> "$LOG_FILE" 2>&1 || \
                 log "warn: enqueue failed (kind=$kind) for $p"
         done

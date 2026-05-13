@@ -144,6 +144,22 @@ def effective_raw_root() -> tuple[Path, bool]:
     return resolve_fallback_dir(), True
 
 
+def effective_snapshot_root() -> tuple[Path, bool]:
+    """session の元 JSONL snapshot 保存先 root と staged フラグを返す。
+
+    raw/session レポートが派生物（codex 要約）であるのに対し、本 root には
+    元 JSONL の不変コピーを置く。再要約・検証時の source of truth。
+
+    Returns:
+        (snapshot_root, is_staged)
+        マウント成立: (memories_dir/raw/session-source, False)
+        未成立     : (fallback_dir/session-source, True)
+    """
+    if is_mount_active():
+        return resolve_memories_dir() / "raw" / "session-source", False
+    return resolve_fallback_dir() / "session-source", True
+
+
 def resolve_stop_debounce_seconds() -> int:
     """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 60）。"""
     return int(load_config().get("stop_debounce_seconds", 60))
