@@ -86,22 +86,33 @@ config.toml より env が優先される。一時的な切り替えに便利:
 
 ### A. SMB 共有を使う場合（マルチマシン共有・推奨）
 
-1. SMB サーバ側でマウント検証用 canary を配置:
+1. マウントポイントを空ディレクトリとして永続化（初回のみ sudo 必要）:
+
+   ```bash
+   sudo install -d -o "$(id -un)" -g staff -m 0755 /Volumes/memory
+   ```
+
+   `mount-memory-share.sh` は `mount_smbfs` を直接呼び出す設計で、事前に空ディレクトリが存在する前提でオーバーレイマウントする。旧実装の AppleScript `mount volume` 経由では、目的マウントポイントに既存ディレクトリ＋中身があると衝突回避で `-1` サフィックス付きパス（例: `/Volumes/memory-1`）へ黙ってずらすため、残骸ディレクトリが残ると別パスにマウントされて気付かない事故が起きていた。空ディレクトリで永続化することでこれを回避する。
+
+2. SMB サーバ側でマウント検証用 canary を配置:
 
    ```bash
    # サーバ側 / マウント済みクライアントで一度だけ
    touch /path/to/share/.mount-canary
    ```
 
-2. クライアント（macOS）でキーチェーンに資格情報を保存:
+3. クライアント（macOS）でキーチェーンに資格情報を保存:
 
    ```bash
    # 一度 Finder からマウントして「キーチェーンに保存」を選ぶか、
-   # security コマンドで保存する
+   # 以下を手動実行してパスワード保存ダイアログに従う
    /sbin/mount_smbfs //user@host/share /Volumes/memory
+   /sbin/umount /Volumes/memory   # 保存目的のため直後に umount
    ```
 
-3. プラグイン同梱の `mount-memory-share.sh` を使う場合、共有 URL は config.toml に、user 名は secrets.env に書く:
+   以降 `mount-memory-share.sh` は `-N`（対話なし）でキーチェーン認証のみ使う。
+
+4. プラグイン同梱の `mount-memory-share.sh` を使う場合、共有 URL は config.toml に、user 名は secrets.env に書く:
 
    ```toml
    # ~/.config/episodic/config.toml
@@ -128,7 +139,7 @@ config.toml より env が優先される。一時的な切り替えに便利:
    remount_script = "~/bin/my-mount-memory.sh"
    ```
 
-4. 自動再マウント（任意）。LaunchAgent などから `mount-memory-share.sh` を起動するか、`auto_remount = true`（既定）で Stop hook が未確立検出時に呼ぶ。
+5. 自動再マウント（任意）。LaunchAgent などから `mount-memory-share.sh` を起動するか、`auto_remount = true`（既定）で Stop hook が未確立検出時に呼ぶ。
 
 ### B. SMB を使わずローカルのみで使う場合
 
@@ -239,6 +250,8 @@ rm -rf ~/.local/share/episodic     # state（ingest-queue 等）
 | hook が呼ばれない | `~/.local/state/episodic/logs/session-hook.log`、`/plugin status episodic` |
 | Terminal が起動しない（macOS 以外） | これは仕様。launcher が直接バックグラウンド実行されログ集約 |
 | マウント検出が失敗する | `<memories_dir>/.mount-canary` の実在を確認 |
+| 保存が staging に溜まり続ける | `~/.local/state/episodic/logs/smb-mount.log` を確認。`abort: stale local stub` ならログ内案内通り `sudo mv` で残骸を退避し、`sudo install -d -o "$(id -un)" -g staff -m 0755 <memories_dir>` で空ディレクトリを再作成。`abort: mount point does not exist` なら同じ `install -d` で初回作成 |
+| `mount failed: rc=...` | キーチェーンに資格情報が無いか期限切れ。`/sbin/mount_smbfs //user@host/share <memories_dir>` を手動実行して「キーチェーンに保存」を済ませる |
 | 検索結果が空 | cocoindex 側の起動・テーブル存在・Stop hook の実行履歴を確認 |
 | `cocoindex update skipped: ... uv not found` | `brew install uv` |
 | `DuplicateTableError: relation "..." already exists` | cocoindex プラグインの schema migration 不整合。下記「DuplicateTableError 復旧手順」を参照 |
