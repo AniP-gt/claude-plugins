@@ -7,7 +7,7 @@ Custom Claude Code plugins by miya.
 マーケットプレイスを登録:
 
 ```text
-/plugin marketplace add hidetsugu-miya/claude-plugins
+/plugin marketplace add AniP-gt/claude-plugins
 ```
 
 使いたいプラグインをインストール:

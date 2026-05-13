@@ -1,11 +1,11 @@
 {
-  "name": "hidetsugu-miya",
+  "name": "AniP-gt",
   "owner": {
     "name": "miya"
   },
   "metadata": {
     "description": "Custom Claude Code plugins by miya",
-    "homepage": "https://github.com/hidetsugu-miya/claude-plugins"
+    "homepage": "https://github.com/AniP-gt/claude-plugins"
   },
   "plugins": [
     {

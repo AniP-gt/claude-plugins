@@ -12,6 +12,11 @@ __pycache__/
 # Jetbrains
 /.idea
 
+# Credentials / OAuth tokens (should live in ~/.config, never in repo)
+**/credentials.json
+**/token.json
+**/client_secret*.json
+
 # Claude Mem
 CLAUDE.md
 !/CLAUDE.md
