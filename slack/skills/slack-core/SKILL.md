@@ -61,6 +61,13 @@ Slack MCP サーバーは protocol `2025-06-18` を返すため、古い `mcp` S
 ~/.config/slack/bin/slack-mcp logout <workspace_key>
 ```
 
+### `--arg key=value` の型解釈
+
+- `true` / `false` は bool、整数リテラル（例: `limit=20`）は int に変換する
+- 先頭が `"`, `[`, `{` の場合は JSON として解釈する（例: `meta={"k":1}`）
+- 上記以外（小数点を含む数値・裸の文字列）はすべて string で送信する
+- Slack ts（例: `message_ts=1776821335.819279`）は裸のまま渡してよい。float 化されず string で送信される
+
 ## 主要ツール
 
 最新のツール一覧は `tools` で取得する。過去実装時点の代表例は以下。

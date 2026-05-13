@@ -505,6 +505,8 @@ def _extract_text(content: list) -> str:
 
 
 def _parse_arg_value(value_str: str):
+    # 裸の float リテラルは Slack ts (例: "1776821335.819279") を float 化で破壊するため string で保つ。
+    # 数値や構造化値を明示したい場合は JSON 形式で書く (例: --arg 'limit=20', --arg 'meta={"k":1}').
     lower = value_str.lower()
     if lower == "true":
         return True
@@ -514,14 +516,11 @@ def _parse_arg_value(value_str: str):
         return int(value_str)
     except ValueError:
         pass
-    try:
-        return float(value_str)
-    except ValueError:
-        pass
-    try:
-        return json.loads(value_str)
-    except (json.JSONDecodeError, ValueError):
-        pass
+    if value_str and value_str[0] in '"[{':
+        try:
+            return json.loads(value_str)
+        except (json.JSONDecodeError, ValueError):
+            pass
     return value_str
 
 
