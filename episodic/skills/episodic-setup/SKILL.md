@@ -62,7 +62,9 @@ cp ~/.claude/plugins/cache/hidetsugu-miya/episodic/templates/config.example.toml
 | `remount_script` | プラグイン同梱の `mount-memory-share.sh` | 自前のマウントスクリプトに差し替え可能 |
 | `mount_canary_filename` | `.mount-canary` | `memories_dir` 直下に置く判定ファイル名 |
 | `hostname_hash_length` | `8` | 複数マシン共有の衝突確率調整 |
-| `stop_debounce_seconds` | `30` | Stop hook 連投から Codex 起動までの debounce 秒数（0-600） |
+| `stop_debounce_seconds` | `60` | Stop hook 連投から Codex 起動までの debounce 秒数（0-600） |
+| `session_codex_timeout_seconds` | `300` | session 要約 Codex の wall-clock timeout 秒数（0 で無効） |
+| `wiki_codex_timeout_seconds` | `1200` | wiki 統合 Codex の wall-clock timeout 秒数（0 で無効） |
 
 ### 環境変数による上書き
 
@@ -77,6 +79,8 @@ config.toml より env が優先される。一時的な切り替えに便利:
 | `MEMORIES_MOUNT_CANARY` | `mount_canary_filename` |
 | `MEMORIES_HOSTNAME_HASH_LENGTH` | `hostname_hash_length` |
 | `MEMORIES_STOP_DEBOUNCE_SECONDS` | `stop_debounce_seconds`（Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600） |
+| `MEMORIES_SESSION_CODEX_TIMEOUT_SECONDS` | `session_codex_timeout_seconds` |
+| `MEMORIES_WIKI_CODEX_TIMEOUT_SECONDS` | `wiki_codex_timeout_seconds` |
 | `CODEX_RECORDING_MODEL` | Raw 要約モデル（既定 `gpt-5.4-mini`） |
 | `CODEX_MEMORY_WIKI_MODEL_SESSION` / `_WEB` / `_MINUTES` | Wiki 統合モデル（既定 `gpt-5.4` / `gpt-5.4-mini` / `gpt-5.4-mini`） |
 | `MEMORIES_EMBEDDING_MODEL` | 検索用 embedding（既定 `voyage-3-large`） |

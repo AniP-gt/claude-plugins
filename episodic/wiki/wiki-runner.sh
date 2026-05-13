@@ -58,6 +58,24 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # wiki/ の親が plugin root（source repo / codex-hook-runtime 共通レイアウト）。
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUNTIME_ROOT="$PLUGIN_ROOT"
+load_config_int() {
+    local key="$1" fallback="$2"
+    PYTHONPATH="$PLUGIN_ROOT" python3 - "$key" "$fallback" <<'PY' 2>/dev/null || printf '%s\n' "$fallback"
+import sys
+from lib.config import load_config
+
+key, fallback = sys.argv[1], sys.argv[2]
+try:
+    value = int(load_config().get(key, fallback))
+except (TypeError, ValueError):
+    value = int(fallback)
+print(value)
+PY
+}
+WIKI_CODEX_TIMEOUT_SECONDS="$(load_config_int wiki_codex_timeout_seconds 1200)"
+if ! [[ "$WIKI_CODEX_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+    WIKI_CODEX_TIMEOUT_SECONDS=1200
+fi
 LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"
 INSTRUCTION_SESSION="$SCRIPT_DIR/codex-instruction.md"
 INSTRUCTION_WEB="$SCRIPT_DIR/codex-instruction-web.md"
@@ -136,9 +154,35 @@ notify_failure() { notify "失敗" "$1" "Basso"; }
 log "wiki-runner start: pid=$$ memories=$MEMORIES_DIR"
 
 # Codex 呼び出し有効時に codex コマンドが無ければ、キュー消化のみ行うモードへ自動降格する。
-if [[ $SKIP_CODEX -eq 0 ]] && ! command -v codex >/dev/null 2>&1; then
-    log "warn: codex command not found in PATH; falling back to --no-codex (queue drain only)"
-    SKIP_CODEX=1
+# CODEX_BINARY を環境変数で明示指定できる（CI 等で固定したいケース向け）。
+CODEX_BIN=""
+if [[ $SKIP_CODEX -eq 0 ]]; then
+    if [[ -n "${CODEX_BINARY:-}" ]]; then
+        CODEX_BIN="$CODEX_BINARY"
+    else
+        CODEX_BIN="$(command -v codex 2>/dev/null || true)"
+    fi
+    if [[ -z "$CODEX_BIN" || ! -x "$CODEX_BIN" ]]; then
+        log "warn: codex binary not executable: '${CODEX_BIN:-<empty>}'; falling back to --no-codex (queue drain only)"
+        SKIP_CODEX=1
+        CODEX_BIN=""
+    fi
+fi
+# PATH を細工して悪意ある codex バイナリを差し込む攻撃に備え、
+# 絶対パスかつ世界書き込み可能ディレクトリ配下でないことを検証する。
+if [[ $SKIP_CODEX -eq 0 ]]; then
+    if command -v realpath >/dev/null 2>&1; then
+        CODEX_BIN_REAL="$(realpath "$CODEX_BIN" 2>/dev/null || echo "$CODEX_BIN")"
+    else
+        CODEX_BIN_REAL="$CODEX_BIN"
+    fi
+    case "$CODEX_BIN_REAL" in
+        /tmp/*|/var/tmp/*|/private/tmp/*|/private/var/tmp/*)
+            log "error: codex binary in world-writable dir: $CODEX_BIN_REAL"
+            notify_failure "codex のパスが世界書き込み可能ディレクトリ配下にあります: $CODEX_BIN_REAL"
+            exit 126
+            ;;
+    esac
 fi
 
 # 排他制御（macOS には flock がないため mkdir 方式）。
@@ -402,15 +446,70 @@ invoke_codex() {
     local cwd_dir
     cwd_dir="$(dirname "$wiki_target")"
     mkdir -p "$cwd_dir"
-    (
-        cd "$cwd_dir" 2>/dev/null \
-            && EPISODIC_RECORDING_ACTIVE=1 codex exec \
-                --disable hooks \
-                --skip-git-repo-check \
-                --sandbox workspace-write \
-                -m "$model" \
-                < "$combined" >> "$LOG_FILE" 2>&1
+    CODEX_BIN="$CODEX_BIN" \
+    CODEX_CWD="$cwd_dir" \
+    CODEX_INPUT="$combined" \
+    CODEX_MODEL="$model" \
+    CODEX_TIMEOUT_SECONDS="$WIKI_CODEX_TIMEOUT_SECONDS" \
+    LOG_FILE="$LOG_FILE" \
+    python3 <<'PY'
+import datetime
+import os
+import signal
+import subprocess
+import sys
+
+timeout = int(os.environ.get("CODEX_TIMEOUT_SECONDS", "1200") or "0")
+cmd = [
+    os.environ["CODEX_BIN"],
+    "exec",
+    "--disable",
+    "hooks",
+    "--ignore-user-config",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "workspace-write",
+    "-m",
+    os.environ["CODEX_MODEL"],
+]
+env = dict(os.environ)
+env["EPISODIC_RECORDING_ACTIVE"] = "1"
+with open(os.environ["CODEX_INPUT"], "rb") as stdin, open(os.environ["LOG_FILE"], "ab") as logf:
+    proc = subprocess.Popen(
+        cmd,
+        cwd=os.environ["CODEX_CWD"],
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        start_new_session=True,
     )
+    try:
+        out, _ = proc.communicate(timeout=None if timeout == 0 else timeout)
+        logf.write(out or b"")
+        sys.exit(proc.returncode)
+    except subprocess.TimeoutExpired:
+        ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        logf.write(f"[{ts}] error: codex exec timeout after {timeout}s; terminating process group pid={proc.pid}\n".encode())
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            out, _ = proc.communicate(timeout=10)
+            logf.write(out or b"")
+        except subprocess.TimeoutExpired:
+            ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            logf.write(f"[{ts}] error: codex exec still running after SIGTERM; killing process group pid={proc.pid}\n".encode())
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            out, _ = proc.communicate()
+            logf.write(out or b"")
+        sys.exit(124)
+PY
 }
 
 # kind から使用する Codex モデルを返す

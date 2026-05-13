@@ -35,6 +35,24 @@ case "$EFFORT" in
     minimal|low|medium|high|xhigh) ;;
     *) EFFORT="low" ;;
 esac
+load_config_int() {
+    local key="$1" fallback="$2"
+    PYTHONPATH="$PLUGIN_ROOT" python3 - "$key" "$fallback" <<'PY' 2>/dev/null || printf '%s\n' "$fallback"
+import sys
+from lib.config import load_config
+
+key, fallback = sys.argv[1], sys.argv[2]
+try:
+    value = int(load_config().get(key, fallback))
+except (TypeError, ValueError):
+    value = int(fallback)
+print(value)
+PY
+}
+SESSION_CODEX_TIMEOUT_SECONDS="$(load_config_int session_codex_timeout_seconds 300)"
+if ! [[ "$SESSION_CODEX_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+    SESSION_CODEX_TIMEOUT_SECONDS=300
+fi
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
@@ -389,23 +407,82 @@ save_source_snapshot
 CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
 
-log_run_header
-log "codex exec start (hooks disabled)"
+run_codex_exec() {
+    CODEX_BIN="$CODEX_BIN" \
+    CODEX_LAST_MSG="$CODEX_LAST_MSG" \
+    CODEX_TIMEOUT_SECONDS="$SESSION_CODEX_TIMEOUT_SECONDS" \
+    EFFORT="$EFFORT" \
+    INPUT_MD="$INPUT_MD" \
+    LOG_FILE="$LOG_FILE" \
+    MODEL="$MODEL" \
+    python3 <<'PY'
+import datetime
+import os
+import signal
+import subprocess
+import sys
 
-# tee で session-runner.log にも追記する（hook.py 側 redirect と二重になっても害はない）。
-# pipefail を有効にすると tee の失敗が混ざるため、PIPESTATUS で codex の RC のみを取る。
-set -o pipefail
-EPISODIC_RECORDING_ACTIVE=1 "$CODEX_BIN" exec \
-    --disable hooks \
-    --skip-git-repo-check \
-    --sandbox workspace-write \
-    --dangerously-bypass-approvals-and-sandbox \
-    -c model_reasoning_effort="$EFFORT" \
-    -m "$MODEL" \
-    -o "$CODEX_LAST_MSG" \
-    < "$INPUT_MD" 2>&1 | tee -a "$LOG_FILE"
-CODEX_RC=${PIPESTATUS[0]}
-set +o pipefail
+timeout = int(os.environ.get("CODEX_TIMEOUT_SECONDS", "300") or "0")
+cmd = [
+    os.environ["CODEX_BIN"],
+    "exec",
+    "--disable",
+    "hooks",
+    "--ignore-user-config",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "workspace-write",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "-c",
+    f"model_reasoning_effort={os.environ['EFFORT']}",
+    "-m",
+    os.environ["MODEL"],
+    "-o",
+    os.environ["CODEX_LAST_MSG"],
+]
+env = dict(os.environ)
+env["EPISODIC_RECORDING_ACTIVE"] = "1"
+with open(os.environ["INPUT_MD"], "rb") as stdin, open(os.environ["LOG_FILE"], "ab") as logf:
+    proc = subprocess.Popen(
+        cmd,
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        out, _ = proc.communicate(timeout=None if timeout == 0 else timeout)
+        logf.write(out or b"")
+        sys.exit(proc.returncode)
+    except subprocess.TimeoutExpired:
+        ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        logf.write(f"[{ts}] error: codex exec timeout after {timeout}s; terminating process group pid={proc.pid}\n".encode())
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            out, _ = proc.communicate(timeout=10)
+            logf.write(out or b"")
+        except subprocess.TimeoutExpired:
+            ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            logf.write(f"[{ts}] error: codex exec still running after SIGTERM; killing process group pid={proc.pid}\n".encode())
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            out, _ = proc.communicate()
+            logf.write(out or b"")
+        sys.exit(124)
+PY
+}
+
+log_run_header
+log "codex exec start (hooks disabled, timeout=${SESSION_CODEX_TIMEOUT_SECONDS}s)"
+run_codex_exec
+CODEX_RC=$?
 
 if [[ $CODEX_RC -ne 0 ]]; then
     REASON="$(classify_failure_reason "$CODEX_RC")"
