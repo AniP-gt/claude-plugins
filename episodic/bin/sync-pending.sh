@@ -31,6 +31,8 @@ BIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNTIME_ROOT="$(cd "${BIN_DIR}/.." && pwd)"
 LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/session-sync.log"
+STATE_DIR="$HOME/.local/share/episodic/state"
+LOCK_DIR="$STATE_DIR/sync-pending.lock.d"
 mkdir -p "$LOG_DIR_LOCAL"
 chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 
@@ -45,6 +47,52 @@ fi
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"
 }
+
+is_pid_alive() {
+    local pid="$1"
+    [[ -n "$pid" ]] || return 1
+    kill -0 "$pid" 2>/dev/null || ps -p "$pid" >/dev/null 2>&1
+}
+
+acquire_lock() {
+    mkdir -p "$STATE_DIR"
+    chmod 700 "$STATE_DIR" 2>/dev/null || true
+
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        return 0
+    fi
+
+    local old_pid=""
+    old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if is_pid_alive "$old_pid"; then
+        log "skip: sync-pending already running pid=$old_pid"
+        return 1
+    fi
+
+    log "stale sync-pending lock from pid=$old_pid; removing"
+    rm -rf "$LOCK_DIR" 2>/dev/null || true
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        return 0
+    fi
+
+    log "skip: failed to acquire sync-pending lock"
+    return 1
+}
+
+release_lock() {
+    local pid=""
+    pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ "$pid" == "$$" ]]; then
+        rm -rf "$LOCK_DIR" 2>/dev/null || true
+    fi
+}
+
+if ! acquire_lock; then
+    exit 0
+fi
+trap release_lock EXIT INT TERM
 
 _escape_for_osascript() {
     # osascript 文字列リテラル用に " と \ をエスケープし、改行を空白に置換する。
