@@ -2,6 +2,8 @@
 name: slack-bridge
 description: 登録済み Slack workspace を使って Slack MCP tool を実行する skill。`~/.config/slack/bin/slack-mcp call` 方式で、検索・チャンネル履歴・スレッド取得・送信を行う。「Slack を検索」「Slack の permalink を読んで」「Slack チャンネル履歴を見て」等で起動する。
 argument-hint: <request> [--workspace <workspace_key>]
+context: fork
+effort: low
 ---
 
 # Slack Bridge
