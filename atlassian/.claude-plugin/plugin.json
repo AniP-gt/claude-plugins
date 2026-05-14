@@ -1,7 +1,0 @@
-{
-  "name": "atlassian",
-  "version": "0.3.1",
-  "description": "Atlassian Rovo MCP経由でJira・Confluenceを操作するプラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でJira・Confluenceツールを実行する。",
-  "author": { "name": "miya" },
-  "keywords": ["atlassian", "jira", "confluence", "mcp", "oauth"]
-}

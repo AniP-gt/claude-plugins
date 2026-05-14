@@ -7,7 +7,7 @@
 - skill が配置されたホストにリモートシェル経由でアクセスできる、または同一ホストで Claude アプリを動かしている
 - `episodic` プラグインがインストール済み（`/plugin install episodic@hidetsugu-miya`）
 - PostgreSQL（cocoindex バックエンド）が起動している
-- 直近セッションの SessionEnd hook が走り、memories インデックスが構築されている
+- 直近セッションの Stop hook（debounce 経由）が走り、memories インデックスが構築されている
 
 ## パス解決
 

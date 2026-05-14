@@ -1,9 +1,0 @@
-# memory プラグイン専用 venv（uv が自動生成）
-.venv/
-
-# cocoindex 1.0 が COCOINDEX_DB の URL をパス解釈した際の副産物
-postgres:/
-
-# Python キャッシュ
-__pycache__/
-*.pyc

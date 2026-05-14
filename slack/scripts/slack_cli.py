@@ -70,7 +70,7 @@ CALLBACK_PORT = 3118
 REDIRECT_URI = f"http://localhost:{CALLBACK_PORT}/callback"
 CLIENT_NAME = "Claude Code Slack Plugin"
 
-CONFIG_DIR = Path(os.path.expanduser("~/.config/slack-mcp"))
+CONFIG_DIR = Path(os.path.expanduser("~/.config/slack"))
 PENDING_DIR = CONFIG_DIR / "_pending"
 DEFAULT_FILE = CONFIG_DIR / "default.txt"
 
@@ -189,19 +189,23 @@ def _preseed_client_info(storage: WorkspaceStorage) -> None:
 
 
 class _SlackOAuthClientProvider(OAuthClientProvider):
-    """Slack 用の scope 検証を無効化する
+    """Slack 用の scope 検証を「必要 scope 包含」のみに緩める
 
     Slack は OAuth レスポンスに本プラグインが当該リクエストで要求したスコープだけでなく、
     過去に同じ OAuth アプリ（公開 CLIENT_ID）へ許可された他スコープも含めて累積的に返す。
-    （例: 要求 `search:read.public,chat:write,...` に対し `canvases:read` 等も返る）
-    これは OAuth 2.1 の "subset grant" ルールに反するが Slack 側の仕様であり、
-    SDK 既定の `_validate_token_scopes` は正当なトークンを拒否してしまう。
-    実行時は必要スコープが応答に含まれていれば十分で、余剰スコープで副作用は生じないため
-    検証自体を無効化する（OAuth 2.1 の scope 検証は任意）。
+    SDK 既定の subset 検証では正当なトークンを拒否するため、subset 側はスキップする。
+    一方、要求した必要スコープが含まれていない場合は実行時に失敗するため、ここでチェックする。
     """
 
     async def _validate_token_scopes(self, token_response: OAuthToken) -> None:
-        return
+        granted_raw = token_response.scope or ""
+        granted = {s for s in granted_raw.replace(",", " ").split() if s}
+        required = {s for s in SCOPES.replace(",", " ").split() if s}
+        missing = required - granted
+        if missing:
+            raise ValueError(
+                f"必要なスコープが付与されていません: {sorted(missing)}"
+            )
 
 
 class _CallbackHandler(BaseHTTPRequestHandler):
@@ -346,6 +350,8 @@ def _list_workspace_entries() -> list[dict[str, Any]]:
     entries = []
     for path in sorted(CONFIG_DIR.iterdir()):
         if not path.is_dir() or path.name.startswith("_"):
+            continue
+        if not (path / "tokens.json").is_file():
             continue
         meta_path = path / "meta.json"
         meta: dict[str, Any] = {}
@@ -499,6 +505,8 @@ def _extract_text(content: list) -> str:
 
 
 def _parse_arg_value(value_str: str):
+    # 裸の float リテラルは Slack ts (例: "1776821335.819279") を float 化で破壊するため string で保つ。
+    # 数値や構造化値を明示したい場合は JSON 形式で書く (例: --arg 'limit=20', --arg 'meta={"k":1}').
     lower = value_str.lower()
     if lower == "true":
         return True
@@ -508,14 +516,11 @@ def _parse_arg_value(value_str: str):
         return int(value_str)
     except ValueError:
         pass
-    try:
-        return float(value_str)
-    except ValueError:
-        pass
-    try:
-        return json.loads(value_str)
-    except (json.JSONDecodeError, ValueError):
-        pass
+    if value_str and value_str[0] in '"[{':
+        try:
+            return json.loads(value_str)
+        except (json.JSONDecodeError, ValueError):
+            pass
     return value_str
 
 
@@ -605,6 +610,7 @@ def cmd_set_default(args) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
+        prog="slack-mcp",
         description="Slack MCP CLI - Slack操作（検索・送信・チャンネル読み取り等、公式MCP Python SDK経由）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""

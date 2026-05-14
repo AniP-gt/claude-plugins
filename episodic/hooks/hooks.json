@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "nohup \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh\" >/dev/null 2>&1 & disown",
+            "command": "nohup \"${CLAUDE_PLUGIN_ROOT}/bin/session-start.sh\" >/dev/null 2>&1 & disown",
             "timeout": 5
           }
         ]
@@ -15,18 +15,28 @@
         "hooks": [
           {
             "type": "command",
-            "command": "nohup \"${CLAUDE_PLUGIN_ROOT}/scripts/recording/retry-pending.sh\" >/dev/null 2>&1 & disown",
+            "command": "nohup \"${CLAUDE_PLUGIN_ROOT}/session/retry-pending.sh\" >/dev/null 2>&1 & disown",
             "timeout": 5
           }
         ]
       }
     ],
-    "SessionEnd": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/session-end.sh\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/session-user-prompt-submit.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/session-stop.sh\""
           }
         ]
       }

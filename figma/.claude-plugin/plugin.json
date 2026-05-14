@@ -1,7 +1,0 @@
-{
-  "name": "figma",
-  "version": "0.8.3",
-  "description": "Figmaデザインファイルの取得・コード生成プラグイン。OAuth PKCEでブラウザ認証し、Streamable HTTPでFigma MCPツールを実行する。",
-  "author": { "name": "AniP-gt" },
-  "keywords": ["figma", "design", "mcp", "code-generation"]
-}

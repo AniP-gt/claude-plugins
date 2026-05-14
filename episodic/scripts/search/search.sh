@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# memory-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するハイブリッド検索
+# episodic-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するハイブリッド検索
 #
 # Usage:
 #   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded]
@@ -7,16 +7,15 @@
 #
 # Defaults: --top 10, --scope all, --format markdown, status=active のみ, threshold 0.3
 #
-# 同階層の search.py を memory プラグイン専用 venv で実行する。
+# 同階層の search.py を episodic プラグイン専用 venv で実行する。
 # dense + BM25 (RRF) → voyage rerank-2 のハイブリッド検索。chunk_tsv 列 + GIN index は
-# main_memory.py の declare_sql_command_attachment で自動的に作成される。
+# main_episodic.py の declare_sql_command_attachment で自動的に作成される。
 #
 # 副作用なし（読み取り専用）。Claude Code・Claude API 両方から呼べるよう stdin/stdout 完結。
 set -u
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPTS_DIR}/../.." && pwd)}"
-MEMORY_SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
 FORMATTER="${SCRIPTS_DIR}/format.py"
@@ -69,10 +68,10 @@ done
 
 [[ -z "$QUERY" ]] && usage
 [[ ! -f "$SEARCH_PY" ]] && { echo "search.py not found: $SEARCH_PY" >&2; exit 3; }
-[[ ! -f "$MEMORY_SCRIPTS_DIR/pyproject.toml" ]] && { echo "memory pyproject not found: $MEMORY_SCRIPTS_DIR" >&2; exit 3; }
+[[ ! -f "$PLUGIN_ROOT/pyproject.toml" ]] && { echo "episodic pyproject not found: $PLUGIN_ROOT/pyproject.toml" >&2; exit 3; }
 [[ ! -d "$MEMORIES_DIR" ]] && { echo "memories dir not found: $MEMORIES_DIR" >&2; exit 3; }
 
-# memory プラグイン専用設定（cocoindex プラグインに依存しない）
+# episodic プラグイン専用設定（cocoindex プラグインに依存しない）
 EMBEDDING_MODEL_OVERRIDE="${MEMORIES_EMBEDDING_MODEL:-voyage-3-large}"
 EMBEDDING_PROVIDER_OVERRIDE="${MEMORIES_EMBEDDING_PROVIDER:-voyage}"
 
@@ -82,11 +81,10 @@ STDERR_FILE=$(mktemp)
 trap 'rm -f "$STDERR_FILE"' EXIT
 
 # 候補は format.py 側で scope/status フィルタを適用する分も見越して 3 倍取得。
-RAW_OUTPUT=$(cd "$MEMORY_SCRIPTS_DIR" && \
+RAW_OUTPUT=$(cd "$PLUGIN_ROOT" && \
     EMBEDDING_MODEL="$EMBEDDING_MODEL_OVERRIDE" \
     EMBEDDING_PROVIDER="$EMBEDDING_PROVIDER_OVERRIDE" \
     uv run python "$SEARCH_PY" "$QUERY" \
-    --project-dir "$MEMORIES_DIR" \
     --top "$((TOP * 3))" \
     --low-score-threshold "$LOW_SCORE_THRESHOLD" 2>"$STDERR_FILE")
 RC=$?
@@ -99,10 +97,10 @@ if [[ $RC -ne 0 ]]; then
     if [[ $RC -ne 4 ]] && \
        printf '%s' "$RAW_STDERR" | grep -qiE "could not connect|connection refused"; then
         cat >&2 <<EOF
-[memory-search] PostgreSQL に接続できません（既定: localhost:15432）。
+[episodic-search] PostgreSQL に接続できません（既定: localhost:15432）。
   起動コマンド:
     docker compose -f ~/.config/cocoindex/compose.yml up -d
-  別ホストの場合は MEMORY_DATABASE_URL を ~/.config/memory/.env で設定してください。
+  別ホストの場合は EPISODIC_DATABASE_URL を ~/.config/episodic/.env で設定してください。
 EOF
         exit 4
     fi

@@ -1,7 +1,0 @@
-{
-  "name": "todoist",
-  "version": "0.4.2",
-  "description": "Todoistタスク管理プラグイン。公式MCP Python SDKでOAuth 2.1認証し、Streamable HTTP経由でTodoist MCPツールを実行する。",
-  "author": { "name": "miya" },
-  "keywords": ["todoist", "task", "mcp", "productivity"]
-}
