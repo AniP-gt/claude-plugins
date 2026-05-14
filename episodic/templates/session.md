@@ -13,6 +13,7 @@ model: <使用モデル>
 tags: []
 keywords: []
 source_jsonl: <絶対パス>
+source_snapshot: <絶対パス>
 status: active
 updated_at: <ISO8601>
 confidence: 0.0

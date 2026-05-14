@@ -60,6 +60,12 @@ hostname_hash_length = 8
 # debounce 中に PC を切っても次回 SessionStart で finalize が再開される。
 stop_debounce_seconds = 60
 
+# Codex 実行の wall-clock timeout 秒数。0 で timeout 無効。
+# 2026-05-13 の実ログでは session 成功 84 件中 82 件が 78 秒以内、wiki 成功 35 件中 34 件が 856 秒以内。
+# 長時間ハングと子プロセス残留を防ぐため、通常運用では下記を推奨。
+session_codex_timeout_seconds = 300
+wiki_codex_timeout_seconds = 1200
+
 # ============================================================================
 # 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。
 # シークレット情報は ~/.config/episodic/secrets.env（chmod 600）に書く運用を推奨します。

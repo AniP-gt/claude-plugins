@@ -7,7 +7,8 @@
 - 出力フォーマットは `[<score>] <filename>` の単純形式（同階層の format.py が消費する）
 
 依存: voyageai / psycopg2 / python-dotenv
-episodic プラグイン専用 venv（episodic/.venv）で実行する（search.sh が `uv run` でラップ）。
+uv 管理の episodic 専用 Python 環境で実行する（search.sh が `uv run` でラップ）。
+既定の venv は `~/.cache/episodic/venv`。
 """
 from __future__ import annotations
 

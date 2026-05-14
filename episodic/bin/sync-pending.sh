@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes）を
+# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes / session-source）を
 # MEMORIES_DIR/raw/<kind>/ へ移送する。
 #
 # 起動条件:
@@ -7,9 +7,10 @@
 #   - 手動実行: bin/sync-pending.sh または ~/.config/episodic/codex-hook-runtime/bin/sync-pending.sh
 #
 # staging 配置:
-#   <fallback_dir>/YYYY-MM-DD/<base>__staged.md          # session（kind サブディレクトリ無し）
-#   <fallback_dir>/web/YYYY-MM-DD/<base>__staged.md      # web
-#   <fallback_dir>/minutes/YYYY-MM-DD/<base>__staged.md  # minutes
+#   <fallback_dir>/YYYY-MM-DD/<base>__staged.md                      # session（kind サブディレクトリ無し）
+#   <fallback_dir>/web/YYYY-MM-DD/<base>__staged.md                  # web
+#   <fallback_dir>/minutes/YYYY-MM-DD/<base>__staged.md              # minutes
+#   <fallback_dir>/session-source/YYYY-MM-DD/<base>__staged.jsonl[.zst]  # session-source（元 JSONL snapshot、wiki enqueue 対象外）
 #
 # 動作:
 #   1. canary でマウント有効性を確認。NG ならスキップ
@@ -30,6 +31,8 @@ BIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNTIME_ROOT="$(cd "${BIN_DIR}/.." && pwd)"
 LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 LOG_FILE="$LOG_DIR_LOCAL/session-sync.log"
+STATE_DIR="$HOME/.local/share/episodic/state"
+LOCK_DIR="$STATE_DIR/sync-pending.lock.d"
 mkdir -p "$LOG_DIR_LOCAL"
 chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 
@@ -44,6 +47,52 @@ fi
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" >> "$LOG_FILE"
 }
+
+is_pid_alive() {
+    local pid="$1"
+    [[ -n "$pid" ]] || return 1
+    kill -0 "$pid" 2>/dev/null || ps -p "$pid" >/dev/null 2>&1
+}
+
+acquire_lock() {
+    mkdir -p "$STATE_DIR"
+    chmod 700 "$STATE_DIR" 2>/dev/null || true
+
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        return 0
+    fi
+
+    local old_pid=""
+    old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if is_pid_alive "$old_pid"; then
+        log "skip: sync-pending already running pid=$old_pid"
+        return 1
+    fi
+
+    log "stale sync-pending lock from pid=$old_pid; removing"
+    rm -rf "$LOCK_DIR" 2>/dev/null || true
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        return 0
+    fi
+
+    log "skip: failed to acquire sync-pending lock"
+    return 1
+}
+
+release_lock() {
+    local pid=""
+    pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ "$pid" == "$$" ]]; then
+        rm -rf "$LOCK_DIR" 2>/dev/null || true
+    fi
+}
+
+if ! acquire_lock; then
+    exit 0
+fi
+trap release_lock EXIT INT TERM
 
 _escape_for_osascript() {
     # osascript 文字列リテラル用に " と \ をエスケープし、改行を空白に置換する。
@@ -112,6 +161,15 @@ for kind in web minutes; do
     done < <(find "$kind_root" -type f -name '*__staged.md' 2>/dev/null | sort)
 done
 
+# session-source 経路（元 JSONL snapshot、拡張子は .jsonl / .jsonl.zst）。
+# kind: session の永続 source として作られる不変コピー。wiki enqueue は不要。
+ss_root="$FALLBACK_DIR/session-source"
+if [[ -d "$ss_root" ]]; then
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && STAGED_TSV+=("${line}"$'\t'"session-source")
+    done < <(find "$ss_root" -type f \( -name '*__staged.jsonl' -o -name '*__staged.jsonl.zst' \) 2>/dev/null | sort)
+fi
+
 if [[ ${#STAGED_TSV[@]:-0} -eq 0 ]]; then
     log "skip: no staged files in $FALLBACK_DIR"
     exit 0
@@ -136,8 +194,18 @@ for entry in "${STAGED_TSV[@]}"; do
 
     date_dir="$(basename "$(dirname "$src")")"
     base="$(basename "$src")"
-    # __staged.md → .md
-    normal_base="${base%__staged.md}.md"
+    # __staged サフィックスを取り除く。kind により拡張子が異なる:
+    #   session / web / minutes → .md
+    #   session-source          → .jsonl / .jsonl.zst
+    case "$base" in
+        *__staged.md)        normal_base="${base%__staged.md}.md" ;;
+        *__staged.jsonl.zst) normal_base="${base%__staged.jsonl.zst}.jsonl.zst" ;;
+        *__staged.jsonl)     normal_base="${base%__staged.jsonl}.jsonl" ;;
+        *)
+            log "warn: unexpected staged basename, skip: $base"
+            continue
+            ;;
+    esac
     dst_dir="$MEMORIES_DIR/raw/$kind/$date_dir"
     dst="$dst_dir/$normal_base"
 
@@ -192,6 +260,8 @@ if [[ ${#MOVED_TSV[@]} -gt 0 ]]; then
         for entry in "${MOVED_TSV[@]}"; do
             p="${entry%$'\t'*}"
             kind="${entry##*$'\t'}"
+            # session-source は元 JSONL の不変 source であり wiki ingest 対象外。
+            [[ "$kind" == "session-source" ]] && continue
             python3 "$ENQUEUE" "$p" --kind "$kind" >> "$LOG_FILE" 2>&1 || \
                 log "warn: enqueue failed (kind=$kind) for $p"
         done

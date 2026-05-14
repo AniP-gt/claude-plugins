@@ -46,6 +46,8 @@ DEFAULTS: dict[str, Any] = {
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
     "stop_debounce_seconds": 60,
+    "session_codex_timeout_seconds": 300,
+    "wiki_codex_timeout_seconds": 1200,
 }
 
 
@@ -96,6 +98,18 @@ def load_config() -> dict[str, Any]:
         if 0 <= n <= 600:
             cfg["stop_debounce_seconds"] = n
 
+    session_timeout_env = os.environ.get("MEMORIES_SESSION_CODEX_TIMEOUT_SECONDS")
+    if session_timeout_env and session_timeout_env.isdigit():
+        n = int(session_timeout_env)
+        if 0 <= n <= 86400:
+            cfg["session_codex_timeout_seconds"] = n
+
+    wiki_timeout_env = os.environ.get("MEMORIES_WIKI_CODEX_TIMEOUT_SECONDS")
+    if wiki_timeout_env and wiki_timeout_env.isdigit():
+        n = int(wiki_timeout_env)
+        if 0 <= n <= 86400:
+            cfg["wiki_codex_timeout_seconds"] = n
+
     return cfg
 
 
@@ -144,9 +158,35 @@ def effective_raw_root() -> tuple[Path, bool]:
     return resolve_fallback_dir(), True
 
 
+def effective_snapshot_root() -> tuple[Path, bool]:
+    """session の元 JSONL snapshot 保存先 root と staged フラグを返す。
+
+    raw/session レポートが派生物（codex 要約）であるのに対し、本 root には
+    元 JSONL の不変コピーを置く。再要約・検証時の source of truth。
+
+    Returns:
+        (snapshot_root, is_staged)
+        マウント成立: (memories_dir/raw/session-source, False)
+        未成立     : (fallback_dir/session-source, True)
+    """
+    if is_mount_active():
+        return resolve_memories_dir() / "raw" / "session-source", False
+    return resolve_fallback_dir() / "session-source", True
+
+
 def resolve_stop_debounce_seconds() -> int:
     """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 60）。"""
     return int(load_config().get("stop_debounce_seconds", 60))
+
+
+def resolve_session_codex_timeout_seconds() -> int:
+    """session 要約の Codex 実行 timeout 秒数。0 は timeout 無効（既定 300）。"""
+    return int(load_config().get("session_codex_timeout_seconds", 300))
+
+
+def resolve_wiki_codex_timeout_seconds() -> int:
+    """wiki 統合の Codex 実行 timeout 秒数。0 は timeout 無効（既定 1200）。"""
+    return int(load_config().get("wiki_codex_timeout_seconds", 1200))
 
 
 @lru_cache(maxsize=1)

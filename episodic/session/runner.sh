@@ -35,6 +35,24 @@ case "$EFFORT" in
     minimal|low|medium|high|xhigh) ;;
     *) EFFORT="low" ;;
 esac
+load_config_int() {
+    local key="$1" fallback="$2"
+    PYTHONPATH="$PLUGIN_ROOT" python3 - "$key" "$fallback" <<'PY' 2>/dev/null || printf '%s\n' "$fallback"
+import sys
+from lib.config import load_config
+
+key, fallback = sys.argv[1], sys.argv[2]
+try:
+    value = int(load_config().get(key, fallback))
+except (TypeError, ValueError):
+    value = int(fallback)
+print(value)
+PY
+}
+SESSION_CODEX_TIMEOUT_SECONDS="$(load_config_int session_codex_timeout_seconds 300)"
+if ! [[ "$SESSION_CODEX_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+    SESSION_CODEX_TIMEOUT_SECONDS=300
+fi
 # MEMORIES_DIR は wiki/cocoindex 連携で参照する。staged 時はこの値を使うのではなく、
 # sync-pending.sh が後追いで処理するため、ここでは正規パス計算用としてのみ使う。
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
@@ -126,6 +144,7 @@ META_TRANSCRIPT=""
 META_FIRST_TS=""
 META_REPORT_PATH=""
 META_IS_STAGED=""
+META_SNAPSHOT_PATH=""
 if [[ -n "$META_PATH" && -f "$META_PATH" ]]; then
     while IFS=$'\t' read -r k v; do
         case "$k" in
@@ -135,6 +154,7 @@ if [[ -n "$META_PATH" && -f "$META_PATH" ]]; then
             first_ts)        META_FIRST_TS="$v" ;;
             report_path)     META_REPORT_PATH="$v" ;;
             is_staged)       META_IS_STAGED="$v" ;;
+            snapshot_path)   META_SNAPSHOT_PATH="$v" ;;
         esac
     done < <(META_PATH="$META_PATH" python3 - <<'PY' 2>/dev/null
 import json, os, sys
@@ -143,7 +163,7 @@ try:
         d = json.load(f) or {}
 except Exception:
     sys.exit(0)
-for k in ("session_id", "cwd", "transcript_path", "first_ts", "report_path", "is_staged"):
+for k in ("session_id", "cwd", "transcript_path", "first_ts", "report_path", "is_staged", "snapshot_path"):
     v = d.get(k, "")
     if isinstance(v, bool):
         v = "1" if v else "0"
@@ -322,26 +342,147 @@ fi
 
 mkdir -p "$(dirname "$REPORT_PATH")"
 
+# 元 JSONL の不変 snapshot を保存する（raw/session-source/）。
+# 失敗しても codex 要約は続行するが、再要約の source of truth が失われるため警告は残す。
+# 保存先は hook.py が zstd 有無に基づいて拡張子付きで確定済み。
+save_source_snapshot() {
+    [[ -z "$META_SNAPSHOT_PATH" || -z "$META_TRANSCRIPT" ]] && return 0
+    # meta sidecar は同一ユーザーが手動書き換えできるため、`../` を含む細工パスを弾く。
+    # hook.py の path_resolver は `../` を含むパスを生成しないので、ここで検出されたら
+    # sidecar 改ざんとみなして snapshot 保存を中止する。
+    case "$META_SNAPSHOT_PATH" in
+        */../*|*/..|../*|..) log "warn: path traversal in snapshot_path, abort: $META_SNAPSHOT_PATH"; return 0 ;;
+    esac
+    case "$META_TRANSCRIPT" in
+        */../*|*/..|../*|..) log "warn: path traversal in transcript_path, abort: $META_TRANSCRIPT"; return 0 ;;
+    esac
+    if [[ ! -f "$META_TRANSCRIPT" ]]; then
+        log "warn: source jsonl not found, skip snapshot: $META_TRANSCRIPT"
+        return 0
+    fi
+    if [[ -f "$META_SNAPSHOT_PATH" ]]; then
+        log "snapshot already exists, skip: $META_SNAPSHOT_PATH"
+        return 0
+    fi
+    mkdir -p "$(dirname "$META_SNAPSHOT_PATH")"
+    local tmp="${META_SNAPSHOT_PATH}.partial"
+    rm -f "$tmp"
+    case "$META_SNAPSHOT_PATH" in
+        *.jsonl.zst)
+            if ! zstd -q -19 -T0 -o "$tmp" "$META_TRANSCRIPT" >>"$LOG_FILE" 2>&1; then
+                log "warn: zstd compression failed; fallback to plain copy"
+                rm -f "$tmp"
+                local plain="${META_SNAPSHOT_PATH%.zst}"
+                if cp -p "$META_TRANSCRIPT" "${plain}.partial" 2>>"$LOG_FILE"; then
+                    chmod 600 "${plain}.partial" 2>/dev/null || true
+                    mv -f "${plain}.partial" "$plain" 2>>"$LOG_FILE" || { rm -f "${plain}.partial"; return 0; }
+                    log "snapshot saved (fallback plain): $plain"
+                fi
+                return 0
+            fi
+            ;;
+        *.jsonl)
+            if ! cp -p "$META_TRANSCRIPT" "$tmp" 2>>"$LOG_FILE"; then
+                log "warn: snapshot copy failed: $META_TRANSCRIPT -> $tmp"
+                rm -f "$tmp"
+                return 0
+            fi
+            ;;
+        *)
+            log "warn: unexpected snapshot extension, skip: $META_SNAPSHOT_PATH"
+            return 0
+            ;;
+    esac
+    chmod 600 "$tmp" 2>/dev/null || true
+    if ! mv -f "$tmp" "$META_SNAPSHOT_PATH" 2>>"$LOG_FILE"; then
+        log "warn: snapshot rename failed: $tmp -> $META_SNAPSHOT_PATH"
+        rm -f "$tmp"
+        return 0
+    fi
+    log "snapshot saved: $META_SNAPSHOT_PATH"
+}
+
+save_source_snapshot
+
 CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
 
-log_run_header
-log "codex exec start (hooks disabled)"
+run_codex_exec() {
+    CODEX_BIN="$CODEX_BIN" \
+    CODEX_LAST_MSG="$CODEX_LAST_MSG" \
+    CODEX_TIMEOUT_SECONDS="$SESSION_CODEX_TIMEOUT_SECONDS" \
+    EFFORT="$EFFORT" \
+    INPUT_MD="$INPUT_MD" \
+    LOG_FILE="$LOG_FILE" \
+    MODEL="$MODEL" \
+    python3 <<'PY'
+import datetime
+import os
+import signal
+import subprocess
+import sys
 
-# tee で session-runner.log にも追記する（hook.py 側 redirect と二重になっても害はない）。
-# pipefail を有効にすると tee の失敗が混ざるため、PIPESTATUS で codex の RC のみを取る。
-set -o pipefail
-EPISODIC_RECORDING_ACTIVE=1 "$CODEX_BIN" exec \
-    --disable hooks \
-    --skip-git-repo-check \
-    --sandbox workspace-write \
-    --dangerously-bypass-approvals-and-sandbox \
-    -c model_reasoning_effort="$EFFORT" \
-    -m "$MODEL" \
-    -o "$CODEX_LAST_MSG" \
-    < "$INPUT_MD" 2>&1 | tee -a "$LOG_FILE"
-CODEX_RC=${PIPESTATUS[0]}
-set +o pipefail
+timeout = int(os.environ.get("CODEX_TIMEOUT_SECONDS", "300") or "0")
+cmd = [
+    os.environ["CODEX_BIN"],
+    "exec",
+    "--disable",
+    "hooks",
+    "--ignore-user-config",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "workspace-write",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "-c",
+    f"model_reasoning_effort={os.environ['EFFORT']}",
+    "-m",
+    os.environ["MODEL"],
+    "-o",
+    os.environ["CODEX_LAST_MSG"],
+]
+env = dict(os.environ)
+env["EPISODIC_RECORDING_ACTIVE"] = "1"
+with open(os.environ["INPUT_MD"], "rb") as stdin, open(os.environ["LOG_FILE"], "ab") as logf:
+    proc = subprocess.Popen(
+        cmd,
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        out, _ = proc.communicate(timeout=None if timeout == 0 else timeout)
+        logf.write(out or b"")
+        sys.exit(proc.returncode)
+    except subprocess.TimeoutExpired:
+        ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        logf.write(f"[{ts}] error: codex exec timeout after {timeout}s; terminating process group pid={proc.pid}\n".encode())
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            out, _ = proc.communicate(timeout=10)
+            logf.write(out or b"")
+        except subprocess.TimeoutExpired:
+            ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            logf.write(f"[{ts}] error: codex exec still running after SIGTERM; killing process group pid={proc.pid}\n".encode())
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            out, _ = proc.communicate()
+            logf.write(out or b"")
+        sys.exit(124)
+PY
+}
+
+log_run_header
+log "codex exec start (hooks disabled, timeout=${SESSION_CODEX_TIMEOUT_SECONDS}s)"
+run_codex_exec
+CODEX_RC=$?
 
 if [[ $CODEX_RC -ne 0 ]]; then
     REASON="$(classify_failure_reason "$CODEX_RC")"

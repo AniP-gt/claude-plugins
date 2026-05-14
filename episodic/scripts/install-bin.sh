@@ -2,7 +2,7 @@
 # Install episodic hook runtime under $HOME/.config/episodic.
 # Codex / Claude Code 双方の Stop / SessionStart / UserPromptSubmit hook が、ここから動く。
 #
-# プラグインソースは plugin root 直下に bin/ / lib/ / session/ / recording/ / wiki/ /
+# プラグインソースは plugin root 直下に bin/ / lib/ / session/ / recording/ / wiki/ / scripts/ /
 # pyproject.toml / uv.lock を持つ（codex-hook-runtime と同じレイアウト）。
 # 本スクリプトはそのツリーを ~/.config/episodic/codex-hook-runtime/ にミラーコピーする。
 set -euo pipefail
@@ -43,9 +43,9 @@ mkdir -p "$RUNTIME_ROOT"
 chmod 700 "$CONFIG_ROOT" "$RUNTIME_ROOT" 2>/dev/null || true
 
 # 旧レイアウトの残骸が混在しないよう、本スクリプトが所有するディレクトリを一度クリアする。
-# 削除対象は固定（bin/lib/session/recording/wiki/templates）。ユーザーの個別ファイルが
+# 削除対象は固定（bin/lib/session/recording/wiki/scripts/templates）。ユーザーの個別ファイルが
 # RUNTIME_ROOT 直下にあっても影響しない設計。
-for sub in bin lib session recording wiki templates; do
+for sub in bin lib session recording wiki scripts templates; do
     rm -rf "$RUNTIME_ROOT/$sub"
 done
 
@@ -55,8 +55,9 @@ install_tree "$PLUGIN_ROOT/lib"       "$RUNTIME_ROOT/lib"       755
 install_tree "$PLUGIN_ROOT/session"   "$RUNTIME_ROOT/session"   755
 install_tree "$PLUGIN_ROOT/recording" "$RUNTIME_ROOT/recording" 755
 install_tree "$PLUGIN_ROOT/wiki"      "$RUNTIME_ROOT/wiki"      755
+install_tree "$PLUGIN_ROOT/scripts"   "$RUNTIME_ROOT/scripts"   755
 
-# uv / Python venv 定義（recording/main_episodic.py 実行用）。
+# uv / Python venv 定義（recording/main_episodic.py / scripts/search 実行用）。
 install_file "$PLUGIN_ROOT/pyproject.toml" "$RUNTIME_ROOT/pyproject.toml" 644
 install_file "$PLUGIN_ROOT/uv.lock"        "$RUNTIME_ROOT/uv.lock"        644
 
@@ -83,9 +84,12 @@ lib/         共通ヘルパー（config / cocoindex_trigger / log_rotate ...）
 session/     Stop hook 本体（hook.py + runner.sh + retry queue ...）
 recording/   cocoindex flow（main_episodic.py）と web/minutes 補助
 wiki/        wiki ingest pipeline（enqueue / kick-runner / wiki-runner）
+scripts/     setup_db / search などの補助 CLI
 templates/   main_episodic.py が参照するテンプレ（cocoindex.toml.example）
-pyproject.toml / uv.lock  episodic 専用 venv の定義
+pyproject.toml / uv.lock  episodic 専用 Python 環境の定義
 ```
+
+`uv run` の venv は既定で `~/.cache/episodic/venv` に作成します。
 README
 chmod 644 "$RUNTIME_ROOT/README.md" 2>/dev/null || true
 

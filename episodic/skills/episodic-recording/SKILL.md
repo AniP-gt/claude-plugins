@@ -42,11 +42,11 @@ Codex 要約生成が失敗した場合のリトライキュー消化（5 回で
 検索は **`episodic-search` skill に委譲する**（Raw + Wiki 両方を対象に、scope/status フィルタ付きでベクトル検索する）。
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "<自然言語クエリ>" \
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "<自然言語クエリ>" \
     --top 10 --scope all --format markdown
 
 # scope は session / web / minutes / wiki / all から選べる
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/search.sh" "Jina" --scope web
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "Jina" --scope web
 ```
 
 詳細は `episodic-search` skill（同プラグイン同梱）を参照。Claude API（外部アプリ）からの利用は `${CLAUDE_PLUGIN_ROOT}/skills/episodic-search/references/api-usage.md`。
@@ -54,9 +54,9 @@ Codex 要約生成が失敗した場合のリトライキュー消化（5 回で
 時系列で直近を見る場合:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind session --top 5
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind web --top 10
-"${CLAUDE_PLUGIN_ROOT}/scripts/search/recent.sh" --kind minutes --top 10
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind session --top 5
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind web --top 10
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind minutes --top 10
 ```
 
 ### 2. session の再調査（JSONL 部分抽出）

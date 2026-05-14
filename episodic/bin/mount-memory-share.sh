@@ -7,6 +7,19 @@
 # - 環境変数（MEMORIES_SMB_SHARE / MEMORIES_SMB_USER / MEMORIES_SMB_PING_HOST）が設定されていれば最優先。
 # - 認証は macOS キーチェーンから自動解決される（user 名のみ secrets.env で渡す）。
 #
+# 設計:
+#   - mount_smbfs を直接呼ぶ。旧実装は AppleScript の "mount volume" を使っていたが、
+#     これは目的マウントポイントに既存ディレクトリ＋中身があると衝突回避で
+#     "-1" サフィックス付きパス（例: /Volumes/memory-1）へ黙ってずらす仕様で、
+#     残骸ディレクトリが残ると気付かないうちに別パスにマウントされる事故が起きた。
+#     mount_smbfs は事前に存在する空ディレクトリへそのままオーバーレイマウントするため、
+#     マウントポイントが固定化される。
+#   - マウントポイント（既定 /Volumes/memory）は事前に空ディレクトリとして永続化する前提:
+#       sudo install -d -o "$(id -un)" -g staff -m 0755 /Volumes/memory
+#     初回 sudo 1 度きりでセットアップが完結する（episodic-setup skill の 4-A を参照）。
+#   - 保険として、マウント直前に「canary 無し & 非空」のスタブ状態を検出した場合は
+#     abort して退避コマンドをログに案内する（自動退避は破壊的なので人間判断に委ねる）。
+#
 # macOS 以外では mount_smbfs / /sbin/mount / /sbin/ping が無いため、自動的にスキップする
 # （ログだけ残して exit 0）。Linux/Windows で SMB を使いたい場合は config.toml の
 # remount_script を環境固有のラッパー（mount.cifs / net use など）へ差し替えること。
@@ -98,8 +111,8 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     log "skip: non-macOS platform ($(uname -s)); mount_smbfs is mac-only"
     exit 0
 fi
-if [[ ! -x /sbin/mount ]] || [[ ! -x /sbin/ping ]] || [[ ! -x /usr/bin/osascript ]]; then
-    log "skip: required macOS commands not found (/sbin/mount, /sbin/ping, /usr/bin/osascript)"
+if [[ ! -x /sbin/mount ]] || [[ ! -x /sbin/ping ]] || [[ ! -x /sbin/mount_smbfs ]]; then
+    log "skip: required macOS commands not found (/sbin/mount, /sbin/ping, /sbin/mount_smbfs)"
     exit 0
 fi
 
@@ -115,25 +128,49 @@ if ! /sbin/ping -c 1 -t 5 "$PING_HOST" >/dev/null 2>&1; then
     exit 1
 fi
 
-# AppleScript の "mount volume" を使う（Finder 経由マウントと同等）。
-# 利点: マウントポイントを Finder が自動作成し、unmount 時にも自動削除されるため
-#       /Volumes/<name> を事前 mkdir する必要がない（root 権限不要）。
-# 認証はキーチェーンから自動解決され、未保存時のみ GUI プロンプトが出る。
+# マウントポイントの存在確認（事前に空ディレクトリとして作成しておく前提）。
+# 未作成の場合は abort し、初回セットアップコマンドをログに案内する。
+if [[ ! -d "$MOUNT_POINT" ]]; then
+    log "abort: mount point does not exist: $MOUNT_POINT"
+    log "  initial setup (one-time, requires sudo):"
+    log "    sudo install -d -o \"\$(id -un)\" -g staff -m 0755 $MOUNT_POINT"
+    exit 4
+fi
+
+# スタブ検出ガード（保険）: canary が無いのに中身がある状態は、
+# 過去に SMB 未マウント時に何かが書き込んだ「ローカル残骸」である。
+# 放置しても mount_smbfs 自体は成功するが、マウント解除後に残骸が再露出するため早期に止める。
+if [[ ! -e "$MOUNT_POINT/.mount-canary" ]] \
+   && [[ -n "$(/bin/ls -A "$MOUNT_POINT" 2>/dev/null)" ]]; then
+    _stub_backup="$HOME/.local/share/episodic/legacy-stub-$(date +%Y%m%d-%H%M%S)"
+    log "abort: stale local stub detected at $MOUNT_POINT (no canary, non-empty)"
+    log "  retire the stub and recreate an empty mount point:"
+    log "    sudo mv $MOUNT_POINT $_stub_backup \\"
+    log "      && sudo install -d -o \"\$(id -un)\" -g staff -m 0755 $MOUNT_POINT"
+    exit 5
+fi
+
+# mount_smbfs を直接呼ぶ。-N で対話プロンプトを抑制し、キーチェーンに保存された
+# 資格情報のみで認証する。初回はユーザーが Finder か手動 mount_smbfs を一度走らせて
+# 「キーチェーンに保存」を選んでおく必要がある（episodic-setup skill の 4-A 参照）。
 #
-# セキュリティ: SMB_URL 内に AppleScript メタ文字（"）が含まれていても、
-# argv 経由（item 1 of argv）で受け取ることで AppleScript 構文に解釈されない。
-# osascript -e 文字列に変数を直接埋め込むとインジェクション脆弱性になるため避ける。
+# セキュリティ: SHARE は //[user@]host/share 形式の信頼済み設定値（config.toml / secrets.env / env 由来）。
+# 外部入力ではないため、コマンド引数として渡しても injection リスクは無い。
 SMB_URL="smb://${SHARE#//}"
 SMB_URL_MASKED="$(mask_smb_url "$SMB_URL")"
-if /usr/bin/osascript \
-        -e 'on run argv' \
-        -e 'mount volume (item 1 of argv)' \
-        -e 'end run' \
-        -- "$SMB_URL" >> "$LOG_FILE" 2>&1; then
+# mount_smbfs の stderr は認証失敗時に user@host を含む URL をそのまま吐く実装のため、
+# 直接ログへリダイレクトせず変数に受けてから user@ 部分をマスクしてログへ書く。
+_mount_stderr="$(/sbin/mount_smbfs -N -o nobrowse,nodev,nosuid "//${SHARE#//}" "$MOUNT_POINT" 2>&1)"
+_mount_rc=$?
+if [[ -n "$_mount_stderr" ]]; then
+    printf '%s\n' "$_mount_stderr" \
+        | /usr/bin/sed -E 's#(//)[^@/[:space:]]+@#\1***@#g' \
+        >> "$LOG_FILE"
+fi
+if [[ $_mount_rc -eq 0 ]]; then
     log "mounted: $SMB_URL_MASKED -> $MOUNT_POINT"
     exit 0
 else
-    rc=$?
-    log "mount failed: rc=$rc url=$SMB_URL_MASKED"
+    log "mount failed: rc=$_mount_rc url=$SMB_URL_MASKED (check keychain credentials and server availability)"
     exit 2
 fi

@@ -28,6 +28,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -145,6 +146,7 @@ duration_minutes: {duration_minutes}
 message_count: {message_count}
 model: {model}
 source_jsonl: {source_jsonl}
+source_snapshot: {source_snapshot}
 generated_at: {generated_at}
 ```
 
@@ -165,6 +167,7 @@ model: ...
 tags: [slug1, slug2]              # 英小文字スラグ、最大5個
 keywords: [自然語1, 自然語2]       # 日本語含む自然語、最大10個
 source_jsonl: ...
+source_snapshot: ...              # 元 JSONL の不変コピー（episodic 所有の永続 source）
 status: active                    # active / deprecated / superseded / unknown
 updated_at: ...                   # 上記 generated_at と同じ ISO8601
 confidence: 0.0〜1.0               # 要約の信頼度（下記ルール参照）
@@ -193,6 +196,17 @@ supersedes: null                  # 再生成時のみ旧版パスを記す
 ## 備考
 - 再現手順・注意点
 ```
+
+### 本文セクションの省略ルール
+
+**`## 概要` と `## やったこと` は必須**。それ以外（判断・決定事項 / 残課題・次アクション / 変更・参照した主なファイル / 備考）は **該当する内容が会話履歴に実在する場合のみ出力する**。空セクションを残すこと、placeholder の箇条書き（「特になし」「次回継続」「該当なし」「不明な箇所が多い」等）でセクションを埋めることは禁止する。
+
+セクション単位での判定基準:
+
+- **判断・決定事項**: 採否を伴う方針決定・代替案の却下・明示的な合意があった場合のみ
+- **残課題・次アクション**: 「次にやること」が会話で具体的に言及されている場合のみ。自然と完結した会話、質問応答のみ、調査だけで完結したセッションでは出力しない
+- **変更・参照した主なファイル**: Read / Edit / Write 等で実際にファイルに触れた場合のみ
+- **備考**: 再現手順・注意点・回避策など、他セクションに収まらない有用情報がある場合のみ
 
 ## フロントマター拡張フィールドの決定ルール
 
@@ -294,7 +308,8 @@ def valid_session_id_from_payload(payload: dict[str, Any]) -> str:
 
 
 def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path: Path,
-                            session_id: str, jsonl_path: Path, combined: Path) -> Path:
+                            session_id: str, jsonl_path: Path, snapshot_path: Path,
+                            combined: Path) -> Path:
     project = project_name(meta["cwd"])
     generated_at = datetime.now().astimezone().isoformat(timespec="seconds")
     instruction = CODEX_INSTRUCTION_TEMPLATE.format(
@@ -309,6 +324,7 @@ def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path:
         message_count=meta["message_count"],
         model=meta["model"],
         source_jsonl=str(jsonl_path),
+        source_snapshot=str(snapshot_path),
         generated_at=generated_at,
     )
     body = session_md.read_text(encoding="utf-8")
@@ -320,11 +336,12 @@ def build_combined_markdown(session_md: Path, meta: dict[str, Any], report_path:
 
 
 def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
-                       jsonl_path: Path, is_staged: bool, sidecar: Path) -> Path:
-    """runner.sh が retry queue 連携のために参照する meta JSON を /tmp に書く。
+                       jsonl_path: Path, is_staged: bool, snapshot_path: Path,
+                       sidecar: Path) -> Path:
+    """runner.sh が retry queue 連携と snapshot 保存のために参照する meta JSON を /tmp に書く。
 
     runner.sh は session_id / cwd / transcript_path / first_ts / report_path / is_staged を
-    Codex 失敗時に retry_queue.py upsert へ渡す。launcher の引数経由でパスのみを伝搬する。
+    Codex 失敗時に retry_queue.py upsert へ渡す。snapshot_path は元 JSONL の不変コピー保存先。
     """
     payload = {
         "session_id": session_id,
@@ -333,6 +350,7 @@ def build_meta_sidecar(meta: dict[str, Any], report_path: Path, session_id: str,
         "first_ts": meta.get("first_ts") or "",
         "report_path": str(report_path),
         "is_staged": bool(is_staged),
+        "snapshot_path": str(snapshot_path),
     }
     sidecar.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     sidecar.chmod(0o600)
@@ -611,11 +629,23 @@ def prepare_payload_artifacts(payload: dict[str, Any],
         # ログだけ残してそのまま続行する（Codex が同パスへ書き込むことで上書きされる）。
         log(f"warn: report path already exists, will be overwritten: {report_path}")
 
-    build_combined_markdown(session_md, meta, report_path, session_id, jsonl, combined)
+    # 元 JSONL の不変 snapshot 保存先を予め決定する。zstd 有無で拡張子が変わるため
+    # runner.sh 側ではなく hook.py で確定させ、codex プロンプトに同期させる。
+    use_zstd = shutil.which("zstd") is not None
+    snapshot_path, snapshot_is_staged = path_resolver.resolve_snapshot_path(
+        meta["first_ts"], session_id, use_zstd
+    )
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+    if snapshot_is_staged != is_staged:
+        # report と snapshot は同じ canary 判定を使うため、ここに到達しないはず。
+        log(f"warn: snapshot staging diverged from report: report_staged={is_staged} snapshot_staged={snapshot_is_staged}")
+
+    build_combined_markdown(session_md, meta, report_path, session_id, jsonl, snapshot_path, combined)
     log(f"combined markdown: {combined}")
     log(f"report target: {report_path} staged={is_staged}")
+    log(f"snapshot target: {snapshot_path} zstd={use_zstd}")
 
-    build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged, meta_path)
+    build_meta_sidecar(meta, report_path, session_id, jsonl, is_staged, snapshot_path, meta_path)
     log(f"meta sidecar: {meta_path} ts={ts}")
     return meta_path
 
