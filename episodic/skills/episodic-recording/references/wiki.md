@@ -6,7 +6,7 @@
 
 ## 目的
 
-- Raw（不変・追記専用、kind: session / web / minutes）を、プロジェクト通史 + URL 参照索引 + 決定ログという **二次資産（Wiki）** に統合
+- Raw（不変・追記専用、kind: session / web / minutes / diary）を、プロジェクト通史 + URL 参照索引 + 決定ログ + 日記月次集約という **二次資産（Wiki）** に統合
 - 複数 Raw 同時生成でも Wiki を破壊しない排他制御
 - Raw（時系列・粒度小）と Wiki（集約・粒度大）の使い分けで検索ノイズを抑制
 
@@ -17,8 +17,9 @@
 | `session` | `wiki/projects/<project>.md`（project 単位通史） | あり | `wiki/codex-instruction.md` |
 | `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `wiki/codex-instruction-web.md` |
 | `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `wiki/codex-instruction-minutes.md` |
+| `diary` | `<diary_dir>/wiki/diary/YYYYMM.md`（月次集約、できごと + 気持ち。**ローカル限定**） | あり | `wiki/codex-instruction-diary.md` |
 
-3 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。
+4 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。**diary は共有 NAS の `wiki/index.md` には載せない**（存在・タイトルの漏洩を避けるため）。diary の統合先は `memories_dir` ではなく `diary_dir`（既定 `~/.local/share/episodic/diary`）配下で完結する。
 
 ## 制約
 
@@ -35,11 +36,13 @@
     - `session`: `gpt-5.4`（project 通史統合は重複排除・通史化が必要で推論強度高め）
     - `web`: `gpt-5.4-mini`（要約・テーマ分類は軽量モデルで十分）
     - `minutes`: `gpt-5.4-mini`（議事録の構造保持はテンプレ寄り）
-  - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES`
+    - `diary`: `gpt-5.4-mini`（日記の月次集約はテンプレ寄り）
+  - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES` / `CODEX_MEMORY_WIKI_MODEL_DIARY`
 - **kind 別リンク相対パス**:
     - `wiki/projects/<project>.md` → session へは `../../raw/session/YYYY-MM-DD/file.md`（2 階層上る）
     - `wiki/references.md` → web へは `../raw/web/YYYY-MM-DD/file.md`（1 階層上る）
     - `wiki/minutes/<YYYYMM>.md` → minutes へは `../../raw/minutes/YYYY-MM-DD/file.md`（2 階層上る、projects/ と統一）
+    - `<diary_dir>/wiki/diary/<YYYYMM>.md` → diary へは `../../raw/diary/YYYY-MM-DD/file.md`（2 階層上る。`diary_dir` 配下で完結）
 - **書き込み制限**: Codex は kind 別の単一統合先ファイルにのみ書き込む。CWD を統合先親ディレクトリに固定して workspace-write を限定する
 
 ## 完了条件
@@ -59,9 +62,11 @@
 環境変数:
 
 - `MEMORIES_DIR`: memories ルート
+- `DIARY_DIR`: kind: diary 専用ローカルルート（既定 `~/.local/share/episodic/diary`、`config.toml` の `diary_dir` でも設定可）。未設定なら wiki-runner.sh が `config.py` の `resolve_diary_dir()` で解決する
 - `CODEX_MEMORY_WIKI_MODEL_SESSION`: session 統合用 Codex モデル（既定 `gpt-5.4`）
 - `CODEX_MEMORY_WIKI_MODEL_WEB`: web 統合用 Codex モデル（既定 `gpt-5.4-mini`）
 - `CODEX_MEMORY_WIKI_MODEL_MINUTES`: minutes 統合用 Codex モデル（既定 `gpt-5.4-mini`）
+- `CODEX_MEMORY_WIKI_MODEL_DIARY`: diary 統合用 Codex モデル（既定 `gpt-5.4-mini`）
 - `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
 - `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
 - `MEMORIES_LOG_ROTATE_BYTES`: `~/.local/state/episodic/logs/*.log` ローテーション閾値（既定 5242880）
@@ -83,10 +88,14 @@
 │   ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web（recording 手動）
 │   └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes（recording 手動）
 └── wiki/
-    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Minutes への入口）
+    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Minutes への入口。diary は載せない）
     ├── projects/<project>.md                              # Codex が統合・更新（kind: session）
     ├── references.md                                      # Codex が統合・更新（kind: web）
     └── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
+
+~/.local/share/episodic/diary/                            # DIARY_DIR の既定値（ローカル限定、共有 NAS に出さない）
+├── raw/diary/YYYY-MM-DD/HHMMSS_<slug>.md                 # kind: diary（recording 手動、chmod 600）
+└── wiki/diary/<YYYYMM>.md                                # Codex が統合・更新（kind: diary、月次集約）
 
 ~/.local/share/episodic/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending / processing、kind / attempt_count / retry_after_epoch を含む）
@@ -133,17 +142,19 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
    - `kind: session`: frontmatter から `project` 抽出 → `wiki/projects/<project>.md`（`codex-instruction.md`）
    - `kind: web`: → `wiki/references.md`（`codex-instruction-web.md`）
    - `kind: minutes`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/minutes/<YYYYMM>.md`（`codex-instruction-minutes.md`、月次集約）
+   - `kind: diary`: frontmatter の `date` から `YYYYMM` 抽出 → `<diary_dir>/wiki/diary/<YYYYMM>.md`（`codex-instruction-diary.md`、月次集約。ローカル限定）
 6. 結果反映: 成功は queue から削除、失敗は `attempt_count` 加算 + 指数 backoff の `retry_after_epoch` を付けて `status: pending` に戻す。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に append
 7. self-poll で次イテレーションへ（pending hash が変化しなければ break、上限は `MEMORIES_WIKI_MAX_SELF_POLL`）
-8. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
-9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
+8. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外。**diary は共有 index に含めない**（diary の統合先は `diary_dir` 配下で `wiki/index.md` の集計対象外）
+9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（統合先 raw/wiki 双方を `MEMORIES_DIR` 配下 + `DIARY_DIR` 配下の 2 ソースで再インデックス。`trigger_cocoindex_update "$MEMORIES_DIR" "$DIARY_DIR"` の第2引数で diary も渡す）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
 
-任意のタイミングで全件再処理する場合、`raw/{session,web,minutes}` 配下のファイルを直接 enqueue する:
+任意のタイミングで全件再処理する場合、`raw/{session,web,minutes}`（共有 NAS）および `<diary_dir>/raw/diary`（ローカル限定）配下のファイルを直接 enqueue する:
 
 ```bash
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
+DIARY_DIR="${DIARY_DIR:-$HOME/.local/share/episodic/diary}"
 EPISODIC_RUNTIME_ROOT="${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}"
 ENQUEUE="$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py"
 
@@ -152,6 +163,9 @@ for kind in session web minutes; do
     find "$MEMORIES_DIR/raw/$kind" -type f -name '*.md' ! -name '.*' ! -name '._*' -print0 \
         | xargs -0 -I{} python3 "$ENQUEUE" "{}" --kind "$kind"
 done
+# diary はローカル限定。diary_dir 配下を再投入する
+find "$DIARY_DIR/raw/diary" -type f -name '*.md' ! -name '.*' ! -name '._*' -print0 \
+    | xargs -0 -I{} python3 "$ENQUEUE" "{}" --kind diary
 
 # 実行
 "$EPISODIC_RUNTIME_ROOT/wiki/wiki-runner.sh"

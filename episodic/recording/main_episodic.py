@@ -15,6 +15,8 @@ cocoindex 1.0 CLI で起動:
 
 設定は環境変数 + ~/.config/episodic/cocoindex.toml + secrets.env で渡す:
   SOURCE_PATH               (必須) インデックス対象 (例: /Volumes/memory)
+  DIARY_SOURCE_PATH         (任意) kind: diary 専用ローカルルート (例: ~/.local/share/episodic/diary)
+                            指定時は SOURCE_PATH 走査とは別名前空間で 2 つ目のソースとして走査する
   INDEX_NAME                プロジェクト名 (省略時は固定値 "episodic")
   PATTERNS                  csv (既定: "**/*.md")
   EXCLUDE                   csv (既定: 主要 trash/draft 除外)
@@ -127,6 +129,12 @@ def _bool_env(name: str) -> bool:
 SOURCE_PATH = os.environ.get("SOURCE_PATH")
 if not SOURCE_PATH:
     raise RuntimeError("SOURCE_PATH 環境変数が必要です（例: SOURCE_PATH=/Volumes/memory）")
+
+# kind: diary 専用ローカルルート（任意）。指定時は SOURCE_PATH 走査の後に、
+# coco.component_subpath("diary") の明示名前空間で 2 つ目のソースとして走査する。
+# 既存 SOURCE_PATH 側の component path を変えないことで MEMORIES_DIR 全件の re-embed を回避し、
+# 名前空間を分けることで 2 ルート間の相互 orphan 削除も防ぐ。テーブルは 1 つのまま。
+DIARY_SOURCE_PATH = os.environ.get("DIARY_SOURCE_PATH")
 
 # episodic ドメイン専用設定。優先順位は MEMORIES_* env > 共通 env > 既定値。
 def _ep_env(primary_key: str, fallback_key: str | None, default: str) -> str:
@@ -353,6 +361,28 @@ async def _app_main(sourcedir: pathlib.Path) -> None:
         ),
     )
     await coco.mount_each(_process_file, files.items(), target_table)
+
+    # kind: diary（ローカル限定）を 2 つ目のソースとして同一テーブルへ取り込む。
+    # 既存の mount_each（上）は一切変更しない。component_subpath("diary") で
+    # 明示名前空間を切ることで、2 ルート間の相互 orphan 削除を防ぐ（cocoindex の
+    # reconcile はコンポーネントツリーのパス単位で行われるため）。
+    if DIARY_SOURCE_PATH:
+        diary_dir = pathlib.Path(DIARY_SOURCE_PATH).expanduser().resolve()
+        if diary_dir.is_dir():
+            diary_files = localfs.walk_dir(
+                diary_dir,
+                recursive=True,
+                path_matcher=PatternFilePathMatcher(
+                    included_patterns=INCLUDED,
+                    excluded_patterns=EXCLUDED if EXCLUDED else None,
+                ),
+            )
+            await coco.mount_each(
+                coco.component_subpath("diary"),
+                _process_file,
+                diary_files.items(),
+                target_table,
+            )
 
 
 app = coco.App(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Raw レポート（kind: session/web/minutes）1件分のエントリを ingest-queue.jsonl に追記する。
+"""Raw レポート（kind: session/web/minutes/diary）1件分のエントリを ingest-queue.jsonl に追記する。
 
 呼び出し側（runner.sh / fetch-jina.sh / save.sh）が保存成功直後に実行。
 同一 raw_path の pending エントリが既にあれば追記をスキップする（dedupe）。
@@ -7,10 +7,10 @@
 複数プロセス並行 enqueue でも重複を生まない。
 
 kind は引数 --kind 優先、未指定時は raw_path から自動推定する
-（`raw/session/` `raw/web/` `raw/minutes/` のいずれを含むか）。
+（`raw/session/` `raw/web/` `raw/minutes/` `raw/diary/` のいずれを含むか）。
 
 Usage:
-    enqueue.py <raw_path> [--kind session|web|minutes] [--memories-dir PATH]
+    enqueue.py <raw_path> [--kind session|web|minutes|diary] [--memories-dir PATH]
 
 終了コード:
     0 → 追記成功 または 重複スキップ（どちらも正常終了）
@@ -29,14 +29,16 @@ from datetime import datetime
 from pathlib import Path
 
 
-VALID_KINDS = ("session", "web", "minutes")
+VALID_KINDS = ("session", "web", "minutes", "diary")
 
 
 def detect_kind(raw_path: Path) -> str:
     """パスから kind を推定する。判別不能時は 'session' にフォールバック。
 
     パス例 `<memories_dir>/raw/session/YYYY-MM-DD/file.md` から `session` を返す。
-    kind 値とディレクトリ名は完全一致（session / web / minutes）。
+    kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
+    diary は memories_dir ではなく diary_dir 配下だが、`raw/diary/` 構造を
+    揃えているためルート非依存でこの推定が機能する。
     """
     parts = raw_path.parts
     for i, p in enumerate(parts):

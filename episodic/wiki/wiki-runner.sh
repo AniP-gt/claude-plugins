@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# wiki-runner: ingest-queue.jsonl に溜まった Raw（kind: session/web/minutes）を消化し Wiki を更新する。
+# wiki-runner: ingest-queue.jsonl に溜まった Raw（kind: session/web/minutes/diary）を消化し Wiki を更新する。
 #
 # kind ごとの処理:
 #   - session: Codex で project 別通史 wiki/projects/<project>.md に統合
 #   - web    : Codex で wiki/references.md に統合（テーマ別 + 時系列）
 #   - minutes: Codex で wiki/minutes/YYYYMM.md（月次集約）に統合
+#   - diary  : Codex で <diary_dir>/wiki/diary/YYYYMM.md（月次集約・ローカル限定）に統合
+#             共有 NAS の wiki/index.md には載せない（存在・タイトルの漏洩を避ける）
 #
 # 制御機構:
 # - mkdir で .state/lock.d を排他取得し、同時に1プロセスだけが queue を claim する。
@@ -22,6 +24,7 @@
 #   CODEX_MEMORY_WIKI_MODEL_SESSION  既定 gpt-5.4    （project 通史統合は推論強度高め）
 #   CODEX_MEMORY_WIKI_MODEL_WEB      既定 gpt-5.4-mini（要約・テーマ分類は軽量で十分）
 #   CODEX_MEMORY_WIKI_MODEL_MINUTES  既定 gpt-5.4-mini（議事録の構造保持はテンプレ寄り）
+#   CODEX_MEMORY_WIKI_MODEL_DIARY    既定 gpt-5.4-mini（日記の月次集約はテンプレ寄り）
 #
 # 運用 housekeeping:
 #   MEMORIES_TRASHBOX_RETAIN_DAYS  trashbox 配下の保持日数（既定 30、0 で無効化）
@@ -34,6 +37,7 @@ SKIP_CODEX=0
 MODEL_SESSION="${CODEX_MEMORY_WIKI_MODEL_SESSION:-gpt-5.4}"
 MODEL_WEB="${CODEX_MEMORY_WIKI_MODEL_WEB:-gpt-5.4-mini}"
 MODEL_MINUTES="${CODEX_MEMORY_WIKI_MODEL_MINUTES:-gpt-5.4-mini}"
+MODEL_DIARY="${CODEX_MEMORY_WIKI_MODEL_DIARY:-gpt-5.4-mini}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -80,8 +84,15 @@ LOG_ROTATE_LIB="$RUNTIME_ROOT/lib/log_rotate.sh"
 INSTRUCTION_SESSION="$SCRIPT_DIR/codex-instruction.md"
 INSTRUCTION_WEB="$SCRIPT_DIR/codex-instruction-web.md"
 INSTRUCTION_MINUTES="$SCRIPT_DIR/codex-instruction-minutes.md"
+INSTRUCTION_DIARY="$SCRIPT_DIR/codex-instruction-diary.md"
 
-mkdir -p "$STATE_DIR" "$TARGET_LOCK_ROOT" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$(dirname "$LOG_FILE")"
+# kind: diary はローカル限定。raw / wiki / cocoindex すべてを diary_dir 配下に完結させる。
+# DIARY_DIR env > config.py(resolve_diary_dir) > 既定値 の順で解決する。
+DIARY_DIR="${DIARY_DIR:-$(PYTHONPATH="$PLUGIN_ROOT" python3 -c 'from lib.config import resolve_diary_dir; print(resolve_diary_dir())' 2>/dev/null)}"
+[[ -z "$DIARY_DIR" ]] && DIARY_DIR="$HOME/.local/share/episodic/diary"
+DIARY_WIKI_ROOT="$DIARY_DIR/wiki/diary"
+
+mkdir -p "$STATE_DIR" "$TARGET_LOCK_ROOT" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$DIARY_WIKI_ROOT" "$(dirname "$LOG_FILE")"
 chmod 700 "$STATE_DIR" "$TARGET_LOCK_ROOT" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # log ファイル肥大化を防ぐため、起動直後に rotate を試みる。
@@ -518,6 +529,7 @@ resolve_model_for_kind() {
         session) printf '%s' "$MODEL_SESSION" ;;
         web)     printf '%s' "$MODEL_WEB" ;;
         minutes) printf '%s' "$MODEL_MINUTES" ;;
+        diary)   printf '%s' "$MODEL_DIARY" ;;
         *)       printf '%s' "$MODEL_SESSION" ;;
     esac
 }
@@ -798,6 +810,22 @@ while true; do
                 LABEL="minutes/${YYYYMM}"
                 PROJECT="$YYYYMM"
                 ;;
+            diary)
+                # diary はローカル限定。出力先は DIARY_WIKI_ROOT（共有 NAS には出さない）。
+                DATE_RAW=$(awk '/^date:/ { sub(/^date:[[:space:]]*/, ""); gsub(/"/, ""); print; exit }' "$RAW_PATH")
+                if [[ -z "$DATE_RAW" ]]; then
+                    DATE_RAW=$(basename "$(dirname "$RAW_PATH")")
+                fi
+                YYYYMM=$(printf '%s' "$DATE_RAW" | tr -cd '0-9' | head -c 6)
+                if [[ ${#YYYYMM} -ne 6 ]]; then
+                    log "warn: cannot derive YYYYMM from diary raw '$RAW_PATH' (date='$DATE_RAW'); fallback to 'unknown'"
+                    YYYYMM="unknown"
+                fi
+                WIKI_TARGET="$DIARY_WIKI_ROOT/${YYYYMM}.md"
+                INSTRUCTION="$INSTRUCTION_DIARY"
+                LABEL="diary/${YYYYMM}"
+                PROJECT="$YYYYMM"
+                ;;
             *)
                 log "warn: unknown kind '$KIND' for $RAW_PATH; treating as session"
                 KIND="session"
@@ -1043,7 +1071,8 @@ if [[ $TOTAL_PROCESSED -gt 0 && -f "$COCOINDEX_TRIGGER_LIB" ]]; then
     LOG_DIR_LOCAL="$(dirname "$LOG_FILE")"
     # shellcheck source=../lib/cocoindex_trigger.sh
     source "$COCOINDEX_TRIGGER_LIB"
-    trigger_cocoindex_update "$MEMORIES_DIR" || true
+    # 第2引数で diary_dir も渡し、MEMORIES_DIR と diary_dir の両ソースを 1 回の update で取り込む。
+    trigger_cocoindex_update "$MEMORIES_DIR" "$DIARY_DIR" || true
 fi
 
 # 通知メッセージ生成（ラベルのユニークリストを表示）

@@ -9,6 +9,7 @@
   - load_config()                  -> dict
   - resolve_memories_dir()         -> Path
   - resolve_fallback_dir()         -> Path
+  - resolve_diary_dir()            -> Path   # kind: diary 専用ローカルルート
   - is_mount_active(memories_dir)  -> bool   # canary ファイルの実在で判定
   - effective_raw_root()           -> tuple[Path, bool]  # (raw_root, is_staged)
   - host_hash(length=8)            -> str
@@ -41,6 +42,7 @@ def _default_remount_script() -> str:
 DEFAULTS: dict[str, Any] = {
     "memories_dir": "/Volumes/memory",
     "fallback_dir": "~/.local/share/episodic/raw-staging",
+    "diary_dir": "~/.local/share/episodic/diary",
     "auto_remount": True,
     "remount_script": _default_remount_script(),
     "mount_canary_filename": ".mount-canary",
@@ -73,6 +75,7 @@ def load_config() -> dict[str, Any]:
     env_map = {
         "memories_dir": "MEMORIES_DIR",
         "fallback_dir": "MEMORIES_FALLBACK_DIR",
+        "diary_dir": "MEMORIES_DIARY_DIR",
         "auto_remount": "MEMORIES_AUTO_REMOUNT",
         "remount_script": "MEMORIES_REMOUNT_SCRIPT",
         "mount_canary_filename": "MEMORIES_MOUNT_CANARY",
@@ -119,6 +122,15 @@ def resolve_memories_dir() -> Path:
 
 def resolve_fallback_dir() -> Path:
     return _expand(str(load_config()["fallback_dir"])).resolve()
+
+
+def resolve_diary_dir() -> Path:
+    """kind: diary（プライベート日記）のローカル専用ルートを返す。
+
+    diary は共有 NAS（memories_dir）に出さず、raw / wiki / cocoindex インデックスの
+    すべてをこのディレクトリ配下に完結させる。
+    """
+    return _expand(str(load_config()["diary_dir"])).resolve()
 
 
 def resolve_remount_script() -> Path:

@@ -34,6 +34,14 @@ memories_dir = "/Volumes/memory"
 # <memories_dir>/raw/session/ 配下へ移送します。
 fallback_dir = "~/.local/share/episodic/raw-staging"
 
+# kind: diary（プライベート日記）専用のローカルルート。
+# diary は共有 NAS（memories_dir）に同期せず、raw / wiki / cocoindex インデックスの
+# すべてをこのディレクトリ配下に完結させます。配下構造:
+#   <diary_dir>/raw/diary/YYYY-MM-DD/...md   (kind: diary, recording 手動)
+#   <diary_dir>/wiki/diary/YYYYMM.md         (月次 Wiki 集約、wiki-runner が生成)
+# 環境変数 MEMORIES_DIARY_DIR で上書き可能。
+diary_dir = "~/.local/share/episodic/diary"
+
 # Stop hook 起動時、マウント未確立を検出したら自動で remount スクリプトを試行する。
 # false にすると検出のみで remount は行わず staging へ即フォールバックします。
 auto_remount = true

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # episodic-search/recent: memories/raw 配下を時系列で一覧する（セマンティック検索ではない）。
 #
-# kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / all に切替可能。
+# kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / diary / all に切替可能。
+# diary はローカル限定（diary_dir 配下）かつプライバシー既定として --kind all には含めない。
+# diary を一覧するには明示的に --kind diary を指定する。
 #
 # Usage:
-#   recent.sh [--kind session|web|minutes|all] [--top N] [--project NAME] [--days D] \
+#   recent.sh [--kind session|web|minutes|diary|all] [--top N] [--project NAME] [--days D] \
 #             [--format markdown|json|paths]
 #
 # Defaults: --kind session, --top 10, --format markdown, 全プロジェクト, 全期間
@@ -17,6 +19,10 @@
 set -u
 
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
+# kind: diary 専用ローカルルート。DIARY_DIR env > config.py(resolve_diary_dir) > 既定値。
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
+DIARY_DIR="${DIARY_DIR:-$(PYTHONPATH="$PLUGIN_ROOT" python3 -c 'from lib.config import resolve_diary_dir; print(resolve_diary_dir())' 2>/dev/null)}"
+[[ -z "$DIARY_DIR" ]] && DIARY_DIR="$HOME/.local/share/episodic/diary"
 
 KIND="session"
 TOP=10
@@ -28,7 +34,8 @@ usage() {
     cat <<EOF >&2
 Usage: $(basename "$0") [options]
 
-  --kind KIND     session (default) | web | minutes | all
+  --kind KIND     session (default) | web | minutes | diary | all
+                  （diary はローカル限定。all には含まれず、明示指定時のみ対象）
   --top N         返す件数 (default: 10)
   --project NAME  指定 project の記録のみ抽出（kind=session で意味あり）
   --days D        過去 D 日以内のみ（日付ディレクトリ名で判定）
@@ -49,14 +56,18 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# kind 値とディレクトリ名は完全一致（session / web / minutes）。
+# kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
 case "$KIND" in
-    session|web|minutes|all) ;;
+    session|web|minutes|diary|all) ;;
     *) echo "Error: invalid --kind: $KIND" >&2; usage ;;
 esac
 
+# diary はローカル限定で diary_dir 配下。それ以外は MEMORIES_DIR 配下。
+# all は MEMORIES_DIR 配下のみを走査し、diary はプライバシー既定として含めない。
 if [[ "$KIND" == "all" ]]; then
     RAW_DIR="$MEMORIES_DIR/raw"
+elif [[ "$KIND" == "diary" ]]; then
+    RAW_DIR="$DIARY_DIR/raw/diary"
 else
     RAW_DIR="$MEMORIES_DIR/raw/$KIND"
 fi
