@@ -92,6 +92,10 @@ stdout に以下を出力する。
 
 ## 使い方
 
+### 検索方法の原則
+
+memories の検索は **必ず `search.sh`（episodic DB へのハイブリッドベクトル検索）を第一手段** とする。`/Volumes/memory`（`MEMORIES_DIR`）配下を Grep / Glob で直接走査しない — DB インデックスは chunk 単位の dense + BM25 + rerank で構成されており、ファイル走査では再現できない。意味検索ではなく時系列で取り出したい場合のみ `recent.sh` を併用する。
+
 ### Claude Code 内から
 
 ```bash
@@ -116,7 +120,7 @@ stdout に以下を出力する。
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind minutes --top 10
 ```
 
-メインコンテキストから呼ぶ場合は `cocoindex:cocoindex-runner` サブエージェントへ委譲してトークンを節約してもよいが、本 skill は出力が小さいので直接呼びでも問題ない。
+本 skill は出力が小さいため、メインコンテキストから `search.sh` を直接呼んでよい。他プラグインのサブエージェントには委譲しない（episodic は独立しており、cocoindex / compass のサブエージェントには依存しない）。
 
 `recent.sh` はベクトル検索を使わず、`raw/<kind>/` 配下の日付ディレクトリ＋ファイル名タイムスタンプで時系列ソートする補助スクリプト。「直近の作業を見せて」「今日のセッション一覧」「最近アーカイブした URL」のような、意味検索ではなく時系列で取り出したい場面で使う。`--kind` 既定は `session`、`web` / `minutes` / `all` も指定可能。`--project` で絞り込み（kind=session で意味あり）、`--days` で期間制限、`--format paths` でパスのみ抽出も可能。
 
@@ -131,7 +135,6 @@ stdout に以下を出力する。
 ## 関連スキル
 
 - `episodic-recording` — Raw 生成（kind: session は Stop hook + debounce で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも episodic-recording 経由で自動起動（詳細は `episodic-recording/references/wiki.md`）
-- `cocoindex:cocoindex-code-search` — 一般的なコードベース検索（本 skill は memories 専用ラッパー）
 
 ## トラブルシューティング
 
