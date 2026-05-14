@@ -69,23 +69,18 @@ def parse_frontmatter(path: Path) -> dict[str, Any]:
     return fm
 
 
-def absolutize(hit_path: str, memories_dir: Path, diary_dir: Path | None = None) -> Path:
+def absolutize(hit_path: str, memories_dir: Path) -> Path:
     """cocoindex の出力 path（ソースルート相対 or 絶対）を絶対パスに正規化する。
 
-    cocoindex は 2 つのソース（memories_dir / diary_dir）を 1 テーブルに混在させる。
-    相対パスが `raw/diary/` で始まる場合だけ diary_dir 基準、それ以外は memories_dir 基準。
+    cocoindex のソースは memories_dir 単一。相対パスは memories_dir 基準で解決する。
     """
     p = Path(hit_path)
     if p.is_absolute():
         return p
-    if diary_dir is not None and p.parts[:2] == ("raw", "diary"):
-        return diary_dir / p
     return memories_dir / p
 
 
-def filter_scope(
-    hit: dict[str, Any], memories_dir: Path, diary_dir: Path | None, scope: str
-) -> bool:
+def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
     """scope 別フィルタ。
 
     kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
@@ -94,29 +89,20 @@ def filter_scope(
       memories_dir/raw/session/YYYY-MM-DD/...md  -> kind=session
       memories_dir/raw/web/YYYY-MM-DD/...md       -> kind=web
       memories_dir/raw/minutes/YYYY-MM-DD/...md   -> kind=minutes
+      memories_dir/raw/diary/YYYY-MM-DD/...md     -> kind=diary
       memories_dir/wiki/...                        -> wiki
-      diary_dir/raw/diary/YYYY-MM-DD/...md         -> kind=diary（ローカル限定）
 
     scope 値:
       all      -> 全ヒット採用（diary も含む）
       session  -> raw/session/ 配下のみ
       web      -> raw/web/ 配下のみ
       minutes  -> raw/minutes/ 配下のみ
+      diary    -> raw/diary/ 配下のみ
       wiki     -> wiki/ 配下のみ
-      diary    -> diary_dir/raw/diary/ 配下のみ
     """
     if scope == "all":
         return True
-    abs_path = absolutize(hit["path"], memories_dir, diary_dir).resolve()
-    if scope == "diary":
-        if diary_dir is None:
-            return False
-        try:
-            rel = abs_path.relative_to(diary_dir.resolve())
-        except ValueError:
-            return False
-        parts = rel.parts
-        return len(parts) >= 2 and parts[0] == "raw" and parts[1] == "diary"
+    abs_path = absolutize(hit["path"], memories_dir).resolve()
     try:
         rel = abs_path.relative_to(memories_dir.resolve())
     except ValueError:
@@ -126,7 +112,7 @@ def filter_scope(
         return False
     if scope == "wiki":
         return parts[0] == "wiki"
-    if scope in ("session", "web", "minutes"):
+    if scope in ("session", "web", "minutes", "diary"):
         return len(parts) >= 2 and parts[0] == "raw" and parts[1] == scope
     return False
 
@@ -164,12 +150,6 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--memories-dir", required=True, type=Path)
     p.add_argument(
-        "--diary-dir",
-        default=None,
-        type=Path,
-        help="kind: diary 専用ローカルルート（ローカル限定。指定時のみ diary scope が有効）",
-    )
-    p.add_argument(
         "--scope",
         default="all",
         choices=("all", "session", "web", "minutes", "wiki", "diary"),
@@ -194,9 +174,9 @@ def main() -> int:
     seen_paths: set[str] = set()
     filtered: list[dict[str, Any]] = []
     for h in hits:
-        if not filter_scope(h, args.memories_dir, args.diary_dir, args.scope):
+        if not filter_scope(h, args.memories_dir, args.scope):
             continue
-        abs_path = absolutize(h["path"], args.memories_dir, args.diary_dir)
+        abs_path = absolutize(h["path"], args.memories_dir)
         abs_path_str = str(abs_path)
         if not args.no_dedupe and abs_path_str in seen_paths:
             continue

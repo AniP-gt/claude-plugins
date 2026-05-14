@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes / session-source）を
+# sync-pending: fallback_dir に staged 済みの Raw（session / web / minutes / diary / session-source）を
 # MEMORIES_DIR/raw/<kind>/ へ移送する。
 #
 # 起動条件:
@@ -10,6 +10,7 @@
 #   <fallback_dir>/YYYY-MM-DD/<base>__staged.md                      # session（kind サブディレクトリ無し）
 #   <fallback_dir>/web/YYYY-MM-DD/<base>__staged.md                  # web
 #   <fallback_dir>/minutes/YYYY-MM-DD/<base>__staged.md              # minutes
+#   <fallback_dir>/diary/YYYY-MM-DD/<base>__staged.md                # diary
 #   <fallback_dir>/session-source/YYYY-MM-DD/<base>__staged.jsonl[.zst]  # session-source（元 JSONL snapshot、wiki enqueue 対象外）
 #
 # 動作:
@@ -143,17 +144,18 @@ fi
 #   - <fallback>/YYYY-MM-DD/*__staged.md           → kind: session（kind サブディレクトリ無し）
 #   - <fallback>/web/YYYY-MM-DD/*__staged.md       → kind: web
 #   - <fallback>/minutes/YYYY-MM-DD/*__staged.md   → kind: minutes
+#   - <fallback>/diary/YYYY-MM-DD/*__staged.md     → kind: diary
 # 各エントリは "<src_path>\t<kind>" の TSV で持つ。
 STAGED_TSV=()
 
 # session 経路（fallback 直下の YYYY-MM-DD/*__staged.md）。
-# 配下の web/ minutes/ サブディレクトリは別経路で拾うため depth=2 で除外する。
+# 配下の web/ minutes/ diary/ サブディレクトリは別経路で拾うため depth=2 で除外する。
 while IFS= read -r line; do
     [[ -n "$line" ]] && STAGED_TSV+=("${line}"$'\t'"session")
 done < <(find "$FALLBACK_DIR" -mindepth 2 -maxdepth 2 -type f -name '*__staged.md' 2>/dev/null | sort)
 
-# web / minutes 経路（kind サブディレクトリ配下）。
-for kind in web minutes; do
+# web / minutes / diary 経路（kind サブディレクトリ配下）。
+for kind in web minutes diary; do
     kind_root="$FALLBACK_DIR/$kind"
     [[ ! -d "$kind_root" ]] && continue
     while IFS= read -r line; do
@@ -175,7 +177,7 @@ if [[ ${#STAGED_TSV[@]:-0} -eq 0 ]]; then
     exit 0
 fi
 
-log "sync start: ${#STAGED_TSV[@]} staged file(s) across session/web/minutes"
+log "sync start: ${#STAGED_TSV[@]} staged file(s) across session/web/minutes/diary"
 
 MOVED=0
 COLLIDED=0
@@ -195,8 +197,8 @@ for entry in "${STAGED_TSV[@]}"; do
     date_dir="$(basename "$(dirname "$src")")"
     base="$(basename "$src")"
     # __staged サフィックスを取り除く。kind により拡張子が異なる:
-    #   session / web / minutes → .md
-    #   session-source          → .jsonl / .jsonl.zst
+    #   session / web / minutes / diary → .md
+    #   session-source                  → .jsonl / .jsonl.zst
     case "$base" in
         *__staged.md)        normal_base="${base%__staged.md}.md" ;;
         *__staged.jsonl.zst) normal_base="${base%__staged.jsonl.zst}.jsonl.zst" ;;
@@ -212,7 +214,7 @@ for entry in "${STAGED_TSV[@]}"; do
     mkdir -p "$dst_dir" 2>/dev/null || true
 
     if [[ -e "$dst" ]]; then
-        # 命名規則上ありえない衝突（session: host8+sid8+HHMMSS / web,minutes: HHMMSS+slug）
+        # 命名規則上ありえない衝突（session: host8+sid8+HHMMSS / web,minutes,diary: HHMMSS+slug）
         src_hash="$(sha256_of "$src")"
         dst_hash="$(sha256_of "$dst")"
         if [[ -n "$src_hash" && "$src_hash" == "$dst_hash" ]]; then

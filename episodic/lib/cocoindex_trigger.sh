@@ -6,16 +6,14 @@
 #                    pyproject.toml と recording/main_episodic.py が直下に存在する場所。
 #                    source repo / codex-hook-runtime いずれの配置でも同じ。
 #   MEMORIES_DIR     memories ルート（既定 /Volumes/memory）
-#   DIARY_DIR        kind: diary 専用ローカルルート（既定 ~/.local/share/episodic/diary）
 #   LOG_DIR_LOCAL    ローカルログ出力ディレクトリ（例 ~/.local/state/episodic/logs）
 #
 # log() 関数が定義されていればそれを使い、無ければ printf でフォールバックする。
 #
 # Usage:
 #   source "${PLUGIN_ROOT}/lib/cocoindex_trigger.sh"
-#   trigger_cocoindex_update                       # MEMORIES_DIR / DIARY_DIR を使う
+#   trigger_cocoindex_update                       # MEMORIES_DIR を使う
 #   trigger_cocoindex_update /custom/path           # memories_dir を引数で上書き
-#   trigger_cocoindex_update /custom/path /diary    # diary_dir も引数で上書き
 
 trigger_cocoindex_update() {
     # 新規/更新された raw / wiki ファイルを cocoindex に反映（best effort / 非同期）。
@@ -25,9 +23,6 @@ trigger_cocoindex_update() {
     # ドメイン固有設定（embedding model/dimension, chunk size, exclude）は
     # ~/.config/episodic/cocoindex.toml の [embedding]/[chunk]/[index] セクションで管理する。
     local memories_dir="${1:-${MEMORIES_DIR:-/Volumes/memory}}"
-    # kind: diary 専用ローカルルート。第2引数 > DIARY_DIR env > 既定値。
-    # main_episodic.py が DIARY_SOURCE_PATH として受け取り、2 つ目のソースとして走査する。
-    local diary_dir="${2:-${DIARY_DIR:-$HOME/.local/share/episodic/diary}}"
     local app_dir="${PLUGIN_ROOT}"
     local recording_dir="${app_dir}/recording"
     local log_dir="${LOG_DIR_LOCAL:-$HOME/.local/state/episodic/logs}"
@@ -63,7 +58,7 @@ trigger_cocoindex_update() {
     host_prefix="$(hostname | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')"
     local app_name="EpisodicIndex_${host_prefix}_${index_name}"
 
-    _ct_log "cocoindex update scheduled: $memories_dir (diary=$diary_dir, app=$app_name, settings=~/.config/episodic/cocoindex.toml)"
+    _ct_log "cocoindex update scheduled: $memories_dir (app=$app_name, settings=~/.config/episodic/cocoindex.toml)"
     # main_episodic.py は uv 管理の episodic 専用 Python 環境で実行する。
     # venv は config ではなく cache に置き、runtime 配置をコード・設定に限定する。
     local uv_project_environment="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/episodic/venv}"
@@ -72,7 +67,6 @@ trigger_cocoindex_update() {
     (
         cd "$app_dir" || exit 1
         SOURCE_PATH="$memories_dir" \
-            DIARY_SOURCE_PATH="$diary_dir" \
             INDEX_NAME="$index_name" \
             PATTERNS="**/*.md" \
             UV_PROJECT_ENVIRONMENT="$uv_project_environment" \

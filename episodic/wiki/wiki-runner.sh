@@ -5,8 +5,7 @@
 #   - session: Codex で project 別通史 wiki/projects/<project>.md に統合
 #   - web    : Codex で wiki/references.md に統合（テーマ別 + 時系列）
 #   - minutes: Codex で wiki/minutes/YYYYMM.md（月次集約）に統合
-#   - diary  : Codex で <diary_dir>/wiki/diary/YYYYMM.md（月次集約・ローカル限定）に統合
-#             共有 NAS の wiki/index.md には載せない（存在・タイトルの漏洩を避ける）
+#   - diary  : Codex で wiki/diary/YYYYMM.md（月次集約）に統合（memories_dir 配下）
 #
 # 制御機構:
 # - mkdir で .state/lock.d を排他取得し、同時に1プロセスだけが queue を claim する。
@@ -86,13 +85,7 @@ INSTRUCTION_WEB="$SCRIPT_DIR/codex-instruction-web.md"
 INSTRUCTION_MINUTES="$SCRIPT_DIR/codex-instruction-minutes.md"
 INSTRUCTION_DIARY="$SCRIPT_DIR/codex-instruction-diary.md"
 
-# kind: diary はローカル限定。raw / wiki / cocoindex すべてを diary_dir 配下に完結させる。
-# DIARY_DIR env > config.py(resolve_diary_dir) > 既定値 の順で解決する。
-DIARY_DIR="${DIARY_DIR:-$(PYTHONPATH="$PLUGIN_ROOT" python3 -c 'from lib.config import resolve_diary_dir; print(resolve_diary_dir())' 2>/dev/null)}"
-[[ -z "$DIARY_DIR" ]] && DIARY_DIR="$HOME/.local/share/episodic/diary"
-DIARY_WIKI_ROOT="$DIARY_DIR/wiki/diary"
-
-mkdir -p "$STATE_DIR" "$TARGET_LOCK_ROOT" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$DIARY_WIKI_ROOT" "$(dirname "$LOG_FILE")"
+mkdir -p "$STATE_DIR" "$TARGET_LOCK_ROOT" "$WIKI_DIR/projects" "$WIKI_DIR/minutes" "$WIKI_DIR/diary" "$(dirname "$LOG_FILE")"
 chmod 700 "$STATE_DIR" "$TARGET_LOCK_ROOT" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # log ファイル肥大化を防ぐため、起動直後に rotate を試みる。
@@ -811,7 +804,6 @@ while true; do
                 PROJECT="$YYYYMM"
                 ;;
             diary)
-                # diary はローカル限定。出力先は DIARY_WIKI_ROOT（共有 NAS には出さない）。
                 DATE_RAW=$(awk '/^date:/ { sub(/^date:[[:space:]]*/, ""); gsub(/"/, ""); print; exit }' "$RAW_PATH")
                 if [[ -z "$DATE_RAW" ]]; then
                     DATE_RAW=$(basename "$(dirname "$RAW_PATH")")
@@ -821,7 +813,7 @@ while true; do
                     log "warn: cannot derive YYYYMM from diary raw '$RAW_PATH' (date='$DATE_RAW'); fallback to 'unknown'"
                     YYYYMM="unknown"
                 fi
-                WIKI_TARGET="$DIARY_WIKI_ROOT/${YYYYMM}.md"
+                WIKI_TARGET="$WIKI_DIR/diary/${YYYYMM}.md"
                 INSTRUCTION="$INSTRUCTION_DIARY"
                 LABEL="diary/${YYYYMM}"
                 PROJECT="$YYYYMM"
@@ -932,7 +924,7 @@ with jobs_tsv.open("w", encoding="utf-8", newline="") as out:
 
 done
 
-# index.md 再生成（Sessions Timeline / References Library / Minutes の入口リンクと件数）
+# index.md 再生成（Sessions Timeline / References Library / Minutes / Diary の入口リンクと件数）
 WIKI_DIR_FOR_PY="$WIKI_DIR" MEMORIES_DIR_FOR_PY="$MEMORIES_DIR" python3 - <<'PY'
 import os, re
 from collections import defaultdict
@@ -977,6 +969,27 @@ minutes_files = sorted(
     if not p.name.startswith('.')
 )
 
+# diary は YYYYMM 別カウント。raw/diary/YYYY-MM-DD/*.md を月でグルーピングする。
+diary_by_month: dict[str, int] = defaultdict(int)
+diary_root = memories / 'raw' / 'diary'
+if diary_root.exists():
+    for p in diary_root.rglob('*.md'):
+        if p.name.startswith('.'):
+            continue
+        parent = p.parent.name  # YYYY-MM-DD
+        if len(parent) >= 7 and parent[4] == '-':
+            ym = parent[:4] + parent[5:7]
+        else:
+            ym = 'unknown'
+        diary_by_month[ym] += 1
+diary_count = sum(diary_by_month.values())
+
+diary_wiki_dir = wiki / 'diary'
+diary_files = sorted(
+    p for p in (diary_wiki_dir.glob('*.md') if diary_wiki_dir.exists() else [])
+    if not p.name.startswith('.')
+)
+
 def enforce_source_count(target: Path, expected: int) -> None:
     """Codex が source_count を更新し損ねた場合の二重保険として、
     frontmatter の source_count フィールドを Raw 実数で上書きする。
@@ -1015,6 +1028,8 @@ def enforce_source_count(target: Path, expected: int) -> None:
 enforce_source_count(wiki / 'references.md', web_count)
 for ym, count in minutes_by_month.items():
     enforce_source_count(wiki / 'minutes' / f'{ym}.md', count)
+for ym, count in diary_by_month.items():
+    enforce_source_count(wiki / 'diary' / f'{ym}.md', count)
 
 now = datetime.now().astimezone().isoformat(timespec='seconds')
 lines = ['---', 'title: Wiki Index', f'updated_at: {now}', 'status: active', '---', '', '# Wiki Index', '']
@@ -1055,12 +1070,26 @@ else:
     lines.append('- (まだ統合されていません。`episodic-recording` skill から議事録を保存すると自動生成されます)')
 lines.append('')
 
+lines.append('## Diary')
+lines.append('')
+if diary_files:
+    lines.append(f'日記（kind: diary、月次集約、Raw 計 {diary_count} 件、codex 統合済み）:')
+    lines.append('')
+    for p in sorted(diary_files, key=lambda x: x.stem, reverse=True):
+        rel = p.relative_to(wiki)
+        lines.append(f'- [{p.stem}](./{rel})')
+else:
+    lines.append(f'日記（kind: diary、Raw 計 {diary_count} 件、未統合）:')
+    lines.append('')
+    lines.append('- (まだ統合されていません。`episodic-recording` skill から日記を保存すると自動生成されます)')
+lines.append('')
+
 (wiki / 'index.md').write_text('\n'.join(lines), encoding='utf-8')
 PY
 
 log "done: total_processed=$TOTAL_PROCESSED total_failed=$TOTAL_FAILED iterations=$ITERATION"
 
-# wiki/projects/<p>.md / references.md / minutes/<YYYYMM>.md / index.md が更新されたので
+# wiki/projects/<p>.md / references.md / minutes/<YYYYMM>.md / diary/<YYYYMM>.md / index.md が更新されたので
 # cocoindex update を非同期キックして検索 DB に反映させる。
 # 1 件以上処理した場合のみ呼ぶ（空走 wiki-runner の度に DB 触らない）。
 COCOINDEX_TRIGGER_LIB="$RUNTIME_ROOT/lib/cocoindex_trigger.sh"
@@ -1071,8 +1100,7 @@ if [[ $TOTAL_PROCESSED -gt 0 && -f "$COCOINDEX_TRIGGER_LIB" ]]; then
     LOG_DIR_LOCAL="$(dirname "$LOG_FILE")"
     # shellcheck source=../lib/cocoindex_trigger.sh
     source "$COCOINDEX_TRIGGER_LIB"
-    # 第2引数で diary_dir も渡し、MEMORIES_DIR と diary_dir の両ソースを 1 回の update で取り込む。
-    trigger_cocoindex_update "$MEMORIES_DIR" "$DIARY_DIR" || true
+    trigger_cocoindex_update "$MEMORIES_DIR" || true
 fi
 
 # 通知メッセージ生成（ラベルのユニークリストを表示）

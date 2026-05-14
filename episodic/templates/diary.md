@@ -1,6 +1,5 @@
 ---
 kind: diary
-title: <日記タイトル>
 date: <YYYY-MM-DD>
 mood: <その時の気分タグ（任意）or null>
 created_at: <ISO8601>
@@ -9,8 +8,6 @@ status: active
 supersedes: null
 tags: []
 ---
-
-# <タイトル>
 
 ## 今日のできごと
 <何があったか>

@@ -37,8 +37,8 @@ def detect_kind(raw_path: Path) -> str:
 
     パス例 `<memories_dir>/raw/session/YYYY-MM-DD/file.md` から `session` を返す。
     kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
-    diary は memories_dir ではなく diary_dir 配下だが、`raw/diary/` 構造を
-    揃えているためルート非依存でこの推定が機能する。
+    diary も memories_dir 配下（`<memories_dir>/raw/diary/`）に保存される。
+    `raw/<kind>/` 構造を見るだけのルート非依存判定なので全 kind で機能する。
     """
     parts = raw_path.parts
     for i, p in enumerate(parts):
