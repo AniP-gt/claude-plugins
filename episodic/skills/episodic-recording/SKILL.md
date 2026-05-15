@@ -33,7 +33,10 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 └── diary/YYYY-MM-DD/HHMMSS_<slug>.md                 # kind: diary
 
 <memories_dir>/wiki/diary/YYYYMM.md                   # diary の月次 Wiki 集約
+<memories_dir>/wiki/people/<slug>.md                  # 人物 Wiki（minutes/diary から自動抽出）
 ```
+
+minutes / diary を保存すると、本体 Wiki 更新と並列で **人物名抽出 Codex（kind: people_extract）** が走り、検出された各人物について `wiki/people/<slug>.md` を時系列に追記する（kind: person）。明示的なフルネームや「○○さん」表記が対象で、役職単体・代名詞は除外、メール / 電話 / SNS ID 等の連絡可能識別子は記録しない。
 
 session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。minutes / diary も共有未マウント時は `raw-staging/<kind>/YYYY-MM-DD/...__staged.md` へ退避し、次回マウント時に `sync-pending.sh` が `raw/<kind>/` 配下へ移送する。web のみ Jina Reader 取得経路でマウント前提（staging なし）。
 
