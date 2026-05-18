@@ -70,6 +70,27 @@ def map_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path:
     return memories_dir / "raw" / "session" / date_dir / normal_basename
 
 
+def twin_report_path(report_path: Path) -> Path | None:
+    """report_path (session .md) の "双子" を返す: staging ↔ memory の対側パス。
+
+    snapshot 同様、finalize が複数回走った際に staging/memory 両側に同 session_id の
+    .md が出来てしまう状況を防ぐため、runner.sh の Codex 起動前チェックで使う。
+    判定できない場合は None を返す。
+    """
+    name = report_path.name
+    date_dir = report_path.parent.name
+
+    if name.endswith(f"{STAGED_SUFFIX}.md"):
+        memories_dir = cfg.resolve_memories_dir()
+        return map_staged_to_normal(report_path, memories_dir)
+
+    if name.endswith(".md"):
+        base = name[: -len(".md")]
+        staged_basename = f"{base}{STAGED_SUFFIX}.md"
+        return cfg.resolve_fallback_dir() / date_dir / staged_basename
+    return None
+
+
 def _format_snapshot_basename(time_str: str, host8: str, sid8: str, staged: bool, ext: str) -> str:
     suffix = STAGED_SUFFIX if staged else ""
     return f"{time_str}_{host8}_{sid8}{suffix}{ext}"
@@ -120,3 +141,28 @@ def map_snapshot_staged_to_normal(staged_path: Path, memories_dir: Path) -> Path
     date_dir = staged_path.parent.name
     normal_basename = to_normal_snapshot_basename(staged_path.name)
     return memories_dir / "raw" / "session-source" / date_dir / normal_basename
+
+
+def twin_snapshot_path(snapshot_path: Path) -> Path | None:
+    """snapshot_path の "双子" を返す: staging ↔ memory の対側パス。
+
+    save_source_snapshot は finalize が走った時点のマウント状態だけ見て保存先を決める。
+    1 セッションが複数回 finalize される間にマウント状態が揺らぐと、同じ session_id で
+    staging と memory の両側に snapshot が生成され sync-pending が永続 COLLISION を起こす。
+    重複チェックを片側だけでなく双子側にも広げるための補助関数。
+
+    判定できない場合は None を返す。
+    """
+    name = snapshot_path.name
+    date_dir = snapshot_path.parent.name
+
+    if name.endswith(f"{STAGED_SUFFIX}.jsonl.zst") or name.endswith(f"{STAGED_SUFFIX}.jsonl"):
+        memories_dir = cfg.resolve_memories_dir()
+        return map_snapshot_staged_to_normal(snapshot_path, memories_dir)
+
+    for ext in (".jsonl.zst", ".jsonl"):
+        if name.endswith(ext):
+            base = name[: -len(ext)]
+            staged_basename = f"{base}{STAGED_SUFFIX}{ext}"
+            return cfg.resolve_fallback_dir() / "session-source" / date_dir / staged_basename
+    return None

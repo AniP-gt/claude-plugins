@@ -59,13 +59,24 @@ acquire_lock() {
     mkdir -p "$STATE_DIR"
     chmod 700 "$STATE_DIR" 2>/dev/null || true
 
+    # PID は別ファイルに atomic 書き込み (write tmp → mv) してから lock dir に置く。
+    # 旧実装は mkdir LOCK_DIR と printf pid の間にレースがあり、
+    # 「pid 空 → stale 判定 → 生きてるロック破壊」で並列起動を許す瑕疵があった。
     if mkdir "$LOCK_DIR" 2>/dev/null; then
-        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        local pid_tmp="$LOCK_DIR/pid.$$"
+        printf '%s\n' "$$" > "$pid_tmp" 2>/dev/null && \
+            mv -f "$pid_tmp" "$LOCK_DIR/pid" 2>/dev/null || \
+            { rm -f "$pid_tmp" 2>/dev/null; }
         return 0
     fi
 
     local old_pid=""
     old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ -z "$old_pid" ]]; then
+        # PID 空 = 別プロセスが mkdir 直後で書込み中 (= 生きている)。stale 扱いせず skip。
+        log "skip: sync-pending lock held (pid file empty; another process initializing)"
+        return 1
+    fi
     if is_pid_alive "$old_pid"; then
         log "skip: sync-pending already running pid=$old_pid"
         return 1
@@ -74,7 +85,10 @@ acquire_lock() {
     log "stale sync-pending lock from pid=$old_pid; removing"
     rm -rf "$LOCK_DIR" 2>/dev/null || true
     if mkdir "$LOCK_DIR" 2>/dev/null; then
-        printf '%s\n' "$$" > "$LOCK_DIR/pid" 2>/dev/null || true
+        local pid_tmp="$LOCK_DIR/pid.$$"
+        printf '%s\n' "$$" > "$pid_tmp" 2>/dev/null && \
+            mv -f "$pid_tmp" "$LOCK_DIR/pid" 2>/dev/null || \
+            { rm -f "$pid_tmp" 2>/dev/null; }
         return 0
     fi
 

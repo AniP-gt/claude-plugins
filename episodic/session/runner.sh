@@ -364,6 +364,26 @@ save_source_snapshot() {
         log "snapshot already exists, skip: $META_SNAPSHOT_PATH"
         return 0
     fi
+    # 双子側（staging↔memory）に同じ session_id の snapshot があれば skip。
+    # マウント状態が finalize 間で揺らぐと、片側に既に保存済みの snapshot を持つ
+    # セッションが反対側にも生成され、sync-pending が永続 COLLISION を起こす。
+    local twin_snapshot=""
+    twin_snapshot="$(PYTHONPATH="$PLUGIN_ROOT" SNAPSHOT_PATH="$META_SNAPSHOT_PATH" \
+        python3 - <<'PY' 2>/dev/null
+import os
+from pathlib import Path
+from lib import path_resolver as pr
+try:
+    twin = pr.twin_snapshot_path(Path(os.environ["SNAPSHOT_PATH"]))
+    print(str(twin) if twin else "")
+except Exception:
+    print("")
+PY
+)"
+    if [[ -n "$twin_snapshot" && -f "$twin_snapshot" ]]; then
+        log "snapshot already exists at twin path, skip: $twin_snapshot"
+        return 0
+    fi
     mkdir -p "$(dirname "$META_SNAPSHOT_PATH")"
     local tmp="${META_SNAPSHOT_PATH}.partial"
     rm -f "$tmp"
@@ -403,6 +423,32 @@ save_source_snapshot() {
 }
 
 save_source_snapshot
+
+# Codex を呼ぶ前に、同一セッションの .md が既に staging/memory どちらかに保存済みなら
+# 二重生成を防ぐため skip する。マウント状態の揺らぎで finalize が複数回走った時、
+# 別側に既に summary が存在するのに上書きしようとして sync-pending が COLLISION を
+# 永続化する事象の根因対策。
+if [[ -n "${REPORT_PATH:-}" ]]; then
+    twin_report="$(PYTHONPATH="$PLUGIN_ROOT" REPORT_PATH="$REPORT_PATH" \
+        python3 - <<'PY' 2>/dev/null
+import os
+from pathlib import Path
+from lib import path_resolver as pr
+try:
+    twin = pr.twin_report_path(Path(os.environ["REPORT_PATH"]))
+    print(str(twin) if twin else "")
+except Exception:
+    print("")
+PY
+)"
+    if [[ -n "$twin_report" && -f "$twin_report" ]]; then
+        log "report already exists at twin path, skip codex: $twin_report"
+        notify_skip "同一セッションの要約が別側に保存済みです（$(basename "$twin_report")）"
+        # trap EXIT がまだ仕掛かっていないため pending/{session_id}/ を明示掃除する。
+        cleanup_session_dir
+        exit 0
+    fi
+fi
 
 CODEX_LAST_MSG="$(mktemp -t codex-session.XXXXXX)"
 trap 'rm -f "$CODEX_LAST_MSG"; cleanup_session_dir' EXIT
