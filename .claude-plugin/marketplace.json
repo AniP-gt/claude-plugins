@@ -28,7 +28,7 @@
     },
     {
       "name": "circleci",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "source": "./circleci",
       "description": "CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群を提供しつつ、watch CLIスクリプトでREST APIを直接ポーリングして目的状態到達まで監視する。"
     },

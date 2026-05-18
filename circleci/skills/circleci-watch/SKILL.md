@@ -12,8 +12,10 @@ effort: low
 ## 前提条件
 
 - Python 3.8 以上（標準ライブラリのみ使用）
-- 環境変数 `CIRCLECI_TOKEN`（Personal API Token）が設定済みであること
-- セルフホスト環境では `CIRCLECI_BASE_URL` も設定する（デフォルト: `https://circleci.com`）
+- 環境変数 `CIRCLECI_TOKEN`（Personal API Token）が **Claude Code 起動前の shell に export 済みであること**
+  - `~/.zshrc` / `~/.bashrc` 等に `export CIRCLECI_TOKEN=...` を記載し、その shell から `claude` を起動する
+  - `~/.claude/settings.json` や `.claude/settings.local.json` の `env` ブロック経由では MCP サーバーへ伝播しないため注意
+- セルフホスト環境では同じ要領で `CIRCLECI_BASE_URL` も shell に export する（デフォルト: `https://circleci.com`）
 
 Personal API Token は https://app.circleci.com/settings/user/tokens から取得。
 

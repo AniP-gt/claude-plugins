@@ -59,7 +59,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check_config.sh
 
 CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群（failures / tests / status / flaky / rerun / config 等）を提供しつつ、`circleci-watch` skill で目的状態到達まで CircleCI REST API を直接ポーリングして監視する。
 
-環境変数 `CIRCLECI_TOKEN`（Personal API Token）の設定が必要です。Token は <https://app.circleci.com/settings/user/tokens> から取得してください。セルフホスト環境では `CIRCLECI_BASE_URL` も併せて設定します。MCPツールは deferred tools として on-demand ロードされる。
+環境変数 `CIRCLECI_TOKEN`（Personal API Token）を **Claude Code 起動前の shell に export** してください（`~/.zshrc` / `~/.bashrc` 等に `export CIRCLECI_TOKEN=...`）。`~/.claude/settings.json` の `env` ブロック経由では MCP サーバーへ伝播しません。Token は <https://app.circleci.com/settings/user/tokens> から取得してください。セルフホスト環境では `CIRCLECI_BASE_URL` も同じ要領で shell に export します。MCPツールは deferred tools として on-demand ロードされる。
 
 ### devin
 
