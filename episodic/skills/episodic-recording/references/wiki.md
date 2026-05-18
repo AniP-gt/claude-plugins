@@ -6,7 +6,7 @@
 
 ## 目的
 
-- Raw（不変・追記専用、kind: session / web / minutes）を、プロジェクト通史 + URL 参照索引 + 決定ログという **二次資産（Wiki）** に統合
+- Raw（不変・追記専用、kind: session / web / minutes / diary）を、プロジェクト通史 + URL 参照索引 + 決定ログ + 日記月次集約という **二次資産（Wiki）** に統合（4 種すべて `memories_dir` 配下で完結）
 - 複数 Raw 同時生成でも Wiki を破壊しない排他制御
 - Raw（時系列・粒度小）と Wiki（集約・粒度大）の使い分けで検索ノイズを抑制
 
@@ -17,8 +17,9 @@
 | `session` | `wiki/projects/<project>.md`（project 単位通史） | あり | `wiki/codex-instruction.md` |
 | `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `wiki/codex-instruction-web.md` |
 | `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `wiki/codex-instruction-minutes.md` |
+| `diary` | `wiki/diary/YYYYMM.md`（月次集約、できごと + 気持ち） | あり | `wiki/codex-instruction-diary.md` |
 
-3 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。
+4 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。diary も session / web / minutes と同列の通常 kind として `wiki/index.md` に章を持ち、統合先は `memories_dir` 配下で完結する。
 
 ## 制約
 
@@ -35,19 +36,21 @@
     - `session`: `gpt-5.4`（project 通史統合は重複排除・通史化が必要で推論強度高め）
     - `web`: `gpt-5.4-mini`（要約・テーマ分類は軽量モデルで十分）
     - `minutes`: `gpt-5.4-mini`（議事録の構造保持はテンプレ寄り）
-  - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES`
+    - `diary`: `gpt-5.4-mini`（日記の月次集約はテンプレ寄り）
+  - 環境変数で kind 別に上書き可能: `CODEX_MEMORY_WIKI_MODEL_SESSION` / `CODEX_MEMORY_WIKI_MODEL_WEB` / `CODEX_MEMORY_WIKI_MODEL_MINUTES` / `CODEX_MEMORY_WIKI_MODEL_DIARY`
 - **kind 別リンク相対パス**:
     - `wiki/projects/<project>.md` → session へは `../../raw/session/YYYY-MM-DD/file.md`（2 階層上る）
     - `wiki/references.md` → web へは `../raw/web/YYYY-MM-DD/file.md`（1 階層上る）
     - `wiki/minutes/<YYYYMM>.md` → minutes へは `../../raw/minutes/YYYY-MM-DD/file.md`（2 階層上る、projects/ と統一）
+    - `wiki/diary/<YYYYMM>.md` → diary へは `../../raw/diary/YYYY-MM-DD/file.md`（2 階層上る、projects/ と統一）
 - **書き込み制限**: Codex は kind 別の単一統合先ファイルにのみ書き込む。CWD を統合先親ディレクトリに固定して workspace-write を限定する
 
 ## 完了条件
 
 - `ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` 到達済みのエントリが 0 件、もしくは Codex 連続失敗で backoff 中のエントリのみ
 - 処理成功エントリは queue から削除されている（永続的な archive は保持しない）。`MEMORIES_WIKI_MAX_ATTEMPTS` 超過分は `ingest-deadletter.jsonl` に移送されている
-- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Minutes）で再生成されている
-- 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/minutes/<YYYYMM>.md`）が Codex により更新されている
+- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Minutes / Diary）で再生成されている
+- 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/minutes/<YYYYMM>.md` / `wiki/diary/<YYYYMM>.md`）が Codex により更新されている
 
 ## 入力パラメータ（wiki-runner.sh）
 
@@ -58,10 +61,11 @@
 
 環境変数:
 
-- `MEMORIES_DIR`: memories ルート
+- `MEMORIES_DIR`: memories ルート（diary を含む 4 kind すべての raw / wiki がこの配下）
 - `CODEX_MEMORY_WIKI_MODEL_SESSION`: session 統合用 Codex モデル（既定 `gpt-5.4`）
 - `CODEX_MEMORY_WIKI_MODEL_WEB`: web 統合用 Codex モデル（既定 `gpt-5.4-mini`）
 - `CODEX_MEMORY_WIKI_MODEL_MINUTES`: minutes 統合用 Codex モデル（既定 `gpt-5.4-mini`）
+- `CODEX_MEMORY_WIKI_MODEL_DIARY`: diary 統合用 Codex モデル（既定 `gpt-5.4-mini`）
 - `MEMORIES_TRASHBOX_RETAIN_DAYS`: `<MEMORIES_DIR>/trashbox/` 配下の保持日数（既定 30、0 で無効化）
 - `MEMORIES_TRASHBOX_DRY_RUN`: `1` で trashbox 削除をログのみ（実削除しない）
 - `MEMORIES_LOG_ROTATE_BYTES`: `~/.local/state/episodic/logs/*.log` ローテーション閾値（既定 5242880）
@@ -81,12 +85,14 @@
 ├── raw/
 │   ├── session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md      # kind: session（recording が自動生成）
 │   ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web（recording 手動）
-│   └── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes（recording 手動）
+│   ├── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes（recording 手動）
+│   └── diary/YYYY-MM-DD/HHMMSS_<slug>.md                 # kind: diary（recording 手動）
 └── wiki/
-    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Minutes への入口）
+    ├── index.md                                           # 自動再生成（Sessions Timeline / References Library / Minutes / Diary への入口）
     ├── projects/<project>.md                              # Codex が統合・更新（kind: session）
     ├── references.md                                      # Codex が統合・更新（kind: web）
-    └── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
+    ├── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
+    └── diary/<YYYYMM>.md                                  # Codex が統合・更新（kind: diary、月次集約）
 
 ~/.local/share/episodic/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending / processing、kind / attempt_count / retry_after_epoch を含む）
@@ -133,14 +139,15 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
    - `kind: session`: frontmatter から `project` 抽出 → `wiki/projects/<project>.md`（`codex-instruction.md`）
    - `kind: web`: → `wiki/references.md`（`codex-instruction-web.md`）
    - `kind: minutes`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/minutes/<YYYYMM>.md`（`codex-instruction-minutes.md`、月次集約）
+   - `kind: diary`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/diary/<YYYYMM>.md`（`codex-instruction-diary.md`、月次集約）
 6. 結果反映: 成功は queue から削除、失敗は `attempt_count` 加算 + 指数 backoff の `retry_after_epoch` を付けて `status: pending` に戻す。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に append
 7. self-poll で次イテレーションへ（pending hash が変化しなければ break、上限は `MEMORIES_WIKI_MAX_SELF_POLL`）
-8. `wiki/index.md` を 3 章立て（**Sessions Timeline** / **References Library** / **Minutes**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
-9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（statistical 統合先 raw/wiki 双方を `MEMORIES_DIR` 配下で再インデックス）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
+8. `wiki/index.md` を 4 章立て（**Sessions Timeline** / **References Library** / **Minutes** / **Diary**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
+9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（統合先 raw/wiki 双方を `MEMORIES_DIR` 配下の単一ソースで再インデックス。diary も `MEMORIES_DIR` 配下の通常 kind として走査対象に含まれる）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
 
-任意のタイミングで全件再処理する場合、`raw/{session,web,minutes}` 配下のファイルを直接 enqueue する:
+任意のタイミングで全件再処理する場合、`raw/{session,web,minutes,diary}` 配下のファイルを直接 enqueue する:
 
 ```bash
 MEMORIES_DIR="${MEMORIES_DIR:-/Volumes/memory}"
@@ -148,7 +155,7 @@ EPISODIC_RUNTIME_ROOT="${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hoo
 ENQUEUE="$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py"
 
 # kind 別に raw を再投入（隠しファイル・AppleDouble は除外）
-for kind in session web minutes; do
+for kind in session web minutes diary; do
     find "$MEMORIES_DIR/raw/$kind" -type f -name '*.md' ! -name '.*' ! -name '._*' -print0 \
         | xargs -0 -I{} python3 "$ENQUEUE" "{}" --kind "$kind"
 done
@@ -172,6 +179,6 @@ python3 "$EPISODIC_RUNTIME_ROOT/wiki/enqueue.py" \
 - ロック残留（プロセス異常終了時）: 次回起動時に PID 生存確認で自動奪取される。即時に解除したい場合は `rm -rf ~/.local/share/episodic/state/lock.d ~/.local/share/episodic/state/wiki-runner-kick.lock.d ~/.local/share/episodic/state/wiki-target-locks`
 - Codex 失敗で pending が残る: 失敗エントリは指数 backoff で `retry_after_epoch` を付けて待機する。即時再試行したい場合は queue から該当エントリの `retry_after_epoch` を 0 にするか、`--no-codex` でキューだけ消化する
 - dead-letter に積まれた: `ingest-deadletter.jsonl` の `raw_path` を確認し、根本原因を解消したうえで再 enqueue する（`enqueue.py` でキュー末尾に追加すれば再処理される）
-- 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md`）を一度削除して再構築する
-- `references.md` / `minutes/<YYYYMM>.md` が生成されない: `raw/web/` / `raw/minutes/` 配下にまだファイルがない（`episodic-recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
+- 同じ Raw が複数回統合される（重複）: 各 codex-instruction の「重複排除」ルールが効いていない可能性。該当 Wiki ファイル（`projects/<p>.md` / `references.md` / `minutes/<YYYYMM>.md` / `diary/<YYYYMM>.md`）を一度削除して再構築する
+- `references.md` / `minutes/<YYYYMM>.md` / `diary/<YYYYMM>.md` が生成されない: `raw/web/` / `raw/minutes/` / `raw/diary/` 配下にまだファイルがない（`episodic-recording` skill から手動保存する）。または codex 呼び出しが失敗（log を参照）
 - index.md に AppleDouble (`._*`) が混入: 解消済（v0.4.0 以降）。古い index.md が残っている場合は wiki-runner.sh 再実行で上書きされる

@@ -1,6 +1,6 @@
 {
   "name": "slack",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI とスキル群。ワークスペース単位で token を管理し、検索・履歴取得・送信を実行する。",
   "author": { "name": "miya" },
   "keywords": ["slack", "mcp", "oauth", "search", "messaging"]

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# episodic-search: memories/ 配下（raw/session + raw/web + raw/minutes + wiki）に対するハイブリッド検索
+# episodic-search: memories/ 配下（raw/session + raw/web + raw/minutes + raw/diary + wiki）
+#                   に対するハイブリッド検索
 #
 # Usage:
-#   search.sh <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded]
+#   search.sh <query> [--top N] [--scope session|web|minutes|wiki|diary|all] [--include-superseded]
 #                     [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
 #
 # Defaults: --top 10, --scope all, --format markdown, status=active のみ, threshold 0.3
@@ -35,7 +36,7 @@ usage() {
 Usage: $0 <query> [options]
 Options:
   --top N                                 返す件数（既定: 10、ファイル単位）
-  --scope session|web|minutes|wiki|all    検索対象（既定: all）
+  --scope session|web|minutes|wiki|diary|all    検索対象（既定: all）
   --include-superseded                    superseded/deprecated も含める
   --format json|markdown                  出力形式（既定: markdown）
   --no-dedupe                             同一ファイル内の異なる chunk も全て返す

@@ -14,7 +14,8 @@
 #   <memories_dir>/raw/session/YYYY-MM-DD/...md   (kind: session, recording 自動)
 #   <memories_dir>/raw/web/YYYY-MM-DD/...md         (kind: web, recording 手動)
 #   <memories_dir>/raw/minutes/YYYY-MM-DD/...md     (kind: minutes, recording 手動)
-#   <memories_dir>/wiki/...                          (wiki-runner が生成)
+#   <memories_dir>/raw/diary/YYYY-MM-DD/...md       (kind: diary, recording 手動)
+#   <memories_dir>/wiki/...                          (wiki-runner が生成。diary 月次集約 wiki/diary/ も含む)
 # このパス直下に `.mount-canary` ファイルが存在しない場合はマウント未確立と判断し、
 # fallback_dir に staging として書き込みます（Stop hook 経路の session のみ。
 # web / minutes は手動経路で常にマウント前提のため staging は使いません）。

@@ -12,8 +12,8 @@
 #
 # Usage:
 #   source "${PLUGIN_ROOT}/lib/cocoindex_trigger.sh"
-#   trigger_cocoindex_update                # MEMORIES_DIR を使う
-#   trigger_cocoindex_update /custom/path   # 引数で上書き
+#   trigger_cocoindex_update                       # MEMORIES_DIR を使う
+#   trigger_cocoindex_update /custom/path           # memories_dir を引数で上書き
 
 trigger_cocoindex_update() {
     # 新規/更新された raw / wiki ファイルを cocoindex に反映（best effort / 非同期）。

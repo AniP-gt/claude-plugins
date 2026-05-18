@@ -46,13 +46,13 @@
     },
     {
       "name": "episodic",
-      "version": "3.4.1",
+      "version": "3.7.1",
       "source": "./episodic",
-      "description": "Claude Code セッション・Web・議事録のエピソード記憶を Wiki に統合し、cocoindex でセマンティック検索するプラグイン。Notion URL から議事録への取込みフローも内蔵。"
+      "description": "Claude Code セッション・Web・議事録・日記のエピソード記憶を Wiki に統合し cocoindex で検索。minutes/diary からの人物 Wiki 自動生成も内蔵。"
     },
     {
       "name": "slack",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "source": "./slack",
       "description": "Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI とスキル群。ワークスペース単位で token を管理し、検索・履歴取得・送信を実行する。"
     }

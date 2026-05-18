@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # episodic-search/recent: memories/raw 配下を時系列で一覧する（セマンティック検索ではない）。
 #
-# kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / all に切替可能。
+# kind 既定は session（過去のセッション要約）。--kind オプションで web / minutes / diary / all に切替可能。
 #
 # Usage:
-#   recent.sh [--kind session|web|minutes|all] [--top N] [--project NAME] [--days D] \
+#   recent.sh [--kind session|web|minutes|diary|all] [--top N] [--project NAME] [--days D] \
 #             [--format markdown|json|paths]
 #
 # Defaults: --kind session, --top 10, --format markdown, 全プロジェクト, 全期間
@@ -28,7 +28,7 @@ usage() {
     cat <<EOF >&2
 Usage: $(basename "$0") [options]
 
-  --kind KIND     session (default) | web | minutes | all
+  --kind KIND     session (default) | web | minutes | diary | all
   --top N         返す件数 (default: 10)
   --project NAME  指定 project の記録のみ抽出（kind=session で意味あり）
   --days D        過去 D 日以内のみ（日付ディレクトリ名で判定）
@@ -49,12 +49,13 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# kind 値とディレクトリ名は完全一致（session / web / minutes）。
+# kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
 case "$KIND" in
-    session|web|minutes|all) ;;
+    session|web|minutes|diary|all) ;;
     *) echo "Error: invalid --kind: $KIND" >&2; usage ;;
 esac
 
+# 全 kind は MEMORIES_DIR 配下。all は raw 直下を走査して全 kind をまとめる。
 if [[ "$KIND" == "all" ]]; then
     RAW_DIR="$MEMORIES_DIR/raw"
 else
@@ -139,7 +140,7 @@ def _walk_kind_root(root: Path) -> list[tuple[str, str, Path]]:
 kind = os.environ.get("KIND", "session")
 entries: list[tuple[str, str, Path]] = []
 if kind == "all":
-    for sub in ("session", "web", "minutes"):
+    for sub in ("session", "web", "minutes", "diary"):
         entries.extend(_walk_kind_root(raw_dir / sub))
 else:
     # raw_dir は kind=all なら memories/raw、それ以外なら memories/raw/<kind>

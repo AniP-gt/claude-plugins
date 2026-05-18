@@ -1,18 +1,19 @@
 ---
 name: episodic-recording
-description: "エピソード記憶（session/web/minutes）の保存・参照 skill。session は自動、web/minutes は本 skill 経由（Notion URL 可）。「webページを記録して」「議事録を残して」「過去セッションを探して」で起動。"
-argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes | minutes from-notion <URL>"
+description: "エピソード記憶（session/web/minutes/diary）の保存・参照 skill。session は自動、web/minutes/diary は本 skill 経由（Notion URL 可）。「webページを記録して」「議事録を残して」「日記を書いて」「過去セッションを探して」で起動。"
+argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web | minutes | minutes from-notion <URL> | diary"
 ---
 
 # episodic-recording Skill
 
-エピソード記憶（時間軸つきの不変・追記専用記録）の **保存・参照・再調査** を担当する skill。kind は次の 3 種類で、すべて `<memories_dir>/raw/<kind>/YYYY-MM-DD/...md` に保存される。
+エピソード記憶（時間軸つきの不変・追記専用記録）の **保存・参照・再調査** を担当する skill。kind は次の 4 種類。session / web / minutes / diary はいずれも `<memories_dir>/raw/<kind>/YYYY-MM-DD/...md`（共有 NAS）に保存される。
 
-| kind | 保存契機 | 用途 |
-|---|---|---|
-| `session` | Stop hook + debounce（自動） | Claude Code セッションの要約レポート |
-| `web` | 本 skill 経由（手動） | 外部 URL の Markdown アーカイブ（Jina Reader 経由） |
-| `minutes` | 本 skill 経由（手動） | 議事録・指示・合意の時系列ログ |
+| kind | 保存契機 | 保存場所 | 用途 |
+|---|---|---|---|
+| `session` | Stop hook + debounce（自動） | `<memories_dir>`（共有 NAS） | Claude Code セッションの要約レポート |
+| `web` | 本 skill 経由（手動） | `<memories_dir>`（共有 NAS） | 外部 URL の Markdown アーカイブ（Jina Reader 経由） |
+| `minutes` | 本 skill 経由（手動） | `<memories_dir>`（共有 NAS） | 議事録・指示・合意の時系列ログ |
+| `diary` | 本 skill 経由（手動） | `<memories_dir>`（共有 NAS） | プライベートな日記・その時の気持ち。session が意図的に除外する感情を残すレイヤー |
 
 > プラットフォーム前提: 通知（osascript）・Terminal 起動・SMB マウント関連は macOS 専用。コマンドが見つからない環境では各処理が自動的にスキップされ、保存本体はログだけ残してバックグラウンドで進む。
 
@@ -25,13 +26,19 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 設定 `<memories_dir>` 既定 `/Volumes/memory`、`~/.config/episodic/config.toml` で変更可。
 
 ```text
-<memories_dir>/raw/
+<memories_dir>/raw/                                   # 共有 NAS
 ├── session/YYYY-MM-DD/HHMMSS_<host8>_<sid8>.md      # kind: session
 ├── web/YYYY-MM-DD/HHMMSS_<slug>.md                   # kind: web
-└── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes
+├── minutes/YYYY-MM-DD/HHMMSS_<slug>.md               # kind: minutes
+└── diary/YYYY-MM-DD/HHMMSS_<slug>.md                 # kind: diary
+
+<memories_dir>/wiki/diary/YYYYMM.md                   # diary の月次 Wiki 集約
+<memories_dir>/wiki/people/<slug>.md                  # 人物 Wiki（minutes/diary から自動抽出）
 ```
 
-session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。web / minutes は手動経路で常に共有が見えている前提のため staging を使わない。
+minutes / diary を保存すると、本体 Wiki 更新と並列で **人物名抽出 Codex（kind: people_extract）** が走り、検出された各人物について `wiki/people/<slug>.md` を時系列に追記する（kind: person）。明示的なフルネームや「○○さん」表記が対象で、役職単体・代名詞は除外、メール / 電話 / SNS ID 等の連絡可能識別子は記録しない。
+
+session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。minutes / diary も共有未マウント時は `raw-staging/<kind>/YYYY-MM-DD/...__staged.md` へ退避し、次回マウント時に `sync-pending.sh` が `raw/<kind>/` 配下へ移送する。web のみ Jina Reader 取得経路でマウント前提（staging なし）。
 
 Codex 要約生成が失敗した場合のリトライキュー消化（5 回で dead letter、debounce バイパスでの即時再実行など）は `references/architecture.md` の「Codex 失敗時の自動リトライ」を参照する。
 
@@ -45,7 +52,7 @@ Codex 要約生成が失敗した場合のリトライキュー消化（5 回で
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "<自然言語クエリ>" \
     --top 10 --scope all --format markdown
 
-# scope は session / web / minutes / wiki / all から選べる
+# scope は session / web / minutes / wiki / diary / all から選べる
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "Jina" --scope web
 ```
 
@@ -57,6 +64,7 @@ Codex 要約生成が失敗した場合のリトライキュー消化（5 回で
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind session --top 5
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind web --top 10
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind minutes --top 10
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind diary --top 10
 ```
 
 ### 2. session の再調査（JSONL 部分抽出）
@@ -200,6 +208,40 @@ SRC_URL="<Notion URL>"
 
 成功時、保存パスを stdout に返す。Wiki 連携は通常の minutes と同じく `enqueue.py --kind minutes` → `kick-runner.sh`（→ `wiki-runner.sh`）が走る。
 
+### 6. diary（プライベート日記）の記録
+
+diary は「プライベートな日記・その時の気持ち」を残すレイヤー。session レポートが感情的表現を意図的に除外する設計なのに対し、diary はその逆で気持ちをそのまま残す場所。保存先・Wiki 集約・検索の扱いは session / web / minutes と同列の通常 kind で、`<memories_dir>` 配下に保存される。
+
+**Step 1（対話ヒアリング）**: 引数なしで起動された場合、以下を **1 問ずつ** ヒアリングする:
+
+1. 本文（必須。その日のできごと・感じたこと・残しておきたいことなどをそのまま聞き取る）
+2. 気分（任意。`--mood` に渡す気分タグ。例: 穏やか / 疲れた / 嬉しい）
+
+タイトルは聞かない（slug は本文先頭の非空行から自動導出される）。タグは AI が本文の内容から推測して `--tags` に付与する（ユーザーには聞かない）。
+
+**Step 2（実行）**: 聞き取った内容で `save.sh` を呼ぶ。本文は stdin で渡す:
+
+```bash
+# stdin で本文を渡す（ヒアドキュメント）
+"${CLAUDE_PLUGIN_ROOT}/recording/diary/save.sh" \
+    --mood "<気分>" \
+    --tags "<AI が本文から推測したタグ>" <<'EOF'
+今日は...
+
+感じたこと: ...
+EOF
+
+# またはファイルから
+"${CLAUDE_PLUGIN_ROOT}/recording/diary/save.sh" \
+    --mood "<気分>" --from-file /tmp/diary.md
+```
+
+スクリプトは `<memories_dir>/raw/diary/YYYY-MM-DD/HHMMSS_<slug>.md` に `kind: diary` の frontmatter 付きで保存する。要約・整形は行わず、渡された本文をそのまま保存する。
+
+保存成功直後に `wiki/enqueue.py --kind diary` を実行し、`wiki/kick-runner.sh` を fire-and-forget で起動する。Codex が diary の `date` から `YYYYMM` を抽出して `<memories_dir>/wiki/diary/<YYYYMM>.md` を月次集約フォーマットで更新する。cocoindex は通常 kind と同じく `<memories_dir>` の走査対象として検索インデックスに含める。
+
+成功時、保存パスを stdout に返す。
+
 ## 自動化パイプライン（kind: session のみ）
 
 `episodic` プラグインの `Stop` hook が `${CLAUDE_PLUGIN_ROOT}/bin/session-stop.sh` を起動し、`session/hook.py` が debounce タイマーを噛ませて最後の応答が落ち着いてから 1 度だけ `runner.sh` → Codex 要約 → `<memories_dir>/raw/session/...` に書き出す。`UserPromptSubmit` hook はユーザーが続きの入力を送った時点で pending debounce をキャンセルする。詳細は `references/architecture.md`。
@@ -211,7 +253,7 @@ SRC_URL="<Notion URL>"
 ## 関連スキル
 
 - `episodic-setup` — プラグイン初期設定の手順
-- `episodic-search` — Raw（session/web/minutes）+ Wiki に対するベクトル検索（Claude API からも利用可）
-- `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。3 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→minutes/<YYYYMM>.md）
+- `episodic-search` — Raw（session/web/minutes/diary）+ Wiki に対するベクトル検索（Claude API からも利用可）
+- `references/wiki.md`（本 skill 同梱） — Raw を統合した Wiki 生成パイプラインの運用ドキュメント。4 種すべて Codex で統合（session→projects/<p>.md、web→references.md、minutes→minutes/<YYYYMM>.md、diary→wiki/diary/<YYYYMM>.md）
 - `adr` — 意思決定記録（不可逆な判断の永続化レイヤー）
 - `retrospective` — フェーズ完了振り返り（エピソードから skills/rules への昇華）

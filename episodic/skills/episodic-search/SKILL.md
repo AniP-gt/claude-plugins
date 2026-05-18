@@ -1,12 +1,14 @@
 ---
 name: episodic-search
-description: エピソード記憶（memories/raw/{session,web,minutes} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」等で起動する。
-argument-hint: <query> [--top N] [--scope session|web|minutes|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
+description: エピソード記憶（memories/raw/{session,web,minutes,diary} + memories/wiki）に対する全文ベクトル検索 skill。cocoindex バックエンドでセマンティック検索し、scope（session/web/minutes/diary/wiki/all）と status（active のみ / superseded 含む）でフィルタする。Claude Code 内からも、Claude API 経由で外部アプリからも利用できる。「memoriesから○○を検索して」「過去のセッションで○○を扱ったものを探して」「web だけで○○を検索」「日記から○○を探して」等で起動する。
+argument-hint: <query> [--top N] [--scope session|web|minutes|diary|wiki|all] [--include-superseded] [--format json|markdown] [--no-dedupe] [--low-score-threshold N]
+context: fork
+effort: low
 ---
 
 # Episodic Search Skill
 
-`memories/` 配下（Raw（kind: session / web / minutes）+ Wiki）に対する全文ベクトル検索を提供する薄い skill。cocoindex プラグインを内部で呼び出し、結果に scope/status フィルタを適用して返す。
+`memories/` 配下（Raw（kind: session / web / minutes / diary）+ Wiki）に対する全文ベクトル検索を提供する薄い skill。cocoindex プラグインを内部で呼び出し、結果に scope/status フィルタを適用して返す。diary は session / web / minutes と同列の通常 kind として `memories_dir` 配下に置かれ、同一ソースの走査で検索インデックスに含まれる。
 
 ## 目的
 
@@ -38,7 +40,7 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 |---|---|---|---|
 | `<query>` | ✓ | — | 自然言語クエリ |
 | `--top N` | | 10 | 返す件数（ファイル単位、dedupe 後） |
-| `--scope session\|web\|minutes\|wiki\|all` | | all | 検索対象を絞る |
+| `--scope session\|web\|minutes\|diary\|wiki\|all` | | all | 検索対象を絞る（diary は通常 kind。`all` にも含まれる） |
 | `--include-superseded` | | (false) | superseded/deprecated レポートも含める |
 | `--format json\|markdown` | | markdown | 出力形式 |
 | `--no-dedupe` | | (false) | 同一ファイル内の異なる chunk も全て返す（chunk 単位） |
@@ -46,7 +48,7 @@ CLI 引数として受け取る（位置引数 1 + オプション引数）:
 
 環境変数（任意）:
 
-- `MEMORIES_DIR`: memories ディレクトリの絶対パス（既定: `/Volumes/memory`）
+- `MEMORIES_DIR`: memories ディレクトリの絶対パス（既定: `/Volumes/memory`）。diary を含む 4 kind すべての raw / wiki がこの配下
 - `EPISODIC_DATABASE_URL`: episodic 専用 PostgreSQL 接続 URL。`setup_db.sh` が `~/.config/episodic/.env` を雛形から生成して供給する（未設定なら search.py は exit 4）
 - `MEMORIES_EMBEDDING_MODEL`: memories 検索用の埋め込みモデル（既定: `voyage-3-large`）。インデックス構築側（`episodic-recording` の `main_episodic.py`）と同じ値である必要がある（モデル変更時はテーブル drop + 全件 re-embed が必要）
 - `MEMORIES_EMBEDDING_PROVIDER`: 埋め込みプロバイダー（既定: `voyage`）
@@ -90,6 +92,10 @@ stdout に以下を出力する。
 
 ## 使い方
 
+### 検索方法の原則
+
+memories の検索は **必ず `search.sh`（episodic DB へのハイブリッドベクトル検索）を第一手段** とする。`/Volumes/memory`（`MEMORIES_DIR`）配下を Grep / Glob で直接走査しない — DB インデックスは chunk 単位の dense + BM25 + rerank で構成されており、ファイル走査では再現できない。意味検索ではなく時系列で取り出したい場合のみ `recent.sh` を併用する。
+
 ### Claude Code 内から
 
 ```bash
@@ -103,6 +109,9 @@ stdout に以下を出力する。
 # kind: web だけで絞る
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "Jina Reader 仕様" --scope web
 
+# kind: diary だけで絞る（プライベート日記）
+"${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "あの日の気持ち" --scope diary
+
 # 過去版も含めて検索
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/search.sh" "episodic-recording" \
     --include-superseded
@@ -114,9 +123,9 @@ stdout に以下を出力する。
 "${EPISODIC_RUNTIME_ROOT:-$HOME/.config/episodic/codex-hook-runtime}/scripts/search/recent.sh" --kind minutes --top 10
 ```
 
-メインコンテキストから呼ぶ場合は `cocoindex:cocoindex-runner` サブエージェントへ委譲してトークンを節約してもよいが、本 skill は出力が小さいので直接呼びでも問題ない。
+本 skill は出力が小さいため、メインコンテキストから `search.sh` を直接呼んでよい。他プラグインのサブエージェントには委譲しない（episodic は独立しており、cocoindex / compass のサブエージェントには依存しない）。
 
-`recent.sh` はベクトル検索を使わず、`raw/<kind>/` 配下の日付ディレクトリ＋ファイル名タイムスタンプで時系列ソートする補助スクリプト。「直近の作業を見せて」「今日のセッション一覧」「最近アーカイブした URL」のような、意味検索ではなく時系列で取り出したい場面で使う。`--kind` 既定は `session`、`web` / `minutes` / `all` も指定可能。`--project` で絞り込み（kind=session で意味あり）、`--days` で期間制限、`--format paths` でパスのみ抽出も可能。
+`recent.sh` はベクトル検索を使わず、`raw/<kind>/` 配下の日付ディレクトリ＋ファイル名タイムスタンプで時系列ソートする補助スクリプト。「直近の作業を見せて」「今日のセッション一覧」「最近アーカイブした URL」のような、意味検索ではなく時系列で取り出したい場面で使う。`--kind` 既定は `session`、`web` / `minutes` / `diary` / `all` も指定可能。`--project` で絞り込み（kind=session で意味あり）、`--days` で期間制限、`--format paths` でパスのみ抽出も可能。`diary` は通常 kind として `--kind all` にも含まれ、`--kind diary` で単独一覧もできる。
 
 ### Claude API（外部アプリ）から
 
@@ -129,7 +138,6 @@ stdout に以下を出力する。
 ## 関連スキル
 
 - `episodic-recording` — Raw 生成（kind: session は Stop hook + debounce で自動、kind: web / minutes は手動）。Wiki 統合パイプラインも episodic-recording 経由で自動起動（詳細は `episodic-recording/references/wiki.md`）
-- `cocoindex:cocoindex-code-search` — 一般的なコードベース検索（本 skill は memories 専用ラッパー）
 
 ## トラブルシューティング
 
@@ -137,4 +145,4 @@ stdout に以下を出力する。
 - `relation "episodicindex_..." does not exist` → 初回セットアップ未実施。`episodic/scripts/setup_db.sh` を実行 → `cocoindex update -f episodic/recording/main_episodic.py:EpisodicIndex_<host>_episodic` でインデックスを構築する
 - インデックスが空 / 古い → Stop hook が走っていない可能性。手動更新は `cocoindex:cocoindex-setup` 参照
 - `--scope wiki` で常に空 → wiki 配下にまだファイルがない（wiki-runner 未稼働、または kind: session/web/minutes の Raw がない）
-- `--scope web` / `--scope minutes` で常に空 → 該当 kind の記録がまだない（`episodic-recording` skill から手動保存する）
+- `--scope web` / `--scope minutes` / `--scope diary` で常に空 → 該当 kind の記録がまだない（`episodic-recording` skill から手動保存する）

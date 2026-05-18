@@ -12,7 +12,7 @@ Claude Code用のカスタムプラグインリポジトリ。
 | circleci | CircleCI 調査（@circleci/mcp-server-circleci `.mcp.json` 同梱）+ ワークフロー監視（watch CLI / circleci-watch skill） |
 | devin | Devin MCP（DeepWiki）`.mcp.json` 同梱 + Session API CLI でタスク委任 |
 | mermaid | Mermaid 構文から PNG/SVG 画像を生成（mermaid-cli、MCP 不在） |
-| episodic | Claude Code セッション・Web・議事録のエピソード記憶 + Wiki + cocoindex 検索（Notion URL 取込みフロー対応） |
+| episodic | Claude Code セッション・Web・議事録・プライベート日記（diary、ローカル限定）のエピソード記憶 + Wiki + cocoindex 検索（Notion URL 取込みフロー対応） |
 | slack | Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI + skill。ワークスペース単位 token 管理 |
 
 詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。

@@ -70,36 +70,41 @@ def parse_frontmatter(path: Path) -> dict[str, Any]:
 
 
 def absolutize(hit_path: str, memories_dir: Path) -> Path:
-    """cocoindex の出力 path（memories_dir 相対 or 絶対）を絶対パスに正規化する。"""
+    """cocoindex の出力 path（ソースルート相対 or 絶対）を絶対パスに正規化する。
+
+    cocoindex のソースは memories_dir 単一。相対パスは memories_dir 基準で解決する。
+    """
     p = Path(hit_path)
-    if not p.is_absolute():
-        p = memories_dir / p
-    return p
+    if p.is_absolute():
+        return p
+    return memories_dir / p
 
 
 def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
     """scope 別フィルタ。
 
-    kind 値とディレクトリ名は完全一致（session / web / minutes）。
+    kind 値とディレクトリ名は完全一致（session / web / minutes / diary）。
 
     パス構造:
       memories_dir/raw/session/YYYY-MM-DD/...md  -> kind=session
       memories_dir/raw/web/YYYY-MM-DD/...md       -> kind=web
       memories_dir/raw/minutes/YYYY-MM-DD/...md   -> kind=minutes
+      memories_dir/raw/diary/YYYY-MM-DD/...md     -> kind=diary
       memories_dir/wiki/...                        -> wiki
 
     scope 値:
-      all      -> 全ヒット採用
+      all      -> 全ヒット採用（diary も含む）
       session  -> raw/session/ 配下のみ
       web      -> raw/web/ 配下のみ
       minutes  -> raw/minutes/ 配下のみ
+      diary    -> raw/diary/ 配下のみ
       wiki     -> wiki/ 配下のみ
     """
     if scope == "all":
         return True
-    abs_path = absolutize(hit["path"], memories_dir)
+    abs_path = absolutize(hit["path"], memories_dir).resolve()
     try:
-        rel = abs_path.resolve().relative_to(memories_dir.resolve())
+        rel = abs_path.relative_to(memories_dir.resolve())
     except ValueError:
         return False
     parts = rel.parts
@@ -107,7 +112,7 @@ def filter_scope(hit: dict[str, Any], memories_dir: Path, scope: str) -> bool:
         return False
     if scope == "wiki":
         return parts[0] == "wiki"
-    if scope in ("session", "web", "minutes"):
+    if scope in ("session", "web", "minutes", "diary"):
         return len(parts) >= 2 and parts[0] == "raw" and parts[1] == scope
     return False
 
@@ -147,7 +152,7 @@ def main() -> int:
     p.add_argument(
         "--scope",
         default="all",
-        choices=("all", "session", "web", "minutes", "wiki"),
+        choices=("all", "session", "web", "minutes", "wiki", "diary"),
     )
     p.add_argument("--top", type=int, default=10)
     p.add_argument("--include-superseded", action="store_true")
