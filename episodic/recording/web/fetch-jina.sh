@@ -231,16 +231,16 @@ chmod 600 "$OUT_PATH" 2>/dev/null || true
 # staged 時は wiki / cocoindex 連携をスキップ（sync-pending.sh が移送後に担当）。
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 ENQUEUE="$PLUGIN_ROOT/wiki/enqueue.py"
-WIKI_KICKER="$PLUGIN_ROOT/wiki/kick-runner.sh"
+WIKI_KICKER="$PLUGIN_ROOT/wiki/kick_runner.py"
 LOG_DIR_LOCAL="$HOME/.local/state/episodic/logs"
 mkdir -p "$LOG_DIR_LOCAL" 2>/dev/null || true
 chmod 700 "$LOG_DIR_LOCAL" 2>/dev/null || true
 if [[ $IS_STAGED -eq 1 ]]; then
     echo "warn: SMB share not mounted; saved to staging at $OUT_PATH" >&2
-    echo "      sync-pending.sh will move it to $MEMORIES_DIR/raw/web/ on next mount." >&2
-elif [[ -f "$ENQUEUE" && -x "$WIKI_KICKER" ]]; then
+    echo "      sync_pending.py will move it to $MEMORIES_DIR/raw/web/ on next mount." >&2
+elif [[ -f "$ENQUEUE" && -f "$WIKI_KICKER" ]]; then
     python3 "$ENQUEUE" "$OUT_PATH" --kind web >/dev/null 2>&1 || true
-    ( nohup "$WIKI_KICKER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
+    ( nohup python3 "$WIKI_KICKER" >> "$LOG_DIR_LOCAL/wiki-runner.log" 2>&1 & ) >/dev/null 2>&1 || true
 fi
 
 echo "$OUT_PATH"

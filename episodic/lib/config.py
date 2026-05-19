@@ -35,8 +35,8 @@ CONFIG_PATH = Path.home() / ".config" / "episodic" / "config.toml"
 
 
 def _default_remount_script() -> str:
-    # source repo / codex-hook-runtime いずれも bin/mount-memory-share.sh で統一済み。
-    return str(plugin_root() / "bin" / "mount-memory-share.sh")
+    # source repo / codex-hook-runtime いずれも bin/mount_memory_share.py で統一済み。
+    return str(plugin_root() / "bin" / "mount_memory_share.py")
 
 DEFAULTS: dict[str, Any] = {
     "memories_dir": "/Volumes/memory",
