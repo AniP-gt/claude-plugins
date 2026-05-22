@@ -46,7 +46,7 @@
     },
     {
       "name": "episodic",
-      "version": "3.9.0",
+      "version": "3.10.0",
       "source": "./episodic",
       "description": "Claude Code セッション・Web・議事録・日記のエピソード記憶を Wiki に統合し cocoindex で検索。minutes/diary からの人物 Wiki 自動生成も内蔵。"
     },

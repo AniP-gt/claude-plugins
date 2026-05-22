@@ -268,11 +268,29 @@ CODEX_REMINDER_TEMPLATE = (
 )
 
 
+def git_project_name(cwd: str) -> str | None:
+    """cwd から親方向へ `.git` を探索し、見つかった git リポジトリのルート
+    ディレクトリ名を返す。`.git` はディレクトリ（通常）でもファイル（worktree /
+    submodule）でも採用する。git 管理下でなければ None。"""
+    if not cwd:
+        return None
+    try:
+        path = Path(cwd).resolve()
+    except OSError:
+        return None
+    for d in (path, *path.parents):
+        if (d / ".git").exists():
+            return d.name.lstrip(".") or None
+    return None
+
+
 def project_name(cwd: str) -> str:
-    """cwdからファイル名に使うproject名を抽出する。
-    先頭ドットは除去して隠しファイル化を防ぐ。"""
-    name = Path(cwd).name.lstrip(".") or "unknown"
-    return name
+    """ファイル名・wiki 分類に使う project 名を抽出する。
+
+    git 管理下なら起動場所（サブディレクトリ）に依らずリポジトリのルート
+    ディレクトリ名を採用し、同一リポジトリのセッションを 1 プロジェクトへ集約する。
+    git 管理外なら "default" を返す。先頭ドットは除去して隠しファイル化を防ぐ。"""
+    return git_project_name(cwd) or "default"
 
 
 def session_dir_for(session_id: str) -> Path:
