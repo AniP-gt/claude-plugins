@@ -454,6 +454,8 @@ def run(
     parallelism: int | None = None,
     max_attempts: int | None = None,
     retry_base_seconds: int | None = None,
+    max_raw_missing_attempts: int | None = None,
+    raw_missing_retry_base_seconds: int | None = None,
     target_lock_timeout: int | None = None,
     processing_timeout_seconds: int | None = None,
     trigger_cocoindex: bool = True,
@@ -533,9 +535,19 @@ def run(
             log("skip: queue is empty")
             return 0
 
-        purged = wiki_queue.purge_missing_entries(queue_path, log=log)
-        if purged > 0:
-            log(f"purge: dead-lettered {purged} raw_missing entries before pending scan")
+        if max_raw_missing_attempts is None:
+            max_raw_missing_attempts = _env_int("MEMORIES_WIKI_MAX_RAW_MISSING_ATTEMPTS", 5, log)
+        if raw_missing_retry_base_seconds is None:
+            raw_missing_retry_base_seconds = _env_int(
+                "MEMORIES_WIKI_RAW_MISSING_RETRY_BASE_SECONDS", 60, log
+            )
+
+        wiki_queue.purge_missing_entries(
+            queue_path,
+            log=log,
+            max_raw_missing_attempts=max_raw_missing_attempts,
+            retry_base_seconds=raw_missing_retry_base_seconds,
+        )
 
         if not queue_path.exists() or queue_path.stat().st_size == 0:
             log("skip: queue is empty (after purge)")
@@ -640,7 +652,7 @@ def run(
                             except Exception as e:
                                 log(f"warn: batch job raised: {e}")
 
-            # 集計
+            # 集計（missing: ラベルは race 由来の deferred なので失敗扱いしない）
             iter_processed = 0
             iter_failed = 0
             for r in results:
@@ -648,6 +660,8 @@ def run(
                     iter_processed += 1
                     all_processed_labels.append(r["label"])
                 elif r["status"] == "failed":
+                    if r.get("label", "").startswith("missing:"):
+                        continue
                     iter_failed += 1
                     all_failed_labels.append(r["label"])
 
@@ -656,6 +670,8 @@ def run(
                 results,
                 max_attempts=max_attempts,
                 retry_base_seconds=retry_base_seconds,
+                max_raw_missing_attempts=max_raw_missing_attempts,
+                raw_missing_retry_base_seconds=raw_missing_retry_base_seconds,
             )
             total_processed += iter_processed
             total_failed += iter_failed

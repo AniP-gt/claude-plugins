@@ -1,10 +1,10 @@
 """lib/wiki_queue.py の単体テスト。
 
 4 関数 × 3 経路をカバー:
-  - purge_missing_entries: 不在 raw を dead-letter / 存在 raw は残す / 空 queue
+  - purge_missing_entries: 不在 raw を backoff 再試行 / 上限到達で dead-letter / 存在 raw は残す / 空 queue
   - read_pending_entries:  retry_after_epoch 未来は除外 / processing timeout / dedupe
   - mark_processing:       指定 identity を processing 化 / 非該当はそのまま / 空 identity
-  - update_queue_after_results: 成功削除 / 失敗→retry / max超過→deadletter (+ missing 即 dead)
+  - update_queue_after_results: 成功削除 / 失敗→retry / max超過→deadletter (+ missing→retry / missing max→dead)
 """
 from __future__ import annotations
 
@@ -38,40 +38,67 @@ def _read_queue(path: Path) -> list[dict]:
 
 
 class TestPurgeMissingEntries:
-    def test_missing_raw_moves_to_deadletter(self, tmp_path: Path) -> None:
+    def test_missing_raw_deferred_on_first_miss(self, tmp_path: Path) -> None:
         q = tmp_path / "q.jsonl"
         _write_queue(q, [
             {"raw_path": str(tmp_path / "missing.md"), "kind": "session", "status": "pending"},
         ])
-        purged = wiki_queue.purge_missing_entries(q)
-        assert purged == 1
-        # queue は空に
-        assert _read_queue(q) == []
-        # dead-letter には移送
-        dead = tmp_path / "ingest-deadletter.jsonl"
-        rows = _read_queue(dead)
+        deferred, dead = wiki_queue.purge_missing_entries(
+            q, max_raw_missing_attempts=5, retry_base_seconds=60
+        )
+        assert deferred == 1
+        assert dead == 0
+        rows = _read_queue(q)
         assert len(rows) == 1
-        assert rows[0]["status"] == "dead_letter"
+        assert rows[0]["status"] == "pending"
+        assert rows[0]["raw_missing_count"] == 1
         assert rows[0]["last_error"] == "raw_missing"
+        assert "retry_after_epoch" in rows[0]
+        assert not (tmp_path / "ingest-deadletter.jsonl").exists()
+
+    def test_missing_raw_deadletters_at_max(self, tmp_path: Path) -> None:
+        q = tmp_path / "q.jsonl"
+        _write_queue(q, [
+            {
+                "raw_path": str(tmp_path / "missing.md"),
+                "kind": "session",
+                "status": "pending",
+                "raw_missing_count": 4,  # 次で 5 = max
+            },
+        ])
+        deferred, dead = wiki_queue.purge_missing_entries(
+            q, max_raw_missing_attempts=5, retry_base_seconds=60
+        )
+        assert deferred == 0
+        assert dead == 1
+        assert _read_queue(q) == []
+        dead_rows = _read_queue(tmp_path / "ingest-deadletter.jsonl")
+        assert len(dead_rows) == 1
+        assert dead_rows[0]["status"] == "dead_letter"
+        assert dead_rows[0]["last_error"] == "raw_missing"
+        assert dead_rows[0]["raw_missing_count"] == 5
 
     def test_existing_raw_kept(self, tmp_path: Path) -> None:
         raw = tmp_path / "raw.md"
         raw.write_text("body")
         q = tmp_path / "q.jsonl"
         _write_queue(q, [{"raw_path": str(raw), "kind": "session", "status": "pending"}])
-        purged = wiki_queue.purge_missing_entries(q)
-        assert purged == 0
+        deferred, dead = wiki_queue.purge_missing_entries(q)
+        assert deferred == 0
+        assert dead == 0
         assert len(_read_queue(q)) == 1
 
     def test_empty_queue_no_action(self, tmp_path: Path) -> None:
         q = tmp_path / "q.jsonl"
         # 存在しない場合
-        purged = wiki_queue.purge_missing_entries(q)
-        assert purged == 0
+        deferred, dead = wiki_queue.purge_missing_entries(q)
+        assert deferred == 0
+        assert dead == 0
         # 空ファイル
         q.write_text("")
-        purged = wiki_queue.purge_missing_entries(q)
-        assert purged == 0
+        deferred, dead = wiki_queue.purge_missing_entries(q)
+        assert deferred == 0
+        assert dead == 0
 
 
 # ---------------------------------------------------------------- read_pending_entries
@@ -190,26 +217,66 @@ class TestUpdateQueueAfterResults:
         assert rows[0]["last_error"] == "codex_failed"
         assert "retry_after_epoch" in rows[0]
 
-    def test_max_attempts_deadletters(self, tmp_path: Path) -> None:
+    def test_max_attempts_deadletters_codex_failure(self, tmp_path: Path) -> None:
         q = tmp_path / "q.jsonl"
         _write_queue(q, [
             {"raw_path": "/a.md", "kind": "session", "status": "processing", "attempt_count": 4},
+        ])
+        deleted, dead = wiki_queue.update_queue_after_results(
+            q,
+            [{"status": "failed", "label": "p", "raw_path": "/a.md", "kind": "session", "slug": ""}],
+            max_attempts=5,
+        )
+        assert deleted == 0
+        assert dead == 1
+        assert _read_queue(q) == []
+        dead_rows = _read_queue(tmp_path / "ingest-deadletter.jsonl")
+        assert len(dead_rows) == 1
+        assert dead_rows[0]["last_error"] == "codex_failed"
+
+    def test_missing_label_schedules_raw_missing_retry(self, tmp_path: Path) -> None:
+        q = tmp_path / "q.jsonl"
+        _write_queue(q, [
             {"raw_path": "/b.md", "kind": "session", "status": "processing", "attempt_count": 0},
         ])
         deleted, dead = wiki_queue.update_queue_after_results(
             q,
-            [
-                {"status": "failed", "label": "p", "raw_path": "/a.md", "kind": "session", "slug": ""},
-                {"status": "failed", "label": "missing:b.md", "raw_path": "/b.md", "kind": "session", "slug": ""},
-            ],
+            [{"status": "failed", "label": "missing:b.md", "raw_path": "/b.md", "kind": "session", "slug": ""}],
             max_attempts=5,
+            max_raw_missing_attempts=5,
+            raw_missing_retry_base_seconds=60,
         )
         assert deleted == 0
-        assert dead == 2
-        # queue は空
+        assert dead == 0
+        rows = _read_queue(q)
+        assert len(rows) == 1
+        assert rows[0]["status"] == "pending"
+        assert rows[0]["raw_missing_count"] == 1
+        assert rows[0]["last_error"] == "raw_missing"
+        assert "retry_after_epoch" in rows[0]
+        # codex 失敗側の attempt_count は増えない（raw_missing は別カウンタ）
+        assert rows[0].get("attempt_count", 0) == 0
+
+    def test_missing_label_deadletters_at_max(self, tmp_path: Path) -> None:
+        q = tmp_path / "q.jsonl"
+        _write_queue(q, [
+            {
+                "raw_path": "/b.md",
+                "kind": "session",
+                "status": "processing",
+                "raw_missing_count": 4,
+            },
+        ])
+        deleted, dead = wiki_queue.update_queue_after_results(
+            q,
+            [{"status": "failed", "label": "missing:b.md", "raw_path": "/b.md", "kind": "session", "slug": ""}],
+            max_attempts=5,
+            max_raw_missing_attempts=5,
+        )
+        assert deleted == 0
+        assert dead == 1
         assert _read_queue(q) == []
         dead_rows = _read_queue(tmp_path / "ingest-deadletter.jsonl")
-        assert len(dead_rows) == 2
-        statuses = {r["last_error"] for r in dead_rows}
-        assert "codex_failed" in statuses
-        assert "raw_missing" in statuses
+        assert len(dead_rows) == 1
+        assert dead_rows[0]["last_error"] == "raw_missing"
+        assert dead_rows[0]["raw_missing_count"] == 5

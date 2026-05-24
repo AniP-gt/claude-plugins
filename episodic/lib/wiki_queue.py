@@ -1,13 +1,16 @@
 """wiki-runner の ingest-queue.jsonl 操作。
 
 bash wiki-runner.sh の 4 関数を Python 化:
-  - purge_missing_entries: raw_path 不在エントリを dead-letter へ移送
+  - purge_missing_entries: raw_path 不在エントリを backoff 再試行 / 上限超過分は dead-letter へ
   - read_pending_entries:  pending（retry_after 経過 / processing timeout 超過）エントリを取得
   - mark_processing:       指定 identity を status=processing に
   - update_queue_after_results: 結果に応じて成功削除 / 失敗 retry / max 超過 deadletter
 
 queue ファイルは fcntl.flock で排他制御し、複数プロセス並行操作でも整合性を保つ。
 identity tuple は (raw_path, kind, slug) で、kind=person のみ slug を区別子に使う。
+
+raw_missing は session-runner による raw 書き換えとの race で頻発するため、
+`raw_missing_count` を独立に保持し短い backoff で再試行する（max 到達分のみ dead-letter）。
 """
 from __future__ import annotations
 
@@ -49,20 +52,38 @@ def _identity(entry: dict) -> tuple[str, str, str]:
     return (entry.get("raw_path") or "", kind, slug)
 
 
-def purge_missing_entries(queue_path: Path, log: Callable[[str], None] | None = None) -> int:
-    """pending / processing で raw_path が不在のエントリを deadletter へ移送する。
+def _raw_missing_backoff(count: int, base_seconds: int, cap_seconds: int = 1800) -> int:
+    """raw_missing リトライの backoff 秒数を計算する（base * 2^(n-1)、上限 cap）。"""
+    n = max(1, int(count))
+    delay = int(base_seconds) * (2 ** (n - 1))
+    return min(delay, int(cap_seconds))
 
-    返り値: 移送した件数。
+
+def purge_missing_entries(
+    queue_path: Path,
+    log: Callable[[str], None] | None = None,
+    max_raw_missing_attempts: int = 5,
+    retry_base_seconds: int = 60,
+    now_epoch: float | None = None,
+) -> tuple[int, int]:
+    """pending / processing で raw_path が不在のエントリを処理する。
+
+    `raw_missing_count` を increment し、上限未満なら短い backoff で再試行（status=pending のまま、
+    `retry_after_epoch` を設定）。上限到達分のみ deadletter へ移送する。
+
+    返り値: (deferred_count, dead_letter_count)。
     deadletter path は queue_path と同じ親ディレクトリの ingest-deadletter.jsonl。
     """
     q = Path(queue_path)
     dead = q.parent / "ingest-deadletter.jsonl"
     if not q.exists():
-        return 0
+        return 0, 0
 
-    now_dt = datetime.fromtimestamp(time.time(), timezone.utc).astimezone()
+    now = float(now_epoch) if now_epoch is not None else time.time()
+    now_dt = datetime.fromtimestamp(now, timezone.utc).astimezone()
     remaining: list[str] = []
     dead_rows: list[str] = []
+    deferred = 0
 
     with q.open("a+", encoding="utf-8") as f:
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
@@ -78,19 +99,26 @@ def purge_missing_entries(queue_path: Path, log: Callable[[str], None] | None = 
             status = d.get("status") or "pending"
             raw = d.get("raw_path", "")
             if status in ("pending", "processing") and raw and not Path(raw).is_file():
-                d["status"] = "dead_letter"
+                count = int(d.get("raw_missing_count") or 0) + 1
+                d["raw_missing_count"] = count
                 d["last_error"] = "raw_missing"
                 d["last_failed_at"] = now_dt.isoformat(timespec="seconds")
-                d["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
-                for k in (
-                    "processing_started_at",
-                    "processing_started_epoch",
-                    "runner_pid",
-                    "retry_after",
-                    "retry_after_epoch",
-                ):
+                for k in ("processing_started_at", "processing_started_epoch", "runner_pid"):
                     d.pop(k, None)
-                dead_rows.append(json.dumps(d, ensure_ascii=False))
+                if count >= max_raw_missing_attempts:
+                    d["status"] = "dead_letter"
+                    d["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
+                    d.pop("retry_after", None)
+                    d.pop("retry_after_epoch", None)
+                    dead_rows.append(json.dumps(d, ensure_ascii=False))
+                    continue
+                delay = _raw_missing_backoff(count, retry_base_seconds)
+                retry_at = datetime.fromtimestamp(now + delay, timezone.utc).astimezone()
+                d["status"] = "pending"
+                d["retry_after"] = retry_at.isoformat(timespec="seconds")
+                d["retry_after_epoch"] = now + delay
+                deferred += 1
+                remaining.append(json.dumps(d, ensure_ascii=False))
                 continue
             remaining.append(json.dumps(d, ensure_ascii=False))
         f.seek(0)
@@ -103,9 +131,12 @@ def purge_missing_entries(queue_path: Path, log: Callable[[str], None] | None = 
         with dead.open("a", encoding="utf-8") as f:
             for row in dead_rows:
                 f.write(row + "\n")
-        if log:
-            log(f"purge: dead-lettered {len(dead_rows)} raw_missing entries")
-    return len(dead_rows)
+    if log:
+        if deferred:
+            log(f"purge: deferred {deferred} raw_missing entries (backoff retry)")
+        if dead_rows:
+            log(f"purge: dead-lettered {len(dead_rows)} raw_missing entries (max attempts)")
+    return deferred, len(dead_rows)
 
 
 def read_pending_entries(
@@ -207,6 +238,8 @@ def update_queue_after_results(
     max_attempts: int,
     retry_base_seconds: int = 300,
     now_epoch: float | None = None,
+    max_raw_missing_attempts: int = 5,
+    raw_missing_retry_base_seconds: int = 60,
 ) -> tuple[int, int]:
     """codex 実行結果を反映する。
 
@@ -255,16 +288,26 @@ def update_queue_after_results(
                 label = failures.get(ident, "")
                 for k in ("processing_started_at", "processing_started_epoch", "runner_pid"):
                     d.pop(k, None)
-                # raw 不在は永続失敗。attempt_count を増やさず即 dead-letter
+                # raw 不在は session-runner との race 由来が多いため、独立カウンタで再試行する
                 if label.startswith("missing:"):
+                    count = int(d.get("raw_missing_count") or 0) + 1
+                    d["raw_missing_count"] = count
                     d["last_error"] = "raw_missing"
                     d["last_failed_at"] = now_dt.isoformat(timespec="seconds")
-                    d.pop("retry_after", None)
-                    d.pop("retry_after_epoch", None)
-                    dead_row = dict(d)
-                    dead_row["status"] = "dead_letter"
-                    dead_row["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
-                    dead_rows.append(json.dumps(dead_row, ensure_ascii=False))
+                    if count >= max_raw_missing_attempts:
+                        d.pop("retry_after", None)
+                        d.pop("retry_after_epoch", None)
+                        dead_row = dict(d)
+                        dead_row["status"] = "dead_letter"
+                        dead_row["dead_lettered_at"] = now_dt.isoformat(timespec="seconds")
+                        dead_rows.append(json.dumps(dead_row, ensure_ascii=False))
+                        continue
+                    delay = _raw_missing_backoff(count, raw_missing_retry_base_seconds)
+                    retry_at = datetime.fromtimestamp(now + delay, timezone.utc).astimezone()
+                    d["status"] = "pending"
+                    d["retry_after"] = retry_at.isoformat(timespec="seconds")
+                    d["retry_after_epoch"] = now + delay
+                    remaining.append(json.dumps(d, ensure_ascii=False))
                     continue
                 attempts = int(d.get("attempt_count") or 0) + 1
                 d["attempt_count"] = attempts

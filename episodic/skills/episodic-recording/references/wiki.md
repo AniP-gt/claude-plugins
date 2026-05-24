@@ -30,6 +30,7 @@
 - **batch 化**: 同一 target に複数 Raw が pending している場合、最大 `MEMORIES_WIKI_BATCH_SIZE` 件まで 1 回の Codex 呼び出しに束ねる（API 呼び出し回数削減）
 - **キュー駆動**: 処理対象は `~/.local/share/episodic/state/ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` を経過したエントリ。`status: processing` でも `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS`（既定 3600s）を超えたものは stuck 扱いで再処理対象に戻る
 - **失敗時 retry / dead-letter**: Codex 失敗エントリは `status: pending` に戻して `attempt_count` 加算 + 指数 backoff（`MEMORIES_WIKI_RETRY_BASE_SECONDS` × 2^(n-1)、上限 86400s）の `retry_after_epoch` を付ける。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に移送
+- **raw_missing は独立カウンタで retry**: session-runner による raw 書き換えとの race で `raw_path` 不在を踏むことがあるため、`raw_missing_count` を `attempt_count` と独立に保持し、短い backoff（`MEMORIES_WIKI_RAW_MISSING_RETRY_BASE_SECONDS` × 2^(n-1)、上限 1800s）で再試行する。`MEMORIES_WIKI_MAX_RAW_MISSING_ATTEMPTS` 到達分のみ `ingest-deadletter.jsonl` に移送する
 - **debounce 起動**: enqueue 後の起動は `kick-runner.sh` 経由で `MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS`（既定 5s）デバウンスし、同時複数 enqueue を 1 回の runner 起動に折り畳む。runner 実行中の追加 kick は完了待ちしてから再起動を判定する
 - **state 永続化**: `~/.local/share/episodic/state/` 配下に置く（OS 再起動でも pending を保持）
 - **kind 別 Codex モデル**: 統合難易度が kind ごとに異なるため、既定値を分離している:
@@ -72,8 +73,10 @@
 - `MEMORIES_LOG_ROTATE_KEEP`: 同上の保持世代数（既定 3）
 - `MEMORIES_WIKI_BATCH_SIZE`: 同一 target に束ねる Raw 件数の上限（既定 8）
 - `MEMORIES_WIKI_PARALLELISM`: 別 target の同時処理数（既定 2）
-- `MEMORIES_WIKI_MAX_ATTEMPTS`: 失敗時の最大試行回数（既定 5、超過で dead-letter）
-- `MEMORIES_WIKI_RETRY_BASE_SECONDS`: 指数 backoff の初期秒数（既定 300、上限 86400）
+- `MEMORIES_WIKI_MAX_ATTEMPTS`: Codex 失敗時の最大試行回数（既定 5、超過で dead-letter）
+- `MEMORIES_WIKI_RETRY_BASE_SECONDS`: Codex 失敗の指数 backoff 初期秒数（既定 300、上限 86400）
+- `MEMORIES_WIKI_MAX_RAW_MISSING_ATTEMPTS`: raw_missing の最大試行回数（既定 5、超過で dead-letter）
+- `MEMORIES_WIKI_RAW_MISSING_RETRY_BASE_SECONDS`: raw_missing の backoff 初期秒数（既定 60、上限 1800）
 - `MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS`: `status: processing` を stuck と判定する経過秒数（既定 3600）
 - `MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS`: target lock 取得待ちの最大秒数（既定 7200）
 - `MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS`: `kick-runner.sh` のデバウンス秒数（既定 5）

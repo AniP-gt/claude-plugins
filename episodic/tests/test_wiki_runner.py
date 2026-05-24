@@ -95,9 +95,10 @@ def test_no_codex_drains_queue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert (memories_dir / "wiki" / "index.md").is_file()
 
 
-def test_raw_missing_goes_to_deadletter_via_purge(
+def test_raw_missing_first_miss_is_deferred_not_deadlettered(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """race 由来の raw_missing は即時 dead-letter ではなく backoff 再試行される。"""
     memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
     q = _write_queue(state_dir, [
         {"raw_path": str(tmp_path / "ghost.md"), "kind": "session", "status": "pending"},
@@ -111,12 +112,47 @@ def test_raw_missing_goes_to_deadletter_via_purge(
         trigger_cocoindex=False,
     )
     assert rc == 0
-    # purge で deadletter へ
+    # deadletter は生成されない
+    dead = state_dir / "ingest-deadletter.jsonl"
+    assert not dead.exists() or dead.read_text().strip() == ""
+    # queue にエントリは残り、raw_missing_count=1 / retry_after_epoch が設定される
+    rows = [json.loads(ln) for ln in q.read_text().splitlines() if ln.strip()]
+    assert len(rows) == 1
+    assert rows[0]["status"] == "pending"
+    assert rows[0]["raw_missing_count"] == 1
+    assert rows[0]["last_error"] == "raw_missing"
+    assert "retry_after_epoch" in rows[0]
+
+
+def test_raw_missing_deadletters_after_max_attempts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """raw_missing_count が上限に達すると dead-letter へ移送される。"""
+    memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("MEMORIES_WIKI_MAX_RAW_MISSING_ATTEMPTS", "3")
+    q = _write_queue(state_dir, [
+        {
+            "raw_path": str(tmp_path / "ghost.md"),
+            "kind": "session",
+            "status": "pending",
+            "raw_missing_count": 2,  # 次の miss で 3 = max
+        },
+    ])
+    rc = wiki_runner.run(
+        memories_dir=memories_dir,
+        no_codex=True,
+        state_dir=state_dir,
+        log_dir=log_dir,
+        notifier=NullNotifier(),
+        trigger_cocoindex=False,
+    )
+    assert rc == 0
     dead = state_dir / "ingest-deadletter.jsonl"
     assert dead.is_file()
     rows = [json.loads(ln) for ln in dead.read_text().splitlines() if ln.strip()]
     assert len(rows) == 1
     assert rows[0]["last_error"] == "raw_missing"
+    assert rows[0]["raw_missing_count"] == 3
 
 
 def test_self_poll_processes_late_entries(

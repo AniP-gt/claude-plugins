@@ -1,6 +1,6 @@
 {
   "name": "episodic",
-  "version": "3.11.0",
+  "version": "3.11.1",
   "description": "Claude Code セッション・Web・議事録・日記のエピソード記憶を Wiki に統合し cocoindex で検索。minutes/diary からの人物 Wiki 自動生成も内蔵。",
   "author": { "name": "miya" },
   "keywords": ["episodic", "memory", "claude-code", "session", "codex", "vector-search", "jina-reader", "minutes", "notion", "diary", "people"]
