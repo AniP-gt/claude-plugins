@@ -364,6 +364,141 @@ def test_index_regenerated_after_run(
     assert (memories_dir / "wiki" / "index.md").is_file()
 
 
+def _make_counting_factory(counter: dict):
+    """run() 呼び出し回数（= 実行された job 数）を数える fake runner factory。"""
+
+    def make(model, sandbox_mode, cwd_dir):  # noqa: ARG001
+        class FakeRunner:
+            def run(self, prompt, log_file, capture):  # noqa: ARG002
+                counter["calls"] += 1
+                from lib.codex_runner import CodexResult
+
+                return CodexResult(returncode=0)
+
+        return FakeRunner()
+
+    return make
+
+
+def test_single_target_multi_raw_is_one_lead_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """同一 target に集約される複数 raw は 1 lead job にまとまる（batch 分割しない）。"""
+    memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("CODEX_BINARY", "/usr/bin/true")
+    monkeypatch.delenv("MEMORIES_WIKI_LEAD_MAX_RAW", raising=False)
+    entries = []
+    for i in range(5):
+        r = tmp_path / f"s{i}.md"
+        r.write_text("---\nproject: alpha\n---\nbody\n")
+        entries.append({"raw_path": str(r), "kind": "session", "status": "pending"})
+    _write_queue(state_dir, entries)
+
+    counter = {"calls": 0}
+    rc = wiki_runner.run(
+        memories_dir=memories_dir,
+        no_codex=False,
+        state_dir=state_dir,
+        log_dir=log_dir,
+        notifier=NullNotifier(),
+        codex_runner_factory=_make_counting_factory(counter),
+        trigger_cocoindex=False,
+        max_iterations=1,
+    )
+    assert rc == 0
+    # 5 raw が同一 project → lead は 1 回だけ起動
+    assert counter["calls"] == 1
+
+
+def test_lead_max_raw_splits_oversized_group(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """raw 件数が LEAD_MAX_RAW を超えると安全弁で分割される。"""
+    memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("CODEX_BINARY", "/usr/bin/true")
+    monkeypatch.setenv("MEMORIES_WIKI_LEAD_MAX_RAW", "2")
+    entries = []
+    for i in range(5):
+        r = tmp_path / f"s{i}.md"
+        r.write_text("---\nproject: alpha\n---\nbody\n")
+        entries.append({"raw_path": str(r), "kind": "session", "status": "pending"})
+    _write_queue(state_dir, entries)
+
+    counter = {"calls": 0}
+    rc = wiki_runner.run(
+        memories_dir=memories_dir,
+        no_codex=False,
+        state_dir=state_dir,
+        log_dir=log_dir,
+        notifier=NullNotifier(),
+        codex_runner_factory=_make_counting_factory(counter),
+        trigger_cocoindex=False,
+        max_iterations=1,
+    )
+    assert rc == 0
+    # 5 raw / max 2 → ceil(5/2) = 3 job
+    assert counter["calls"] == 3
+
+
+def test_people_extract_enqueues_normalized_slug(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """lead が名寄せした JSON が dispatch 経由で person enqueue に正しく渡る。"""
+    memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("CODEX_BINARY", "/usr/bin/true")
+    raw = memories_dir / "raw" / "minutes" / "2026-04-15" / "000000_test.md"
+    raw.parent.mkdir(parents=True)
+    raw.write_text("---\nkind: minutes\ndate: 2026-04-15\n---\n山田さんと打合せ\n")
+    _write_queue(state_dir, [
+        {
+            "raw_path": str(raw),
+            "kind": "people_extract",
+            "source_kind": "minutes",
+            "status": "pending",
+        },
+    ])
+
+    payload = (
+        '{"people":[{"name":"山田太郎","slug":"山田太郎","aliases":["山田さん"],'
+        '"context":"打合せ","source_raw":"' + str(raw) + '",'
+        '"source_basename":"000000_test.md","source_kind":"minutes",'
+        '"source_date":"2026-04-15"}]}'
+    )
+    marker = "<<<PEOPLE_JSON_BEGIN>>>\n" + payload + "\n<<<PEOPLE_JSON_END>>>"
+
+    def make(model, sandbox_mode, cwd_dir):  # noqa: ARG001
+        class FakeRunner:
+            def run(self, prompt, log_file, capture):  # noqa: ARG002
+                Path(capture).write_text(marker, encoding="utf-8")
+                from lib.codex_runner import CodexResult
+
+                return CodexResult(returncode=0)
+
+        return FakeRunner()
+
+    rc = wiki_runner.run(
+        memories_dir=memories_dir,
+        no_codex=False,
+        state_dir=state_dir,
+        log_dir=log_dir,
+        notifier=NullNotifier(),
+        codex_runner_factory=make,
+        trigger_cocoindex=False,
+        max_iterations=1,
+    )
+    assert rc == 0
+    rows = [
+        json.loads(ln)
+        for ln in (state_dir / "ingest-queue.jsonl").read_text().splitlines()
+        if ln.strip()
+    ]
+    person_rows = [r for r in rows if r.get("kind") == "person"]
+    assert len(person_rows) == 1
+    assert person_rows[0]["slug"] == "山田太郎"
+    assert person_rows[0]["name"] == "山田太郎"
+    assert "山田さん" in person_rows[0]["aliases"]
+
+
 def test_cocoindex_trigger_called_only_on_processed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

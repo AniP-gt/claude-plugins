@@ -37,6 +37,9 @@ class CodexRunner:
         model: model 名（例 "gpt-5.4-mini"）
         effort: model_reasoning_effort（minimal/low/medium/high/xhigh）
         timeout_seconds: 0 で無効
+        multi_agent: True で `-c features.multi_agent=true` を付与し、lead が
+            subagent を spawn できるようにする（subagent は lead と同一モデルを
+            full-history fork で継承するため追加のモデル指定はしない）
         extra_args: codex exec の前段に追加する引数（cwd など必要なら）
         env_overrides: subprocess env への追加
     """
@@ -46,6 +49,7 @@ class CodexRunner:
     timeout_seconds: int = 300
     codex_bin: str | None = None
     sandbox_mode: str = "workspace-write"
+    multi_agent: bool = True
     extra_args: list[str] = field(default_factory=list)
     env_overrides: dict[str, str] = field(default_factory=dict)
 
@@ -70,7 +74,7 @@ class CodexRunner:
 
     def build_cmd(self, capture_file: Path) -> list[str]:
         binary = self.resolve_binary()
-        return [
+        cmd = [
             binary,
             "exec",
             "--disable",
@@ -83,12 +87,19 @@ class CodexRunner:
             "--dangerously-bypass-approvals-and-sandbox",
             "-c",
             f"model_reasoning_effort={self.effort}",
+        ]
+        if self.multi_agent:
+            # runner は --ignore-user-config を渡すため config.toml に頼れない。
+            # CLI フラグで multi_agent を有効化し、lead が subagent を spawn できるようにする。
+            cmd += ["-c", "features.multi_agent=true"]
+        cmd += [
             "-m",
             self.model,
             "-o",
             str(capture_file),
             *self.extra_args,
         ]
+        return cmd
 
     def run(
         self,

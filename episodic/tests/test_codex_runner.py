@@ -102,3 +102,12 @@ def test_build_cmd_includes_required_flags(tmp_path: Path, safe_bin: Path) -> No
     assert "model_reasoning_effort=low" in cmd
     assert "-m" in cmd and "gpt-x" in cmd
     assert "-o" in cmd
+    # multi_agent は既定で有効（lead が subagent を spawn できるように）
+    assert "features.multi_agent=true" in cmd
+
+
+def test_build_cmd_multi_agent_disabled(tmp_path: Path, safe_bin: Path) -> None:
+    fake = _make_exec(safe_bin / "codex", "exit 0")
+    runner = CodexRunner(model="gpt-x", effort="low", codex_bin=str(fake), multi_agent=False)
+    cmd = runner.build_cmd(tmp_path / "cap.txt")
+    assert "features.multi_agent=true" not in cmd

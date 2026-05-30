@@ -436,6 +436,8 @@ def _default_codex_runner_factory(timeout_seconds: int):
             effort="low",
             timeout_seconds=timeout_seconds,
             sandbox_mode=sandbox_mode,
+            # lead を multi_agent オーケストレータにし、subagent に raw 抽出を分担させる。
+            multi_agent=True,
         )
 
     return make
@@ -451,6 +453,7 @@ def run(
     log_dir: Path | None = None,
     max_iterations: int | None = None,
     batch_size: int | None = None,
+    lead_max_raw: int | None = None,
     parallelism: int | None = None,
     max_attempts: int | None = None,
     retry_base_seconds: int | None = None,
@@ -557,6 +560,10 @@ def run(
             max_iterations = _env_int("MEMORIES_WIKI_MAX_SELF_POLL", 10, log)
         if batch_size is None:
             batch_size = _env_int("MEMORIES_WIKI_BATCH_SIZE", 8, log)
+        if lead_max_raw is None:
+            # 1 target = 1 lead job が原則。lead 内 subagent が raw を分担するため
+            # batch_size では割らず、この安全弁を超えたときだけ分割する。
+            lead_max_raw = _env_int("MEMORIES_WIKI_LEAD_MAX_RAW", 40, log)
         if parallelism is None:
             parallelism = _env_int("MEMORIES_WIKI_PARALLELISM", 3, log)
         if max_attempts is None:
@@ -605,15 +612,19 @@ def run(
 
             groups, immediate_failures = _build_groups(pending, wiki_dir, log)
 
-            # batch 分割
+            # 1 target = 1 lead job 化。lead が multi_agent で raw を subagent に分担する
+            # ため batch_size では割らない。ただし raw 件数が lead_max_raw を超える場合のみ、
+            # プロンプト肥大とリソース過負荷を避けるため安全弁として分割する。
             batch_jobs: list[
                 tuple[str, str, Path, Path, str, str, str, list[dict]]
             ] = []
             job_no = 0
             for kind, target, instruction, label, project, model, items in groups:
-                for i in range(0, len(items), batch_size):
+                step = lead_max_raw if (lead_max_raw > 0 and len(items) > lead_max_raw) else len(items)
+                step = step or 1
+                for i in range(0, len(items), step):
                     job_no += 1
-                    sub = items[i : i + batch_size]
+                    sub = items[i : i + step]
                     batch_jobs.append(
                         (f"job-{job_no}", kind, target, instruction, label, project, model, sub)
                     )
