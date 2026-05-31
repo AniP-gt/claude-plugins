@@ -33,10 +33,18 @@ argument-hint: "session regenerate <sid> | session extract <sid> <subcmd> | web 
 └── diary/YYYY-MM-DD/HHMMSS_<slug>.md                 # kind: diary
 
 <memories_dir>/wiki/diary/YYYYMM.md                   # diary の月次 Wiki 集約
-<memories_dir>/wiki/people/<slug>.md                  # 人物 Wiki（minutes/diary から自動抽出）
+<memories_dir>/wiki/people/<slug>.md                  # 人物 Wiki（minutes/diary から自動抽出。slug は人名のみ）
+<memories_dir>/wiki/orgs/<slug>.md                    # 組織 Wiki（minutes/diary から自動抽出。kind: org）
 ```
 
 minutes / diary を保存すると、本体 Wiki 更新と並列で **人物名抽出 Codex（kind: people_extract）** が走り、検出された各人物について `wiki/people/<slug>.md` を時系列に追記する（kind: person）。明示的なフルネームや「○○さん」表記が対象で、役職単体・代名詞は除外、メール / 電話 / SNS ID 等の連絡可能識別子は記録しない。
+
+people_extract は **人物に加えて組織も抽出**し、組織は新 kind `org`（`wiki/codex-instruction-org.md`）が slug 単位に `wiki/orgs/<slug>.md` へ統合する。人物 slug は会社名プレフィックスを付けず人名のみとし、本人（記録者）は frontmatter `is_self: true` の 1 ページへ集約する。人物 frontmatter は所属組織 `company: <org slug>`、組織 frontmatter は所属人物 `members`（と関係者セクション）を持ち、人物⇄組織を相互リンクする。people_extract には **既存の人物・組織レジストリ（slug / alias / is_self / company / category）を注入** し、minutes の `participants` frontmatter も基準に使ってジョブ横断で名寄せをグローバル化する（重複ページの再発防止）。組織は Codex 側の web 検索（`-c tools.web_search=true`）で公式情報を裏取りし、frontmatter の `web_checked_at` が未設定のときだけ検索する冪等設計（既検索・未発見は再検索しない）。`wiki/index.md` には「Orgs（組織）」セクションを持つ。
+
+人物 / 組織 Wiki の保守には 2 つの決定論的 CLI がある:
+
+- `lib/wiki_reconcile.py` — 重複ページを検出・統合する（dry-run 既定）。`python -m lib.wiki_reconcile --kind {people,orgs,both} [--apply]`
+- `wiki/org_web_verify.py` — `web_checked_at` 未設定の組織を Codex web 検索で裏取りし website / web_status / web_checked_at と概要を更新する（冪等、`--force` / `--dry-run` / `--only SLUG`）。検索は Codex 側で行い Claude トークンを使わない
 
 session 共有が未マウント（外出時など）の場合は自動で `~/.local/share/episodic/raw-staging/YYYY-MM-DD/HHMMSS_<host8>_<sid8>__staged.md` に退避し、次回セッション開始時に共有が見えていれば `sync-pending.sh` が `raw/session/` 配下へ自動移送する。minutes / diary も共有未マウント時は `raw-staging/<kind>/YYYY-MM-DD/...__staged.md` へ退避し、次回マウント時に `sync-pending.sh` が `raw/<kind>/` 配下へ移送する。web のみ Jina Reader 取得経路でマウント前提（staging なし）。
 

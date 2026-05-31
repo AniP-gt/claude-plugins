@@ -40,6 +40,9 @@ class CodexRunner:
         multi_agent: True で `-c features.multi_agent=true` を付与し、lead が
             subagent を spawn できるようにする（subagent は lead と同一モデルを
             full-history fork で継承するため追加のモデル指定はしない）
+        web_search: True で `-c tools.web_search=true` を付与し、codex から
+            web 検索ツールを利用可能にする（org の公式情報裏取り用）。サーバ側
+            ツールのため read-only / workspace-write いずれの sandbox でも機能する。
         extra_args: codex exec の前段に追加する引数（cwd など必要なら）
         env_overrides: subprocess env への追加
     """
@@ -50,6 +53,7 @@ class CodexRunner:
     codex_bin: str | None = None
     sandbox_mode: str = "workspace-write"
     multi_agent: bool = True
+    web_search: bool = False
     extra_args: list[str] = field(default_factory=list)
     env_overrides: dict[str, str] = field(default_factory=dict)
 
@@ -92,6 +96,10 @@ class CodexRunner:
             # runner は --ignore-user-config を渡すため config.toml に頼れない。
             # CLI フラグで multi_agent を有効化し、lead が subagent を spawn できるようにする。
             cmd += ["-c", "features.multi_agent=true"]
+        if self.web_search:
+            # codex exec では `--search` フラグは非対応。`-c tools.web_search=true` で
+            # サーバ側 web 検索ツールを有効化する。effort=low 以上で動作する。
+            cmd += ["-c", "tools.web_search=true"]
         cmd += [
             "-m",
             self.model,

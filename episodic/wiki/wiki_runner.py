@@ -44,6 +44,7 @@ INSTRUCTION_MINUTES = SCRIPT_DIR / "codex-instruction-minutes.md"
 INSTRUCTION_DIARY = SCRIPT_DIR / "codex-instruction-diary.md"
 INSTRUCTION_EXTRACT_PEOPLE = SCRIPT_DIR / "codex-instruction-extract-people.md"
 INSTRUCTION_PERSON = SCRIPT_DIR / "codex-instruction-person.md"
+INSTRUCTION_ORG = SCRIPT_DIR / "codex-instruction-org.md"
 
 DEFAULT_MODELS = {
     "session": "gpt-5.4",
@@ -52,6 +53,7 @@ DEFAULT_MODELS = {
     "diary": "gpt-5.4-mini",
     "people_extract": "gpt-5.4-mini",
     "person": "gpt-5.4-mini",
+    "org": "gpt-5.4-mini",
 }
 MODEL_ENV = {
     "session": "CODEX_MEMORY_WIKI_MODEL_SESSION",
@@ -60,6 +62,7 @@ MODEL_ENV = {
     "diary": "CODEX_MEMORY_WIKI_MODEL_DIARY",
     "people_extract": "CODEX_MEMORY_WIKI_MODEL_EXTRACT_PEOPLE",
     "person": "CODEX_MEMORY_WIKI_MODEL_PERSON",
+    "org": "CODEX_MEMORY_WIKI_MODEL_ORG",
 }
 
 
@@ -174,6 +177,19 @@ def _resolve_wiki_target(
             log(f"  error: person slug escapes wiki/people/: slug='{slug}' target='{wiki_target}'")
             return kind, None, INSTRUCTION_PERSON, "person:unsafe-slug", slug
         return kind, wiki_target, INSTRUCTION_PERSON, f"people/{slug}", slug
+    if kind == "org":
+        slug = entry.get("slug", "")
+        if not slug:
+            log(f"  error: org entry without slug: raw={raw_path}")
+            return kind, None, INSTRUCTION_ORG, "org:missing-slug", ""
+        wiki_target = wiki_dir / "orgs" / f"{slug}.md"
+        # 防衛層: パスが wiki/orgs/ 配下に留まっているか
+        real_target = os.path.realpath(wiki_target)
+        wiki_orgs_real = os.path.realpath(wiki_dir / "orgs") + "/"
+        if not (real_target.startswith(wiki_orgs_real) and real_target.endswith(".md")):
+            log(f"  error: org slug escapes wiki/orgs/: slug='{slug}' target='{wiki_target}'")
+            return kind, None, INSTRUCTION_ORG, "org:unsafe-slug", slug
+        return kind, wiki_target, INSTRUCTION_ORG, f"orgs/{slug}", slug
 
     log(f"warn: unknown kind '{kind}' for {raw_path}; treating as session")
     return ("session", wiki_dir / "projects" / "unknown.md", INSTRUCTION_SESSION, "unknown", "unknown")
@@ -314,7 +330,7 @@ def _process_batch_job(
 
     結果 dict 形式: {"status": "success"|"failed", "label", "raw_path", "kind", "slug"}
     """
-    slug = project if kind == "person" else ""
+    slug = project if kind in ("person", "org") else ""
     raw_count = len(entries)
 
     import hashlib
@@ -358,6 +374,7 @@ def _process_batch_job(
         # prompt 組立 & codex 呼び出し
         wiki_target.parent.mkdir(parents=True, exist_ok=True)
         cwd_dir = wiki_target.parent
+        web_search_enabled = False
         if kind == "person":
             mentions = []
             for entry in entries:
@@ -377,6 +394,31 @@ def _process_batch_job(
             prompt_text = wiki_prompt.build_combined_prompt_person(
                 instruction, wiki_target, mentions, slug
             )
+        elif kind == "org":
+            mentions = []
+            for entry in entries:
+                mention = {
+                    "name": entry.get("name", ""),
+                    "slug": entry.get("slug", ""),
+                    "aliases": entry.get("aliases", []),
+                    "category": entry.get("category", ""),
+                    "context": entry.get("context", ""),
+                    "source_kind": entry.get("source_kind", ""),
+                    "source_raw": entry.get("raw_path", ""),
+                }
+                sr = mention["source_raw"]
+                if sr:
+                    mention["source_basename"] = Path(sr).name
+                    mention["source_date"] = Path(sr).parent.name
+                mentions.append(mention)
+            # 既存 org wiki に web_checked_at があれば web 検索しない（冪等性確保）。
+            web_checked_at = ""
+            if wiki_target.is_file():
+                web_checked_at = (fm.parse(wiki_target).get("web_checked_at", "") or "").strip()
+            web_search_enabled = web_checked_at in ("", "null", "~", "None")
+            prompt_text = wiki_prompt.build_combined_prompt_org(
+                instruction, wiki_target, mentions, slug, web_search_enabled
+            )
         else:
             raw_paths = [Path(e.get("raw_path", "")) for e in entries]
             prompt_text = wiki_prompt.build_combined_prompt_batch(
@@ -388,7 +430,11 @@ def _process_batch_job(
         try:
             prompt_path.write_text(prompt_text, encoding="utf-8")
             sandbox_mode = "read-only" if kind == "people_extract" else "workspace-write"
-            runner = codex_runner_factory(model=model, sandbox_mode=sandbox_mode, cwd_dir=cwd_dir)
+            factory_kwargs = {"model": model, "sandbox_mode": sandbox_mode, "cwd_dir": cwd_dir}
+            if kind == "org" and web_search_enabled:
+                # 未裏取りの組織のみ codex の web 検索を有効化する。
+                factory_kwargs["web_search"] = True
+            runner = codex_runner_factory(**factory_kwargs)
             try:
                 result: CodexResult = runner.run(prompt_path, log_file, capture_path)
             except (FileNotFoundError, PermissionError, OSError) as e:
@@ -420,6 +466,10 @@ def _process_batch_job(
                 log(f"  codex success batch={job_id} (person slug={slug})")
                 return _result("success")
 
+            if kind == "org":
+                log(f"  codex success batch={job_id} (org slug={slug})")
+                return _result("success")
+
             log(f"  codex success batch={job_id}")
             return _result("success")
         finally:
@@ -430,7 +480,9 @@ def _process_batch_job(
 
 
 def _default_codex_runner_factory(timeout_seconds: int):
-    def make(model: str, sandbox_mode: str, cwd_dir: Path) -> CodexRunner:
+    def make(
+        model: str, sandbox_mode: str, cwd_dir: Path, web_search: bool = False
+    ) -> CodexRunner:
         return CodexRunner(
             model=model,
             effort="low",
@@ -438,6 +490,7 @@ def _default_codex_runner_factory(timeout_seconds: int):
             sandbox_mode=sandbox_mode,
             # lead を multi_agent オーケストレータにし、subagent に raw 抽出を分担させる。
             multi_agent=True,
+            web_search=web_search,
         )
 
     return make
@@ -484,6 +537,7 @@ def run(
     (wiki_dir / "minutes").mkdir(parents=True, exist_ok=True)
     (wiki_dir / "diary").mkdir(parents=True, exist_ok=True)
     (wiki_dir / "people").mkdir(parents=True, exist_ok=True)
+    (wiki_dir / "orgs").mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
     for p in (state_dir, target_lock_root, log_dir):
         try:

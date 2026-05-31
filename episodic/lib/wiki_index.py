@@ -16,7 +16,7 @@ def _count_md_files(dir_path: Path) -> int:
     return sum(1 for p in dir_path.rglob("*.md") if not p.name.startswith("."))
 
 
-def _people_mention_count(target: Path) -> int:
+def _mention_count(target: Path) -> int:
     """frontmatter から mention_count を取り出す。フィールド不在なら 0。"""
     try:
         text = target.read_text(encoding="utf-8")
@@ -35,6 +35,11 @@ def _people_mention_count(target: Path) -> int:
             except ValueError:
                 return 0
     return 0
+
+
+# people/orgs 双方の mention_count 集計に使う汎用関数。
+# 既存呼び出し互換のため _people_mention_count を別名として残す。
+_people_mention_count = _mention_count
 
 
 def enforce_source_count(target: Path, expected: int) -> None:
@@ -132,9 +137,21 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
     ]
     people_files = sorted(
         people_files_raw,
-        key=lambda x: (-_people_mention_count(x), x.stem),
+        key=lambda x: (-_mention_count(x), x.stem),
     )
     people_count = len(people_files)
+
+    orgs_wiki_dir = wiki / "orgs"
+    orgs_files_raw = [
+        p
+        for p in (orgs_wiki_dir.glob("*.md") if orgs_wiki_dir.exists() else [])
+        if not p.name.startswith(".")
+    ]
+    orgs_files = sorted(
+        orgs_files_raw,
+        key=lambda x: (-_mention_count(x), x.stem),
+    )
+    orgs_count = len(orgs_files)
 
     # source_count の保険更新
     enforce_source_count(wiki / "references.md", web_count)
@@ -214,10 +231,27 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
         lines.append("")
         for p in people_files:
             rel = p.relative_to(wiki)
-            mc = _people_mention_count(p)
+            mc = _mention_count(p)
             lines.append(f"- [{p.stem}](./{rel}) — 言及 {mc} 件")
     else:
         lines.append("人物 Wiki（minutes/diary に人物名が登場すると自動生成されます）:")
+        lines.append("")
+        lines.append("- (まだ統合されていません)")
+    lines.append("")
+
+    lines.append("## Orgs（組織）")
+    lines.append("")
+    if orgs_files:
+        lines.append(
+            f"組織 Wiki（minutes/diary から自動抽出、計 {orgs_count} 組織、mention_count 降順）:"
+        )
+        lines.append("")
+        for p in orgs_files:
+            rel = p.relative_to(wiki)
+            mc = _mention_count(p)
+            lines.append(f"- [{p.stem}](./{rel}) — 言及 {mc} 件")
+    else:
+        lines.append("組織 Wiki（minutes/diary に組織名が登場すると自動生成されます）:")
         lines.append("")
         lines.append("- (まだ統合されていません)")
     lines.append("")

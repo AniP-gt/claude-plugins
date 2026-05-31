@@ -18,8 +18,23 @@
 | `web` | `wiki/references.md`（テーマ別 + 時系列） | あり | `wiki/codex-instruction-web.md` |
 | `minutes` | `wiki/minutes/YYYYMM.md`（月次集約、議事一覧 + 決定事項 + 残課題） | あり | `wiki/codex-instruction-minutes.md` |
 | `diary` | `wiki/diary/YYYYMM.md`（月次集約、できごと + 気持ち） | あり | `wiki/codex-instruction-diary.md` |
+| `person`（people_extract 由来） | `wiki/people/<slug>.md`（人物単位、人名 slug・本人は `is_self`） | あり | `wiki/codex-instruction-person.md` |
+| `org` | `wiki/orgs/<slug>.md`（組織単位、web 裏取り付き） | あり | `wiki/codex-instruction-org.md` |
 
-4 種すべて Codex で統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。diary も session / web / minutes と同列の通常 kind として `wiki/index.md` に章を持ち、統合先は `memories_dir` 配下で完結する。
+session / web / minutes / diary の 4 種を統合し、minutes / diary からは人物（people_extract）と組織（org）も派生統合する。`wiki/index.md` は機械生成で各統合先ファイルへの入口リンクと件数のみを保持する（再生成可、Codex は触らない）。diary も session / web / minutes と同列の通常 kind として `wiki/index.md` に章を持ち、統合先は `memories_dir` 配下で完結する。
+
+### 人物・組織の名寄せとレジストリ注入
+
+people_extract は **人物に加えて組織も抽出**する（JSON に `orgs[]` と各人物の `org` を含む）。プロンプトには **既存の人物・組織レジストリ（slug / alias / is_self / company / category）を注入**し、minutes の `participants` frontmatter も名寄せ基準に使ってジョブ横断でグローバルに名寄せする（重複ページの再発防止）。slug は会社名プレフィックスを禁止して人名のみとし、本人（記録者）は `is_self: true` の slug へ集約する。組織は新 kind `org` が slug 単位に統合し、Codex 側の web 検索（`-c tools.web_search=true`）で公式情報を裏取りする。`web_checked_at` が未設定のときだけ検索する冪等設計（既検索・未発見は再検索しない）。人物 frontmatter は所属組織 `company: <org slug>`、組織 frontmatter は所属人物 `members`（と関係者セクション）を持ち、人物⇄組織を相互リンクする。
+
+組織 Wiki（`wiki/orgs/<slug>.md`）の frontmatter は title / slug / aliases / `kind: org` / `category`（company | hospital | government | academic | other）/ `members`（所属人物 slug）/ `website` / `web_status`（unchecked | verified | not_found）/ `web_checked_at` / first_seen / last_seen / mention_count を持つ。
+
+### 保守 CLI
+
+人物 / 組織 Wiki には 2 つの決定論的保守 CLI がある:
+
+- `lib/wiki_reconcile.py` — 人物 / 組織 Wiki の重複を検出・統合する（dry-run 既定 → `--apply`）。`python -m lib.wiki_reconcile --kind {people,orgs,both} [--apply]`
+- `wiki/org_web_verify.py` — 組織の web 裏取り保守 CLI。`web_checked_at` 未設定の組織を Codex web 検索で裏取りし website / web_status / web_checked_at と概要を更新する（冪等、`--force` / `--dry-run` / `--only SLUG`）。検索は Codex 側で行い Claude トークンを使わない
 
 ## 制約
 
@@ -50,7 +65,7 @@
 
 - `ingest-queue.jsonl` の `status: pending` かつ `retry_after_epoch` 到達済みのエントリが 0 件、もしくは Codex 連続失敗で backoff 中のエントリのみ
 - 処理成功エントリは queue から削除されている（永続的な archive は保持しない）。`MEMORIES_WIKI_MAX_ATTEMPTS` 超過分は `ingest-deadletter.jsonl` に移送されている
-- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Minutes / Diary）で再生成されている
+- `wiki/index.md` が最新の章立て（Sessions Timeline / References Library / Minutes / Diary / Orgs（組織））で再生成されている
 - 該当 kind の統合先（`wiki/projects/<project>.md` / `wiki/references.md` / `wiki/minutes/<YYYYMM>.md` / `wiki/diary/<YYYYMM>.md`）が Codex により更新されている
 
 ## 入力パラメータ（wiki-runner.sh）
@@ -95,7 +110,9 @@
     ├── projects/<project>.md                              # Codex が統合・更新（kind: session）
     ├── references.md                                      # Codex が統合・更新（kind: web）
     ├── minutes/<YYYYMM>.md                                # Codex が統合・更新（kind: minutes、月次集約）
-    └── diary/<YYYYMM>.md                                  # Codex が統合・更新（kind: diary、月次集約）
+    ├── diary/<YYYYMM>.md                                  # Codex が統合・更新（kind: diary、月次集約）
+    ├── people/<slug>.md                                   # Codex が統合・更新（people_extract、人名 slug）
+    └── orgs/<slug>.md                                     # Codex が統合・更新（kind: org、web 裏取り付き）
 
 ~/.local/share/episodic/state/                            # 永続 state（OS 再起動でも保持）
 ├── ingest-queue.jsonl                                     # 未処理キュー（pending / processing、kind / attempt_count / retry_after_epoch を含む）
@@ -145,7 +162,7 @@ JSONL への append-only 追記は POSIX 上で原子的なので、複数プロ
    - `kind: diary`: frontmatter の `date` から `YYYYMM` 抽出 → `wiki/diary/<YYYYMM>.md`（`codex-instruction-diary.md`、月次集約）
 6. 結果反映: 成功は queue から削除、失敗は `attempt_count` 加算 + 指数 backoff の `retry_after_epoch` を付けて `status: pending` に戻す。`MEMORIES_WIKI_MAX_ATTEMPTS` 到達分は `ingest-deadletter.jsonl` に append
 7. self-poll で次イテレーションへ（pending hash が変化しなければ break、上限は `MEMORIES_WIKI_MAX_SELF_POLL`）
-8. `wiki/index.md` を 4 章立て（**Sessions Timeline** / **References Library** / **Minutes** / **Diary**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
+8. `wiki/index.md` を章立て（**Sessions Timeline** / **References Library** / **Minutes** / **Diary** / **Orgs（組織）**）で機械再生成。AppleDouble（`._*`）と隠しファイルは除外
 9. `PROCESSED_COUNT > 0` なら **`lib/cocoindex_trigger.sh` 経由で cocoindex update を 1 回だけ非同期キック**（統合先 raw/wiki 双方を `MEMORIES_DIR` 配下の単一ソースで再インデックス。diary も `MEMORIES_DIR` 配下の通常 kind として走査対象に含まれる）。runner.sh / sync-pending.sh / fetch-jina.sh / save.sh からは直接呼ばず、wiki-runner.sh への集約で **2 重起動を排除**
 
 ## 手動実行（デバッグ・再構築）
