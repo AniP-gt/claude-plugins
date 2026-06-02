@@ -58,7 +58,7 @@ class TestBuildCombinedPromptBatch:
         # raw_count が展開され、プレースホルダが残らない
         assert "raw_count=3" in text
         assert "{subagent_hint}" not in text
-        assert "subagent" in text  # 3 件 → subagent 起動を促すヒント
+        assert "lead 単独" in text  # subagent 無効化済み → 件数によらず lead 単独
         # 各 Raw の実 kind が source_kind: として混在表記される
         assert "source_kind: minutes" in text
         assert "source_kind: diary" in text

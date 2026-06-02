@@ -488,8 +488,8 @@ def _default_codex_runner_factory(timeout_seconds: int):
             effort="low",
             timeout_seconds=timeout_seconds,
             sandbox_mode=sandbox_mode,
-            # lead を multi_agent オーケストレータにし、subagent に raw 抽出を分担させる。
-            multi_agent=True,
+            # subagent（multi_agent）は full-history fork でトークン消費が数倍に
+            # 膨らむため無効（CodexRunner の既定 multi_agent=False を継承する）。
             web_search=web_search,
         )
 

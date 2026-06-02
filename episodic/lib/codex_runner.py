@@ -39,7 +39,9 @@ class CodexRunner:
         timeout_seconds: 0 で無効
         multi_agent: True で `-c features.multi_agent=true` を付与し、lead が
             subagent を spawn できるようにする（subagent は lead と同一モデルを
-            full-history fork で継承するため追加のモデル指定はしない）
+            full-history fork で継承するため追加のモデル指定はしない）。
+            full-history fork は subagent ごとに lead の全履歴を複製しトークン
+            消費を数倍にするため、既定は False（subagent 無効）。
         web_search: True で `-c tools.web_search=true` を付与し、codex から
             web 検索ツールを利用可能にする（org の公式情報裏取り用）。サーバ側
             ツールのため read-only / workspace-write いずれの sandbox でも機能する。
@@ -52,7 +54,7 @@ class CodexRunner:
     timeout_seconds: int = 300
     codex_bin: str | None = None
     sandbox_mode: str = "workspace-write"
-    multi_agent: bool = True
+    multi_agent: bool = False
     web_search: bool = False
     extra_args: list[str] = field(default_factory=list)
     env_overrides: dict[str, str] = field(default_factory=dict)

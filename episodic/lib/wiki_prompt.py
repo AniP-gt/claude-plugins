@@ -19,21 +19,15 @@ SECURITY_PREAMBLE = (
 )
 
 
-# subagent を使うか lead 単独で処理するかの目安件数。これ以下なら起動コストを避ける。
-SUBAGENT_MIN_RAW = 2
-
-
 def _subagent_hint(count: int, unit: str = "Raw") -> str:
-    """raw / 言及件数に応じた lead への subagent 運用ヒントを生成する。"""
-    if count <= SUBAGENT_MIN_RAW:
-        return (
-            f"{unit} は {count} 件と少数のため、subagent を起動せず lead 単独で"
-            "抽出・統合してよい（subagent 起動のオーバーヘッドを避ける）。"
-        )
+    """lead 単独処理を促すヒントを生成する。
+
+    subagent（multi_agent）は full-history fork でトークン消費が数倍に膨らむため
+    無効化済み。件数によらず lead 単独で抽出・統合させる。
+    """
     return (
-        f"{unit} が {count} 件あるため、multi_agent で subagent を起動し、"
-        f"{unit} のサブセットの抽出・要約を分担させたうえで lead が集約・整合検証して"
-        "1 回だけ書き込むこと。subagent の上限はおおむね 2〜4 とし、過剰な並列起動は避ける。"
+        f"{unit} は {count} 件。subagent は使用せず lead 単独で抽出・統合し、"
+        "整合検証のうえ 1 回だけ書き込むこと。"
     )
 
 SUPERSEDES_NOTE = (
