@@ -36,9 +36,16 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def sync_pending_mod():
+def sync_pending_mod(monkeypatch: pytest.MonkeyPatch):
     sys.modules.pop("sync_pending", None)
     mod = importlib.import_module("sync_pending")
+    # 実 _kick_wiki_runner は detached の kick_runner → wiki_runner → 実 codex 起動 →
+    # macOS 失敗通知（テスト終了の数分後）まで漏れるため、必ず無効化する。
+    # 呼び出し有無は mod._kick_calls で検証できる。
+    mod._kick_calls = []
+    monkeypatch.setattr(
+        mod, "_kick_wiki_runner", lambda *a, **k: mod._kick_calls.append((a, k))
+    )
     return mod
 
 

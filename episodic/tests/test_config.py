@@ -155,7 +155,11 @@ def test_host_hash_machine_id_change_after_clear(cfg, monkeypatch) -> None:
 # ---------------------------------------------------------------- notification_level
 
 
-def test_notification_level_default_is_all(cfg) -> None:
+def test_notification_level_default_is_all(cfg, monkeypatch) -> None:
+    # conftest の autouse ガードが MEMORIES_NOTIFICATION_LEVEL=none を注入するため、
+    # 「env 未設定時の既定値」を検証する本テストでは明示的に外す。
+    monkeypatch.delenv("MEMORIES_NOTIFICATION_LEVEL", raising=False)
+    cfg["config"].load_config.cache_clear()
     assert cfg["config"].resolve_notification_level() == "all"
 
 

@@ -11,6 +11,15 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from lib import notify as notify_mod  # noqa: E402
 
+# conftest の autouse ガードが OsascriptNotifier.notify を no-op 化するため、
+# notify 実装そのものを検証するテストでは collection 時に捕捉した元実装を復元する。
+_ORIG_NOTIFY = notify_mod.OsascriptNotifier.notify
+
+
+@pytest.fixture
+def real_notify(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(notify_mod.OsascriptNotifier, "notify", _ORIG_NOTIFY)
+
 
 def test_escape_quotes_and_newlines() -> None:
     assert notify_mod._escape_for_osascript('a"b') == 'a\\"b'
@@ -18,7 +27,7 @@ def test_escape_quotes_and_newlines() -> None:
     assert notify_mod._escape_for_osascript("a\nb\rc") == "a b c"
 
 
-def test_osascript_present_invokes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_osascript_present_invokes(real_notify, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[str]] = []
 
     def fake_which(name: str) -> str | None:
@@ -42,7 +51,7 @@ def test_osascript_present_invokes(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'sound name "Glass"' in cmd[2]
 
 
-def test_osascript_absent_skips(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_osascript_absent_skips(real_notify, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(notify_mod.shutil, "which", lambda name: None)
     called = []
     monkeypatch.setattr(notify_mod.subprocess, "run", lambda *a, **k: called.append(a))
@@ -57,7 +66,7 @@ def test_default_notifier_falls_back_when_no_osascript(monkeypatch: pytest.Monke
     assert isinstance(n, notify_mod.NullNotifier)
 
 
-def test_sound_optional_omitted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sound_optional_omitted(real_notify, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[str]] = []
     monkeypatch.setattr(notify_mod.shutil, "which", lambda name: "/usr/bin/osascript")
 
