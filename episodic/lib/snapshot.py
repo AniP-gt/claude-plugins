@@ -8,11 +8,30 @@ bash runner.sh の save_source_snapshot を Python 化。
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
 from . import path_resolver as pr
+
+DEFAULT_ZSTD_LEVEL = 9
+ZSTD_LEVEL_ENV = "MEMORIES_SNAPSHOT_ZSTD_LEVEL"
+
+
+def _zstd_level() -> int:
+    """zstd 圧縮レベルを返す。
+
+    テキスト JSONL では -19 と -9 の圧縮率差は小さいが、-19 は全コアで
+    数十秒級のコストを要するため既定を 9 に下げる。環境変数
+    MEMORIES_SNAPSHOT_ZSTD_LEVEL（範囲 1-19）で上書き可能。不正値は既定 9。
+    """
+    val = os.environ.get(ZSTD_LEVEL_ENV)
+    if val and val.isdigit():
+        n = int(val)
+        if 1 <= n <= 19:
+            return n
+    return DEFAULT_ZSTD_LEVEL
 
 
 class SnapshotResult:
@@ -72,7 +91,7 @@ def save_source_snapshot(
         if shutil.which("zstd"):
             try:
                 subprocess.run(
-                    ["zstd", "-q", "-19", "-T0", "-o", str(tmp), str(src)],
+                    ["zstd", "-q", f"-{_zstd_level()}", "-T0", "-o", str(tmp), str(src)],
                     check=True,
                     capture_output=True,
                 )

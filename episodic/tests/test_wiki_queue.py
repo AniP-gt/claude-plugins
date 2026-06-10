@@ -100,6 +100,31 @@ class TestPurgeMissingEntries:
         assert deferred == 0
         assert dead == 0
 
+    def test_corrupt_json_line_skipped_others_processed(self, tmp_path: Path) -> None:
+        # 破損 JSON 行（lib/wiki_queue.py:95-96 の JSONDecodeError 経路）は読み飛ばされ、
+        # クラッシュせずに正常エントリの処理が継続される。破損行は queue に原文保全される。
+        q = tmp_path / "q.jsonl"
+        valid = json.dumps({"raw_path": str(tmp_path / "missing.md"), "kind": "session", "status": "pending"})
+        q.write_text("{ this is broken json\n" + valid + "\n", encoding="utf-8")
+        deferred, dead = wiki_queue.purge_missing_entries(
+            q, max_raw_missing_attempts=5, retry_base_seconds=60
+        )
+        assert deferred == 1  # 正常な missing エントリは defer される
+        assert dead == 0
+        lines = [ln for ln in q.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        # 破損行は原文のまま保全される
+        assert "{ this is broken json" in lines
+        # JSON として読めるのは正常エントリ 1 件のみで、処理済み（raw_missing_count 加算）
+        parsed = []
+        for ln in lines:
+            try:
+                parsed.append(json.loads(ln))
+            except json.JSONDecodeError:
+                pass
+        assert len(parsed) == 1
+        assert parsed[0]["raw_missing_count"] == 1
+        assert parsed[0]["status"] == "pending"
+
 
 # ---------------------------------------------------------------- read_pending_entries
 
@@ -121,6 +146,15 @@ class TestReadPendingEntries:
             {"raw_path": "/a.md", "kind": "session", "status": "pending"},
             {"raw_path": "/b.md", "kind": "session", "status": "pending", "retry_after_epoch": future},
         ])
+        out = wiki_queue.read_pending_entries(q)
+        assert len(out) == 1
+        assert out[0]["raw_path"] == "/a.md"
+
+    def test_corrupt_json_line_skipped(self, tmp_path: Path) -> None:
+        # 破損 JSON 行は読み飛ばされ、正常エントリのみ返る（クラッシュしない）
+        q = tmp_path / "q.jsonl"
+        valid = json.dumps({"raw_path": "/a.md", "kind": "session", "status": "pending"})
+        q.write_text("not json at all\n" + valid + "\n", encoding="utf-8")
         out = wiki_queue.read_pending_entries(q)
         assert len(out) == 1
         assert out[0]["raw_path"] == "/a.md"
@@ -280,3 +314,56 @@ class TestUpdateQueueAfterResults:
         assert len(dead_rows) == 1
         assert dead_rows[0]["last_error"] == "raw_missing"
         assert dead_rows[0]["raw_missing_count"] == 5
+
+    def test_deferred_resets_to_pending_without_penalty(self, tmp_path: Path) -> None:
+        """target lock 競合による deferred は pending へ戻し、試行回数を消費しない。"""
+        q = tmp_path / "q.jsonl"
+        _write_queue(q, [
+            {
+                "raw_path": "/a.md",
+                "kind": "session",
+                "status": "processing",
+                "attempt_count": 3,
+                "processing_started_epoch": 123.0,
+                "processing_started_at": "2026-01-01T00:00:00+00:00",
+                "runner_pid": "999",
+            },
+        ])
+        deleted, dead = wiki_queue.update_queue_after_results(
+            q,
+            [{"status": "deferred", "label": "p1", "raw_path": "/a.md", "kind": "session", "slug": ""}],
+            max_attempts=5,
+        )
+        assert deleted == 0
+        assert dead == 0
+        rows = _read_queue(q)
+        assert len(rows) == 1
+        # pending に戻り即時再試行可能（retry_after 未設定）/ attempt_count 据え置き
+        assert rows[0]["status"] == "pending"
+        assert rows[0]["attempt_count"] == 3
+        assert "retry_after_epoch" not in rows[0]
+        assert "processing_started_epoch" not in rows[0]
+        assert "runner_pid" not in rows[0]
+        assert "last_error" not in rows[0]
+
+    def test_deferred_and_success_mixed(self, tmp_path: Path) -> None:
+        """同一 run で success は削除、deferred は pending 復帰する。"""
+        q = tmp_path / "q.jsonl"
+        _write_queue(q, [
+            {"raw_path": "/a.md", "kind": "session", "status": "processing"},
+            {"raw_path": "/b.md", "kind": "session", "status": "processing"},
+        ])
+        deleted, dead = wiki_queue.update_queue_after_results(
+            q,
+            [
+                {"status": "success", "label": "a", "raw_path": "/a.md", "kind": "session", "slug": ""},
+                {"status": "deferred", "label": "b", "raw_path": "/b.md", "kind": "session", "slug": ""},
+            ],
+            max_attempts=5,
+        )
+        assert deleted == 1
+        assert dead == 0
+        rows = _read_queue(q)
+        assert len(rows) == 1
+        assert rows[0]["raw_path"] == "/b.md"
+        assert rows[0]["status"] == "pending"

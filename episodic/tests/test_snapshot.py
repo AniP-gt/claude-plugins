@@ -67,3 +67,42 @@ def test_bad_extension(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     src.write_text("x")
     monkeypatch.setattr(snap.pr, "twin_snapshot_path", lambda p: None)
     assert snap.save_source_snapshot(tmp_path / "x.txt", src) == snap.SnapshotResult.SKIP_BAD_EXT
+
+
+def test_zstd_level_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(snap.ZSTD_LEVEL_ENV, raising=False)
+    assert snap._zstd_level() == snap.DEFAULT_ZSTD_LEVEL == 9
+
+
+@pytest.mark.parametrize("value", ["1", "9", "19"])
+def test_zstd_level_valid_override(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv(snap.ZSTD_LEVEL_ENV, value)
+    assert snap._zstd_level() == int(value)
+
+
+@pytest.mark.parametrize("value", ["0", "20", "-5", "abc", "", "9.5", "  "])
+def test_zstd_level_invalid_falls_back(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv(snap.ZSTD_LEVEL_ENV, value)
+    assert snap._zstd_level() == snap.DEFAULT_ZSTD_LEVEL
+
+
+def test_zstd_uses_level_in_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    src = tmp_path / "in.jsonl"
+    src.write_bytes(b"data\n")
+    dst = tmp_path / "out.jsonl.zst"
+    monkeypatch.setattr(snap.pr, "twin_snapshot_path", lambda p: None)
+    monkeypatch.setattr(snap.shutil, "which", lambda n: "/usr/bin/zstd")
+    monkeypatch.setenv(snap.ZSTD_LEVEL_ENV, "12")
+
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+        captured["args"] = args
+        Path(args[args.index("-o") + 1]).write_bytes(b"zst")
+        return None
+
+    monkeypatch.setattr(snap.subprocess, "run", fake_run)
+    result = snap.save_source_snapshot(dst, src)
+    assert result == snap.SnapshotResult.SAVED
+    assert "-12" in captured["args"]
+    assert "-19" not in captured["args"]

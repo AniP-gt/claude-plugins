@@ -19,26 +19,49 @@ def mod(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_passes_through_to_hook(mod, monkeypatch) -> None:
+    """hook.py を直接 import し、stdin payload を run() に渡して rc を返す。"""
     calls: list = []
 
-    class _R:
-        returncode = 0
+    class _FakeHook:
+        @staticmethod
+        def read_hook_input():
+            return {"session_id": "s"}
 
-    def fake_run(args, **kw):
-        calls.append((args, kw))
-        return _R()
+        @staticmethod
+        def run(payload):
+            calls.append(payload)
+            return 0
 
-    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod, "_load_hook_module", lambda: _FakeHook)
     rc = mod.main()
     assert rc == 0
-    assert calls[0][0][0] == sys.executable
-    assert str(mod.HOOK_PY) in calls[0][0]
-    assert "CLAUDE_PLUGIN_ROOT" in calls[0][1]["env"]
+    assert calls == [{"session_id": "s"}]
 
 
-def test_subprocess_exception_yields_zero(mod, monkeypatch) -> None:
-    def raise_run(*a, **k):
+def test_sets_plugin_root_env(mod, monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_PLUGIN_ROOT", raising=False)
+
+    class _FakeLoader:
+        def exec_module(self, module):
+            pass
+
+    import importlib.util as iu
+
+    real_spec = iu.spec_from_file_location
+    monkeypatch.setattr(
+        mod.importlib.util, "spec_from_file_location",
+        lambda name, path: real_spec(name, path),
+    )
+    mod._load_hook_module()
+    import os
+
+    assert os.environ.get("CLAUDE_PLUGIN_ROOT") == str(mod.REPO_ROOT)
+
+
+def test_hook_exception_yields_zero(mod, monkeypatch) -> None:
+    """hook のロード・実行が例外を投げてもフックは 0 を返す（Claude Code を阻害しない）。"""
+    def raise_load():
         raise OSError("boom")
 
-    monkeypatch.setattr(mod.subprocess, "run", raise_run)
+    monkeypatch.setattr(mod, "_load_hook_module", raise_load)
     assert mod.main() == 0

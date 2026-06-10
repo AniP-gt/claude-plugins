@@ -83,9 +83,18 @@ def _load_meta(meta_path: Path | None) -> dict[str, str]:
     return result
 
 
+_CLASSIFY_TAIL_BYTES = 64 * 1024  # 末尾 200 行は十分この範囲に収まる
+
+
 def _classify_failure_reason() -> str:
+    # ログ全文ではなく末尾 64KB だけ seek して読む（巨大ログでのメモリ/IO を抑制）。
     try:
-        text = LOG_FILE.read_text(encoding="utf-8", errors="replace")
+        with LOG_FILE.open("rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - _CLASSIFY_TAIL_BYTES))
+            data = f.read()
+        text = data.decode("utf-8", errors="replace")
     except OSError:
         return "unknown"
     recent = "\n".join(text.splitlines()[-200:])
@@ -246,7 +255,12 @@ def _cleanup_session_dir(session_dir: Path | None, latest_ts: str | None, sessio
         latest_md = session_dir / f"{latest_ts}.codex.md"
         if latest_md.is_file():
             latest_mtime = latest_md.stat().st_mtime
-            for child in session_dir.glob("*.codex.md"):
+            # codex 実行中に届いた Stop は *.payload.json しか残さない（重処理は
+            # finalize 側）ため、codex.md と payload.json の両方を再 finalize 判定に含める。
+            newer_candidates = list(session_dir.glob("*.codex.md")) + list(
+                session_dir.glob("*.payload.json")
+            )
+            for child in newer_candidates:
                 try:
                     if child.stat().st_mtime > latest_mtime:
                         _log(f"respawn finalize for newer timestamp: {child}")
@@ -283,6 +297,10 @@ def _validate_codex_binary(binary: str) -> str:
 
 
 def _notify(notifier: Notifier, subtitle: str, message: str, sound: str | None = None) -> None:
+    level = cfg.resolve_notification_level()
+    if level == "none" or (level == "failure" and subtitle != "失敗"):
+        _log(f"notify suppressed (level={level}): subtitle={subtitle} msg={message}")
+        return
     notifier.notify(subtitle, message, sound)
     _log(f"notify: subtitle={subtitle} sound={sound or 'none'} msg={message}")
 

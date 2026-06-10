@@ -2,21 +2,24 @@
 """Claude Code / Codex session hooks: 会話履歴をcodexで要約しレポート化する。
 
 フロー:
-  1. stdin JSONからsession_id / cwd / transcript_pathを取得
-  2. JSONLをjsonl-to-markdown.pyでMarkdown化
-  3. 先頭にcodex向け命令プロンプトとメタデータを埋め込んで同梱Markdownを生成
-  4. runner.sh を `subprocess.Popen` でバックグラウンド起動（Terminal.app は使わない）
+  1. Stop hook（同期・毎応答）: stdin JSON を `{ts}.payload.json` として pending に
+     記録し、debounce タイマーを (再)設定するだけで即 return する。
+     JSONL スキャン・Markdown 変換・SMB I/O 等の重処理は一切行わない
+  2. debounce 満了で `--finalize`（detach 済みプロセス）が最新 payload を消費し、
+     JSONLをjsonl-to-markdown.pyでMarkdown化、codex向け命令プロンプトと
+     メタデータを埋め込んだ同梱Markdownを生成する
+  3. runner.py を `subprocess.Popen` でバックグラウンド起動（Terminal.app は使わない）
      - stdin=DEVNULL, stdout/stderr=session-runner.log, start_new_session=True で完全分離
      - 進捗・完了・失敗はすべて macOS 通知センター（display notification）で通知
-  5. 失敗時の詳細は ~/.local/state/episodic/logs/session-runner.log に残る
+  4. 失敗時の詳細は ~/.local/state/episodic/logs/session-runner.log に残る
 
-中間ファイルは `~/.local/state/episodic/pending/{session_id}/{ts}.{md,codex.md,codex.meta.json}` に
-集約し、runner.sh の trap EXIT がディレクトリごと削除する。
+中間ファイルは `~/.local/state/episodic/pending/{session_id}/{ts}.{payload.json,md,codex.md,codex.meta.json}`
+に集約し、runner.py の cleanup がディレクトリごと削除する。
 
 Stop hook は応答ごとに発火するため、本スクリプトは debounce タイマーを使い
 最後の Stop から `stop_debounce_seconds` 静寂が続いたときに 1 度だけ Codex を起動する。
-処理中（runner.sh 実行中）に新たな Stop が来た場合はロックで skip し、runner.sh の
-trap EXIT が `--finalize` を再 spawn して取り残しを救済する。
+処理中（runner.py 実行中）に新たな Stop が来た場合はロックで skip し、runner.py の
+cleanup が `--finalize` を再 spawn して取り残しを救済する。
 
 UserPromptSubmit hook では、ユーザーが続きの入力を送った時点で pending debounce を
 キャンセルし、会話途中の要約起動を抑止する。
@@ -27,7 +30,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shlex
 import shutil
 import signal
 import subprocess
@@ -80,12 +82,18 @@ RUNNER = SESSION_DIR / "runner.py"
 LOCK_STALE_SEC = 600  # PID 不在かつ 600 秒以上経過したロックは奪取
 
 
+_LOG_DIR_READY = False
+
+
 def log(msg: str) -> None:
-    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        LOG_FILE.parent.chmod(0o700)
-    except OSError:
-        pass
+    global _LOG_DIR_READY
+    if not _LOG_DIR_READY:
+        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            LOG_FILE.parent.chmod(0o700)
+        except OSError:
+            pass
+        _LOG_DIR_READY = True
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write(f"[{datetime.now().isoformat()}] {msg}\n")
 
@@ -481,16 +489,16 @@ def acquire_lock(lock_dir: Path) -> bool:
 
 
 def schedule_debounce(session_id: str, seconds: int) -> None:
-    """debounce タイマーを (再)起動する。最後の Stop で reset するため、既存 sleep を kill する。
+    """debounce タイマーを (再)起動する。最後の Stop で reset するため、既存タイマーを kill する。
 
-    sleep プロセスは新しい session を持つ（`start_new_session=True`）。
-    完了時に hook.py --finalize {session_id} を呼ぶ。
-    `sleep && python3` の連結は SIGTERM で sleep が死亡した場合に finalize を起動しないため、
-    最後の Stop だけが finalize に到達する設計を満たす。
+    タイマープロセスは新しい session を持つ（`start_new_session=True`）。
+    `--debounce` モードは time.sleep() 後に finalize() を呼ぶため、sleep 中に SIGTERM で
+    死亡した場合は finalize に到達せず、最後の Stop だけが finalize に到達する設計を満たす
+    （旧実装の `bash -c "sleep && python3 ..."` と同じセマンティクスをシェル非経由で実現）。
     """
     pid_file = TMP_DIR / session_id / ".debounce.pid"
 
-    # 既存 sleep プロセスを kill（最後の Stop に reset）
+    # 既存タイマープロセスを kill（最後の Stop に reset）
     if pid_file.exists():
         try:
             old_pid = int(pid_file.read_text(encoding="utf-8").strip())
@@ -504,15 +512,12 @@ def schedule_debounce(session_id: str, seconds: int) -> None:
         except (ValueError, ProcessLookupError, PermissionError, OSError):
             pass
 
-    finalize_cmd = (
-        f"sleep {seconds} && python3 {shlex.quote(str(__file__))} --finalize {shlex.quote(session_id)}"
-    )
     log_path = LOG_DIR / "session-hook.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_fp = log_path.open("a", encoding="utf-8")
     try:
         proc = subprocess.Popen(
-            ["/bin/bash", "-c", finalize_cmd],
+            [sys.executable, str(__file__), "--debounce", str(seconds), session_id],
             stdin=subprocess.DEVNULL,
             stdout=log_fp,
             stderr=log_fp,
@@ -631,7 +636,7 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     meta_path = session_dir / f"{ts}.codex.meta.json"
 
     try:
-        session_format.write_markdown(jsonl, session_md, jsonl_to_md)
+        session_format.write_markdown(jsonl, session_md, jsonl_to_md, meta=meta)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         log(f"error: jsonl-to-markdown failed: {e}")
         return None
@@ -696,6 +701,22 @@ def prepare_payload_artifacts(payload: dict[str, Any],
     return meta_path
 
 
+def write_stop_payload(session_id: str, payload: dict[str, Any]) -> Path:
+    """Stop payload を `{ts}.payload.json` として pending dir に記録する（Stop hook の軽量パス）。
+
+    重処理（JSONL スキャン・Markdown 変換・SMB I/O）は debounce 満了後の finalize() が
+    この payload を読み出して行う。tmp + os.replace で部分書き込みを防ぐ。
+    """
+    session_dir = session_dir_for(session_id)
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S%f")
+    payload_file = session_dir / f"{ts}.payload.json"
+    tmp = payload_file.with_name(payload_file.name + ".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    tmp.chmod(0o600)
+    os.replace(tmp, payload_file)
+    return payload_file
+
+
 def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -736,58 +757,136 @@ def run(payload: dict[str, Any], jsonl_to_md: Path = JSONL_TO_MD) -> int:
         log(f"skip: stop_hook_active=true session={sid} (debounce not reset)")
         return 0
 
-    meta_path = prepare_payload_artifacts(payload, jsonl_to_md)
-    if meta_path is None:
-        return 0
-
-    session_id = meta_path.parent.name
-    is_retry = payload.get("source") == "retry"
-    if is_retry:
+    # retry 経路は既にバックグラウンド文脈（SessionStart の retry_pending 起点）なので、
+    # 従来どおり同期 prep + 即 spawn を維持する。
+    if payload.get("source") == "retry":
+        meta_path = prepare_payload_artifacts(payload, jsonl_to_md)
+        if meta_path is None:
+            return 0
+        session_id = meta_path.parent.name
         log(f"is_retry=True session={session_id} -> spawn runner immediately")
         spawn_runner(meta_path)
         return 0
+
+    session_id = valid_session_id_from_payload(payload)
+    if not session_id:
+        # payload からも transcript ファイル名からも UUID を復元できない場合のみ、
+        # 旧来の同期 prep にフォールバックして meta スキャンから session_id を導出する。
+        log("run: valid session_id not found; falling back to synchronous prepare")
+        meta_path = prepare_payload_artifacts(payload, jsonl_to_md)
+        if meta_path is None:
+            return 0
+        session_id = meta_path.parent.name
+    else:
+        # 軽量パス: payload を記録するだけで重処理は finalize() に委ねる。
+        payload_file = write_stop_payload(session_id, payload)
+        log(f"stop payload recorded: {payload_file}")
 
     debounce_seconds = memcfg.resolve_stop_debounce_seconds()
     schedule_debounce(session_id, debounce_seconds)
     return 0
 
 
+def release_lock(lock_dir: Path) -> None:
+    """finalize が runner を spawn しない経路で自前のロックを解放する。"""
+    try:
+        (lock_dir / "pid").unlink(missing_ok=True)
+        lock_dir.rmdir()
+    except OSError as e:
+        log(f"warn: release_lock failed for {lock_dir}: {e}")
+
+
+def _entry_ts(path: Path) -> str:
+    """`{ts}.payload.json` / `{ts}.codex.meta.json` のファイル名から ts 部分を返す。"""
+    return path.name.split(".", 1)[0]
+
+
 def finalize(session_id: str) -> int:
-    """debounce タイマーが満了したときに呼ばれる。最新 meta sidecar で Codex を起動する。"""
+    """debounce タイマーが満了したときに呼ばれる。
+
+    最新の Stop payload を消費して重処理（JSONL スキャン・Markdown 変換・SMB パス解決・
+    revision 退避）を行い、meta sidecar を生成して Codex runner を起動する。
+    本関数は detach されたプロセスで実行されるため、ここでの処理時間は
+    Claude Code の応答をブロックしない。
+    """
     sid = sanitize_session_id(session_id)
     session_dir = TMP_DIR / sid
     if not session_dir.exists():
         log(f"finalize: session dir not found: {session_dir}")
         return 0
 
+    payloads = sorted(session_dir.glob("*.payload.json"))
     metas = sorted(session_dir.glob("*.codex.meta.json"))
-    if not metas:
-        log(f"finalize: no meta sidecar found in {session_dir}")
+    if not payloads and not metas:
+        log(f"finalize: no stop payload / meta sidecar found in {session_dir}")
         return 0
-    latest = metas[-1]
 
-    # 処理中ロック取得（取れなければ runner.sh の trap EXIT が再 spawn する経路に委ねる）。
+    # 処理中ロック取得（取れなければ runner.py の cleanup が再 spawn する経路に委ねる）。
+    # 重処理（prepare）前に取得し、並行 finalize の二重変換を防ぐ。
     lock_dir = session_dir / ".lock"
     if not acquire_lock(lock_dir):
-        log(f"skip finalize: lock held; runner.sh trap EXIT will respawn finalize for new timestamps session={sid}")
+        log(f"skip finalize: lock held; runner.py cleanup will respawn finalize for new timestamps session={sid}")
         return 0
 
-    # debounce pid を消す（既に satisfaction 済み）。ロック解放は runner.sh の trap EXIT が行う。
+    # debounce pid を消す（既に satisfaction 済み）。
     pid_file = session_dir / ".debounce.pid"
     try:
         pid_file.unlink(missing_ok=True)
     except OSError:
         pass
 
-    log(f"finalize: spawning runner session={sid} latest={latest.name}")
-    spawn_runner(latest)
-    return 0
+    spawned = False
+    try:
+        meta_path: Path | None = None
+        if payloads and (not metas or _entry_ts(payloads[-1]) > _entry_ts(metas[-1])):
+            try:
+                payload = json.loads(payloads[-1].read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as e:
+                log(f"finalize: failed to read stop payload {payloads[-1]}: {e}")
+                payload = None
+            # 消費済み payload は成功・失敗を問わず削除する（SessionStart の pending 検出が
+            # 同じ payload を再 finalize して重複 prep する事故を防ぐ）。
+            for p in payloads:
+                try:
+                    p.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            if payload is not None:
+                meta_path = prepare_payload_artifacts(payload)
+            if meta_path is None and metas:
+                # payload からの prep が失敗しても、過去の prep 済み meta が残っていれば
+                # それを要約対象にする（旧版の取りこぼし救済）。
+                meta_path = metas[-1]
+        elif metas:
+            meta_path = metas[-1]
+
+        if meta_path is None:
+            log(f"finalize: nothing to summarize session={sid}")
+            return 0
+
+        log(f"finalize: spawning runner session={sid} latest={meta_path.name}")
+        spawn_runner(meta_path)
+        spawned = True
+        return 0
+    finally:
+        # runner を spawn した場合のロック解放は runner.py の cleanup が行う。
+        if not spawned:
+            release_lock(lock_dir)
 
 
 def main() -> int:
     args = sys.argv[1:]
     if len(args) >= 2 and args[0] == "--finalize":
         return finalize(args[1])
+    if len(args) >= 3 and args[0] == "--debounce":
+        # schedule_debounce から detach 起動される待機モード。sleep 中に SIGTERM を
+        # 受けるとプロセスごと終了し finalize に到達しない（debounce reset の要）。
+        try:
+            seconds = max(0, min(600, int(args[1])))
+        except ValueError:
+            return 0
+        time.sleep(seconds)
+        return finalize(args[2])
     return run(read_hook_input())
 
 

@@ -135,9 +135,12 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
         for p in (people_wiki_dir.glob("*.md") if people_wiki_dir.exists() else [])
         if not p.name.startswith(".")
     ]
+    # mention_count はソートキーと表示行で 2 回必要になるため、
+    # ファイル読込を 1 回に集約してから両用途で使い回す。
+    people_mentions = {p: _mention_count(p) for p in people_files_raw}
     people_files = sorted(
         people_files_raw,
-        key=lambda x: (-_mention_count(x), x.stem),
+        key=lambda x: (-people_mentions[x], x.stem),
     )
     people_count = len(people_files)
 
@@ -147,9 +150,10 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
         for p in (orgs_wiki_dir.glob("*.md") if orgs_wiki_dir.exists() else [])
         if not p.name.startswith(".")
     ]
+    orgs_mentions = {p: _mention_count(p) for p in orgs_files_raw}
     orgs_files = sorted(
         orgs_files_raw,
-        key=lambda x: (-_mention_count(x), x.stem),
+        key=lambda x: (-orgs_mentions[x], x.stem),
     )
     orgs_count = len(orgs_files)
 
@@ -231,7 +235,7 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
         lines.append("")
         for p in people_files:
             rel = p.relative_to(wiki)
-            mc = _mention_count(p)
+            mc = people_mentions[p]
             lines.append(f"- [{p.stem}](./{rel}) — 言及 {mc} 件")
     else:
         lines.append("人物 Wiki（minutes/diary に人物名が登場すると自動生成されます）:")
@@ -248,7 +252,7 @@ def regenerate_index(wiki_dir: Path, memories_dir: Path) -> Path:
         lines.append("")
         for p in orgs_files:
             rel = p.relative_to(wiki)
-            mc = _mention_count(p)
+            mc = orgs_mentions[p]
             lines.append(f"- [{p.stem}](./{rel}) — 言及 {mc} 件")
     else:
         lines.append("組織 Wiki（minutes/diary に組織名が登場すると自動生成されます）:")

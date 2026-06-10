@@ -108,6 +108,31 @@ class TestDetectPrefixVariant:
         slugs = {m.slug for m in clusters[0]}
         assert slugs == {"ファルモ河本", "河本"}
 
+    def test_prefix_variant_only_no_shared_name_or_source(self, people_dir: Path) -> None:
+        # slug の prefix 変種だけで結ぶケース（正規化名も source_raw も非共有）。
+        # バケツ化最適化で slug-core バケツが効いていることを保証する回帰テスト。
+        _write(
+            people_dir / "ファルモ田所.md",
+            _person_md(
+                title="田所一郎",
+                slug="ファルモ田所",
+                aliases="[]",
+                timeline=[_tl("2026-05-20", "A の議事録", "minutes", "aaa_only")],
+            ),
+        )
+        _write(
+            people_dir / "田所.md",
+            _person_md(
+                title="田所次郎",
+                slug="田所",
+                aliases="[]",
+                timeline=[_tl("2026-05-21", "B の議事録", "minutes", "bbb_only")],
+            ),
+        )
+        clusters = wiki_reconcile.detect_clusters(people_dir)
+        assert len(clusters) == 1
+        assert {m.slug for m in clusters[0]} == {"ファルモ田所", "田所"}
+
 
 # --------------------------------------------------------------------------
 # 検出: alias / title 集合の交差（敬称除去・NFC 正規化）

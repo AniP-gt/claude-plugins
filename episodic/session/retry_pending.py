@@ -44,6 +44,22 @@ def _log(msg: str) -> None:
         pass
 
 
+def _max_per_run() -> int:
+    """1 回の実行で spawn するエントリ数の上限。
+
+    env MEMORIES_RETRY_MAX_PER_RUN（既定 3、有効範囲 1-20）。
+    非数値・範囲外は既定値 3 にフォールバックする。
+    """
+    default = 3
+    raw = os.environ.get("MEMORIES_RETRY_MAX_PER_RUN", str(default))
+    if not raw.isdigit():
+        return default
+    value = int(raw)
+    if 1 <= value <= 20:
+        return value
+    return default
+
+
 def run(notifier: Notifier | None = None) -> int:
     LOG_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
     try:
@@ -62,13 +78,18 @@ def run(notifier: Notifier | None = None) -> int:
     max_attempts_env = os.environ.get("MEMORIES_RETRY_MAX_ATTEMPTS", "5")
     max_attempts = int(max_attempts_env) if max_attempts_env.isdigit() else 5
 
+    max_per_run = _max_per_run()
+
     lock = MkdirLock(LOCK_DIR)
     if not lock.acquire():
         _log("skip: another retry-pending is running")
         return 0
 
     try:
-        _log(f"retry-pending start: pid={os.getpid()} max_attempts={max_attempts}")
+        _log(
+            f"retry-pending start: pid={os.getpid()} "
+            f"max_attempts={max_attempts} max_per_run={max_per_run}"
+        )
         try:
             result = subprocess.run(
                 [sys.executable, str(RETRY_QUEUE_PY), "list", "--max-attempts", "9999"],
@@ -90,6 +111,7 @@ def run(notifier: Notifier | None = None) -> int:
         spawned = 0
         dropped_report = 0
         dropped_transcript = 0
+        skipped_over_limit = 0
 
         for line in entries_text.splitlines():
             line = line.strip()
@@ -131,6 +153,11 @@ def run(notifier: Notifier | None = None) -> int:
                 dead_letter_batch += 1
                 continue
 
+            if spawned >= max_per_run:
+                # 上限到達。残りの spawn 候補はキューに残し次回 SessionStart に委ねる。
+                skipped_over_limit += 1
+                continue
+
             _log(f"spawn retry: session={sid} attempt={attempt} cwd={cwd}")
             payload = json.dumps({
                 "session_id": sid,
@@ -154,9 +181,16 @@ def run(notifier: Notifier | None = None) -> int:
                 _log(f"warn: hook.py invocation failed for session={sid}: {e}")
             spawned += 1
 
+        if skipped_over_limit > 0:
+            _log(
+                f"retry-pending: {skipped_over_limit} entries left in queue "
+                f"(max_per_run={max_per_run} reached); deferred to next SessionStart"
+            )
+
         _log(
             f"retry-pending done: spawned={spawned} dropped_report={dropped_report} "
-            f"dropped_transcript={dropped_transcript} dead_letter={dead_letter_batch}"
+            f"dropped_transcript={dropped_transcript} dead_letter={dead_letter_batch} "
+            f"skipped_over_limit={skipped_over_limit}"
         )
 
         if dead_letter_batch > 0:

@@ -48,7 +48,10 @@ DEFAULTS: dict[str, Any] = {
     "stop_debounce_seconds": 60,
     "session_codex_timeout_seconds": 300,
     "wiki_codex_timeout_seconds": 1200,
+    "notification_level": "all",
 }
+
+NOTIFICATION_LEVELS = ("all", "failure", "none")
 
 
 def _expand(path_str: str) -> Path:
@@ -109,6 +112,12 @@ def load_config() -> dict[str, Any]:
         n = int(wiki_timeout_env)
         if 0 <= n <= 86400:
             cfg["wiki_codex_timeout_seconds"] = n
+
+    notify_env = os.environ.get("MEMORIES_NOTIFICATION_LEVEL")
+    if notify_env and notify_env.lower() in NOTIFICATION_LEVELS:
+        cfg["notification_level"] = notify_env.lower()
+    if cfg.get("notification_level") not in NOTIFICATION_LEVELS:
+        cfg["notification_level"] = "all"
 
     return cfg
 
@@ -189,6 +198,20 @@ def resolve_wiki_codex_timeout_seconds() -> int:
     return int(load_config().get("wiki_codex_timeout_seconds", 1200))
 
 
+def resolve_notification_level() -> str:
+    """macOS 通知センターへの通知レベル。
+
+    all     : 完了・スキップ・失敗すべて通知（既定、従来挙動）
+    failure : 失敗のみ通知（並行セッションが多い環境での完了通知の洪水対策）
+    none    : 通知なし（ログには常に記録される）
+    """
+    return str(load_config().get("notification_level", "all"))
+
+
+def _machine_id_cache_path() -> Path:
+    return Path.home() / ".local" / "state" / "episodic" / "machine_id"
+
+
 @lru_cache(maxsize=1)
 def _machine_id() -> str:
     """macOS の IOPlatformUUID をマシン固有 ID として返す。
@@ -197,7 +220,18 @@ def _machine_id() -> str:
     同一マシン内でも値が揺れる（例: MacBookPro.local ↔ 別形式）。揺れると
     host_hash も変わり、report_path のパス重複検知が空振りする。
     IOPlatformUUID はハードウェア固有の不変値なので、これをハッシュ元にする。
+
+    lru_cache はプロセス内のみ有効で、hook はイベントごとに新プロセスのため
+    ioreg subprocess が毎回走る。不変値なのでファイルキャッシュで永続化する。
     """
+    cache = _machine_id_cache_path()
+    try:
+        cached = cache.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+    except OSError:
+        pass
+
     try:
         proc = subprocess.run(
             ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
@@ -212,7 +246,15 @@ def _machine_id() -> str:
         if "IOPlatformUUID" in line:
             parts = line.split('"')
             if len(parts) >= 4 and parts[3]:
-                return parts[3]
+                machine_id = parts[3]
+                try:
+                    cache.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = cache.with_name(cache.name + ".tmp")
+                    tmp.write_text(machine_id + "\n", encoding="utf-8")
+                    os.replace(tmp, cache)
+                except OSError:
+                    pass
+                return machine_id
     raise RuntimeError("IOPlatformUUID not found in ioreg output")
 
 

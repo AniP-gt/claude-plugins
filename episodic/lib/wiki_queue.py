@@ -254,14 +254,17 @@ def update_queue_after_results(
 
     successes: set[tuple[str, str, str]] = set()
     failures: dict[tuple[str, str, str], str] = {}
+    deferrals: set[tuple[str, str, str]] = set()
     for r in results:
         ident = (r.get("raw_path", ""), r.get("kind", ""), r.get("slug", ""))
         if r.get("status") == "success":
             successes.add(ident)
         elif r.get("status") == "failed":
             failures[ident] = r.get("label", "")
+        elif r.get("status") == "deferred":
+            deferrals.add(ident)
 
-    if not successes and not failures:
+    if not successes and not failures and not deferrals:
         return 0, 0
 
     remaining: list[str] = []
@@ -326,6 +329,17 @@ def update_queue_after_results(
                 d["status"] = "pending"
                 d["retry_after"] = retry_at.isoformat(timespec="seconds")
                 d["retry_after_epoch"] = now + delay
+                remaining.append(json.dumps(d, ensure_ascii=False))
+                continue
+            if ident in deferrals:
+                # target lock 競合による延期。失敗ではないため attempt_count /
+                # raw_missing_count を増やさず、pending に戻して即時再試行可能にする
+                # （lock 保持中の batch は同一 run 内で完了するため、次 iteration で取得できる）。
+                for k in ("processing_started_at", "processing_started_epoch", "runner_pid"):
+                    d.pop(k, None)
+                d["status"] = "pending"
+                d.pop("retry_after", None)
+                d.pop("retry_after_epoch", None)
                 remaining.append(json.dumps(d, ensure_ascii=False))
                 continue
             remaining.append(json.dumps(d, ensure_ascii=False))

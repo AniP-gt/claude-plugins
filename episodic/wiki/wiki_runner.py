@@ -325,6 +325,7 @@ def _process_batch_job(
     codex_runner_factory,
     log_file: Path,
     target_lock_timeout: int,
+    people_org_registry: str | None = None,
 ) -> list[dict]:
     """1 batch を処理し、結果（list of result dict）を返す。
 
@@ -352,7 +353,10 @@ def _process_batch_job(
             )
         return out
 
-    # target lock を取得
+    # target lock を取得。短時間で取得できなければ当該 batch を deferred にして
+    # worker を即解放する。lock を保持している別 batch（同一 wiki_target を分割した
+    # サブ batch 等）が解放されるまで worker を長時間ブロックすると、独立した他
+    # target の batch まで滞留するため、待たずに pending へ戻して再試行に委ねる。
     lock = MkdirLock(lock_dir)
     acquired = False
     waited = 0
@@ -361,8 +365,11 @@ def _process_batch_job(
             acquired = True
             break
         if waited >= target_lock_timeout:
-            log(f"warn: target lock timeout after {target_lock_timeout}s: {lock_dir}")
-            return _result("failed")
+            log(
+                f"defer: target lock busy after {target_lock_timeout}s, "
+                f"deferring batch={job_id}: {lock_dir}"
+            )
+            return _result("deferred")
         time.sleep(1)
         waited += 1
     try:
@@ -422,7 +429,8 @@ def _process_batch_job(
         else:
             raw_paths = [Path(e.get("raw_path", "")) for e in entries]
             prompt_text = wiki_prompt.build_combined_prompt_batch(
-                instruction, wiki_target, raw_paths, kind, project=project
+                instruction, wiki_target, raw_paths, kind, project=project,
+                registry=people_org_registry,
             )
 
         prompt_path = Path(tempfile.mkstemp(prefix="memory-wiki.", suffix=".md")[1])
@@ -488,6 +496,8 @@ def _default_codex_runner_factory(timeout_seconds: int):
             effort="low",
             timeout_seconds=timeout_seconds,
             sandbox_mode=sandbox_mode,
+            # workspace-write 時に wiki ディレクトリのみ書き込めるよう作業ルートを転送する。
+            cwd_dir=str(cwd_dir) if cwd_dir else None,
             # subagent（multi_agent）は full-history fork でトークン消費が数倍に
             # 膨らむため無効（CodexRunner の既定 multi_agent=False を継承する）。
             web_search=web_search,
@@ -626,7 +636,7 @@ def run(
             retry_base_seconds = _env_int("MEMORIES_WIKI_RETRY_BASE_SECONDS", 300, log)
         if target_lock_timeout is None:
             target_lock_timeout = _env_int(
-                "MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS", 7200, log
+                "MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS", 30, log
             )
         if processing_timeout_seconds is None:
             processing_timeout_seconds = _env_int(
@@ -685,6 +695,13 @@ def run(
 
             results: list[dict] = list(immediate_failures)
 
+            # people_extract は wiki/people + wiki/orgs の全 frontmatter を読むため、
+            # この iteration 内で 1 回だけレジストリを構築し全 people_extract ジョブで
+            # 使い回す（ThreadPoolExecutor 並列の各ジョブが個別に全読みするのを防ぐ）。
+            people_org_registry = None
+            if any(job[1] == "people_extract" for job in batch_jobs):
+                people_org_registry = wiki_prompt.build_people_org_registry(wiki_dir)
+
             if batch_jobs:
                 def _runjob(job):
                     jid, kind, target, instr, lab, proj, model, entries = job
@@ -703,6 +720,7 @@ def run(
                         codex_runner_factory=factory,
                         log_file=log_file,
                         target_lock_timeout=target_lock_timeout,
+                        people_org_registry=people_org_registry,
                     )
 
                 if parallelism <= 1:
@@ -717,18 +735,24 @@ def run(
                             except Exception as e:
                                 log(f"warn: batch job raised: {e}")
 
-            # 集計（missing: ラベルは race 由来の deferred なので失敗扱いしない）
+            # 集計（missing: ラベルは race 由来の deferred なので失敗扱いしない。
+            # deferred: target lock 競合で延期した batch も失敗扱いしない）
             iter_processed = 0
             iter_failed = 0
+            iter_deferred = 0
             for r in results:
                 if r["status"] == "success":
                     iter_processed += 1
                     all_processed_labels.append(r["label"])
+                elif r["status"] == "deferred":
+                    iter_deferred += 1
                 elif r["status"] == "failed":
                     if r.get("label", "").startswith("missing:"):
                         continue
                     iter_failed += 1
                     all_failed_labels.append(r["label"])
+            if iter_deferred:
+                log(f"deferred {iter_deferred} batch result(s) due to target lock contention")
 
             wiki_queue.update_queue_after_results(
                 queue_path,
@@ -758,12 +782,19 @@ def run(
             except Exception as e:
                 log(f"warn: cocoindex trigger failed: {e}")
 
+        notification_level = cfg.resolve_notification_level()
         if total_failed > 0:
             summary = _unique_labels(all_failed_labels)
-            notifier.notify("失敗", f"失敗: {summary or '?'} (log: {log_file})", "Basso")
+            if notification_level != "none":
+                notifier.notify("失敗", f"失敗: {summary or '?'} (log: {log_file})", "Basso")
+            else:
+                log(f"notify suppressed (level={notification_level}): 失敗: {summary or '?'}")
         elif total_processed > 0:
             summary = _unique_labels(all_processed_labels)
-            notifier.notify("完了", f"更新: {summary or '?'}", "Glass")
+            if notification_level == "all":
+                notifier.notify("完了", f"更新: {summary or '?'}", "Glass")
+            else:
+                log(f"notify suppressed (level={notification_level}): 更新: {summary or '?'}")
 
         return 0
     finally:

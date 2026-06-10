@@ -36,6 +36,21 @@ def _is_pid_alive(pid_str: str) -> bool:
         return False
 
 
+def _respawn_finalize(hook_py: Path, sid: str, log_file: Path) -> None:
+    try:
+        with log_file.open("ab") as f:
+            subprocess.Popen(
+                [sys.executable, str(hook_py), "--finalize", sid],
+                stdin=subprocess.DEVNULL,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                close_fds=True,
+            )
+    except (OSError, FileNotFoundError):
+        pass
+
+
 def _detect_pending_sessions() -> None:
     pending_root = Path.home() / ".local" / "state" / "episodic" / "pending"
     hook_py = BIN_DIR.parent / "session" / "hook.py"
@@ -68,6 +83,13 @@ def _detect_pending_sessions() -> None:
             if _is_pid_alive(pid_str):
                 continue
 
+        # debounce 中のシャットダウン等で未消費の Stop payload が残っている場合は、
+        # 重処理（Markdown 変換・meta 生成）ごと finalize に委ねる。
+        payloads = sorted(session_dir.glob("*.payload.json"))
+        if payloads:
+            _respawn_finalize(hook_py, sid, log_file)
+            continue
+
         metas = sorted(session_dir.glob("*.codex.meta.json"), key=lambda p: p.stat().st_mtime, reverse=True)
         if not metas:
             shutil.rmtree(session_dir, ignore_errors=True)
@@ -84,18 +106,7 @@ def _detect_pending_sessions() -> None:
         if Path(report_path).is_file():
             shutil.rmtree(session_dir, ignore_errors=True)
         else:
-            try:
-                with log_file.open("ab") as f:
-                    subprocess.Popen(
-                        [sys.executable, str(hook_py), "--finalize", sid],
-                        stdin=subprocess.DEVNULL,
-                        stdout=f,
-                        stderr=subprocess.STDOUT,
-                        start_new_session=True,
-                        close_fds=True,
-                    )
-            except (OSError, FileNotFoundError):
-                pass
+            _respawn_finalize(hook_py, sid, log_file)
 
 
 def _mount_attempt() -> None:

@@ -89,6 +89,13 @@ def test_report_written_by_codex(tmp_path: Path, runner_mod, monkeypatch) -> Non
     rc = runner_mod.run(input_md, report, "staged", meta, codex_runner=fake, notifier=NullNotifier())
     assert rc == 0
     assert report.is_file()
+    # report 内容（frontmatter キー）が保持されていることを検証
+    front = runner_mod.fm.parse(report)
+    assert front["project"] == "P"
+    assert front["title"] == "T"
+    text = report.read_text(encoding="utf-8")
+    assert text.startswith("---\n")
+    assert "body" in text
 
 
 def test_last_message_fallback(tmp_path: Path, runner_mod, monkeypatch) -> None:
@@ -101,16 +108,31 @@ def test_last_message_fallback(tmp_path: Path, runner_mod, monkeypatch) -> None:
     assert report.read_text().startswith("---")
 
 
-def test_codex_failure_retry_upsert(tmp_path: Path, runner_mod, monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "log_seed, expected_reason",
+    [
+        ("[2026-05-19T00:00:00] error: you've hit your usage limit, try again later\n", "usage_limit"),
+        ("[2026-05-19T00:00:00] error: unauthorized: invalid api key provided\n", "auth_failure"),
+        ("[2026-05-19T00:00:00] error: something unexpected went wrong\n", "unknown"),
+    ],
+)
+def test_codex_failure_retry_upsert(
+    tmp_path: Path, runner_mod, monkeypatch, log_seed: str, expected_reason: str
+) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     pending, input_md, meta = _make_session_dir(tmp_path)
     report = tmp_path / "report.md"
-    fake = FakeRunner(rc=1, last="")
+    # _classify_failure_reason は LOG_FILE 末尾 200 行を読むため、内容をシードして判定を固定する。
+    # runner が後続で追記する行はいずれの分類パターンにも一致しないため、シード行が判定を決める。
+    runner_mod.LOG_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
+    runner_mod.LOG_FILE.write_text(log_seed, encoding="utf-8")
+    fake = FakeRunner(rc=1, last="")  # timed_out=False → _classify_failure_reason 経路
     called: list = []
     monkeypatch.setattr(runner_mod, "_retry_queue_upsert", lambda meta, reason: called.append(reason))
     rc = runner_mod.run(input_md, report, "normal", meta, codex_runner=fake, notifier=NullNotifier())
     assert rc == 1
-    assert called and called[0] in {"unknown", "usage_limit", "auth_failure"}
+    # 失敗ログ内容ごとに期待する reason が 1 つに特定される
+    assert called == [expected_reason]
 
 
 def test_codex_timeout(tmp_path: Path, runner_mod, monkeypatch) -> None:
@@ -143,3 +165,37 @@ def test_enforce_supersedes_self_ref(tmp_path: Path, runner_mod) -> None:
     report.write_text(f"---\nproject: P\nsupersedes: {report}\n---\nbody\n")
     runner_mod._enforce_supersedes_integrity(report)
     assert "supersedes: null" in report.read_text()
+
+
+class _RecordingNotifier:
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+    def notify(self, subtitle: str, message: str, sound: str | None = None) -> None:
+        self.calls.append((subtitle, message, sound))
+
+
+def test_notify_all_level_passes_everything(runner_mod, monkeypatch) -> None:
+    monkeypatch.setattr(runner_mod.cfg, "resolve_notification_level", lambda: "all")
+    n = _RecordingNotifier()
+    runner_mod._notify(n, "完了", "ok", "Glass")
+    runner_mod._notify(n, "失敗", "boom", "Basso")
+    assert n.calls == [("完了", "ok", "Glass"), ("失敗", "boom", "Basso")]
+
+
+def test_notify_failure_level_suppresses_success(runner_mod, monkeypatch) -> None:
+    monkeypatch.setattr(runner_mod.cfg, "resolve_notification_level", lambda: "failure")
+    n = _RecordingNotifier()
+    runner_mod._notify(n, "完了", "ok", "Glass")
+    runner_mod._notify(n, "スキップ", "skip")
+    assert n.calls == []
+    runner_mod._notify(n, "失敗", "boom", "Basso")
+    assert n.calls == [("失敗", "boom", "Basso")]
+
+
+def test_notify_none_level_suppresses_all(runner_mod, monkeypatch) -> None:
+    monkeypatch.setattr(runner_mod.cfg, "resolve_notification_level", lambda: "none")
+    n = _RecordingNotifier()
+    runner_mod._notify(n, "完了", "ok", "Glass")
+    runner_mod._notify(n, "失敗", "boom", "Basso")
+    assert n.calls == []

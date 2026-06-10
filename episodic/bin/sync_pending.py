@@ -148,8 +148,17 @@ def _process_entry(
         pass
 
     if dst.exists():
-        src_hash = _sha256(src)
-        dst_hash = _sha256(dst)
+        # dst は SMB 越しで全読みが高いため、まずサイズ比較で短絡する。
+        # サイズが異なれば内容も必ず異なるので SHA-256 計算を省く。
+        try:
+            same_size = src.stat().st_size == dst.stat().st_size
+        except OSError:
+            same_size = False
+        if same_size:
+            src_hash = _sha256(src)
+            dst_hash = _sha256(dst)
+        else:
+            src_hash = dst_hash = None
         if src_hash and src_hash == dst_hash:
             try:
                 src.unlink()

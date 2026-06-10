@@ -112,3 +112,46 @@ def test_build_cmd_multi_agent_enabled(tmp_path: Path, safe_bin: Path) -> None:
     runner = CodexRunner(model="gpt-x", effort="low", codex_bin=str(fake), multi_agent=True)
     cmd = runner.build_cmd(tmp_path / "cap.txt")
     assert "features.multi_agent=true" in cmd
+
+
+def test_build_cmd_default_bypasses_sandbox(tmp_path: Path, safe_bin: Path) -> None:
+    # 既定（bypass_sandbox=True）は現状互換: bypass フラグを付与し approval_policy は付けない。
+    fake = _make_exec(safe_bin / "codex", "exit 0")
+    runner = CodexRunner(model="gpt-x", effort="low", codex_bin=str(fake))
+    cmd = runner.build_cmd(tmp_path / "cap.txt")
+    assert "--dangerously-bypass-approvals-and-sandbox" in cmd
+    assert "approval_policy=never" not in cmd
+
+
+def test_build_cmd_enforced_sandbox(tmp_path: Path, safe_bin: Path) -> None:
+    # bypass_sandbox=False で技術的サンドボックスを実効化する。
+    fake = _make_exec(safe_bin / "codex", "exit 0")
+    runner = CodexRunner(
+        model="gpt-x", effort="low", codex_bin=str(fake), bypass_sandbox=False
+    )
+    cmd = runner.build_cmd(tmp_path / "cap.txt")
+    assert "--dangerously-bypass-approvals-and-sandbox" not in cmd
+    assert "--sandbox" in cmd and "workspace-write" in cmd
+    # 非対話 exec が承認待ちでブロックしないよう never を明示する。
+    assert "approval_policy=never" in cmd
+
+
+def test_build_cmd_cwd_dir(tmp_path: Path, safe_bin: Path) -> None:
+    fake = _make_exec(safe_bin / "codex", "exit 0")
+    runner = CodexRunner(
+        model="gpt-x",
+        effort="low",
+        codex_bin=str(fake),
+        bypass_sandbox=False,
+        cwd_dir="/tmp/wiki-root",
+    )
+    cmd = runner.build_cmd(tmp_path / "cap.txt")
+    assert "-C" in cmd
+    assert "/tmp/wiki-root" in cmd
+
+
+def test_build_cmd_no_cwd_by_default(tmp_path: Path, safe_bin: Path) -> None:
+    fake = _make_exec(safe_bin / "codex", "exit 0")
+    runner = CodexRunner(model="gpt-x", effort="low", codex_bin=str(fake))
+    cmd = runner.build_cmd(tmp_path / "cap.txt")
+    assert "-C" not in cmd

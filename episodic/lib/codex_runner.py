@@ -45,6 +45,16 @@ class CodexRunner:
         web_search: True で `-c tools.web_search=true` を付与し、codex から
             web 検索ツールを利用可能にする（org の公式情報裏取り用）。サーバ側
             ツールのため read-only / workspace-write いずれの sandbox でも機能する。
+        bypass_sandbox: True（既定）で `--dangerously-bypass-approvals-and-sandbox`
+            を付与し、技術的サンドボックスを無効化する（現状互換）。この場合
+            `--sandbox` 値は事実上無視され、untrusted Web コンテンツ由来の埋め込み
+            指示が codex に実行された際にユーザー権限で任意ファイル書き込みが理論上可能。
+            False にすると bypass フラグを外し、`--sandbox`（既定 workspace-write）を
+            実効化したうえで `-c approval_policy=never` を付与して非対話 exec が承認
+            待ちでブロックしないようにする。書き込み先を workspace に限定したいジョブ
+            （wiki ディレクトリのみ書き込む等）で `cwd_dir` と併用する。
+        cwd_dir: codex の作業ルート（`-C` で指定）。workspace-write 時の書き込み
+            許可範囲を当該ディレクトリに限定したい場合に指定する。None で未指定。
         extra_args: codex exec の前段に追加する引数（cwd など必要なら）
         env_overrides: subprocess env への追加
     """
@@ -56,6 +66,8 @@ class CodexRunner:
     sandbox_mode: str = "workspace-write"
     multi_agent: bool = False
     web_search: bool = False
+    bypass_sandbox: bool = True
+    cwd_dir: str | None = None
     extra_args: list[str] = field(default_factory=list)
     env_overrides: dict[str, str] = field(default_factory=dict)
 
@@ -90,10 +102,18 @@ class CodexRunner:
             "--skip-git-repo-check",
             "--sandbox",
             self.sandbox_mode,
-            "--dangerously-bypass-approvals-and-sandbox",
-            "-c",
-            f"model_reasoning_effort={self.effort}",
         ]
+        if self.bypass_sandbox:
+            # 現状互換: 技術的サンドボックスを無効化する（外部サンドボックス前提）。
+            # この場合 --sandbox 値は事実上無視される。
+            cmd.append("--dangerously-bypass-approvals-and-sandbox")
+        else:
+            # 実サンドボックス運用: bypass せず --sandbox を実効化する。
+            # exec は非対話で承認に応答できないため never を明示してブロックを防ぐ。
+            cmd += ["-c", "approval_policy=never"]
+        if self.cwd_dir:
+            cmd += ["-C", self.cwd_dir]
+        cmd += ["-c", f"model_reasoning_effort={self.effort}"]
         if self.multi_agent:
             # runner は --ignore-user-config を渡すため config.toml に頼れない。
             # CLI フラグで multi_agent を有効化し、lead が subagent を spawn できるようにする。

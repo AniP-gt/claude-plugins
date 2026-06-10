@@ -110,10 +110,17 @@ def _append_entry(queue_path: Path, entry: dict) -> bool:
     """queue ファイルに 1 エントリを排他追記する。dedupe ヒット時は False を返す。"""
     line = json.dumps(entry, ensure_ascii=False) + "\n"
     target_id = _entry_identity(entry)
+    # 走査効率化: raw_path の JSON 表現で行をリテラル前置フィルタし、
+    # raw_path が一致し得ない行は json.loads を省く。identity の第一要素は
+    # raw_path なので、token を含まない行は重複になり得ない。JSON エンコード形で
+    # 比較するためエスケープ差異による取りこぼしは生じず、重複判定基準は不変。
+    raw_path_token = json.dumps(entry.get("raw_path", ""), ensure_ascii=False)
     with queue_path.open("a+", encoding="utf-8") as f:
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         f.seek(0)
         for existing in f:
+            if raw_path_token not in existing:
+                continue
             existing = existing.strip()
             if not existing:
                 continue

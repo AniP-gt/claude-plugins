@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import unicodedata
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -315,10 +316,39 @@ def detect_clusters(
     pages = load_pages(wiki_kind_dir)
     n = len(pages)
     uf = _UnionFind(n)
-    for i in range(n):
-        for j in range(i + 1, n):
-            if _is_duplicate(pages[i], pages[j], prefixes):
-                uf.union(i, j)
+
+    # O(N^2) 全ペア比較を避けるため、_is_duplicate の各成立条件の「必要条件」で
+    # ページをバケツ分けし、同一バケツに同居したペアのみ _is_duplicate で確定する。
+    # どの重複ペアも必ずいずれかのバケツを共有するので結果は全ペア比較と一致し、
+    # バケツ由来の余分な候補は _is_duplicate が確定弾きするため判定基準は不変。
+    #   - name: 正規化名集合の交差（条件: _norm_name_set 交差）
+    #   - slug: slug 本体 + 既知プレフィックス除去後の核（条件: prefix 変種）
+    #   - raw:  timeline の source raw 共有（条件: source 共有 + 部分名一致の前提）
+    prefix_nfc = [_nfc(p) for p in prefixes]
+    buckets: dict[tuple[str, str], list[int]] = defaultdict(list)
+    for idx, page in enumerate(pages):
+        for name in _norm_name_set(page):
+            buckets[("name", name)].append(idx)
+        slug_nfc = _nfc(page.slug)
+        cores = {slug_nfc}
+        for p in prefix_nfc:
+            if p and slug_nfc.startswith(p) and len(slug_nfc) > len(p):
+                cores.add(slug_nfc[len(p):])
+        for core in cores:
+            buckets[("slug", core)].append(idx)
+        for item in page.timeline:
+            buckets[("raw", item.raw)].append(idx)
+
+    candidate_pairs: set[tuple[int, int]] = set()
+    for members in buckets.values():
+        uniq = sorted(set(members))
+        for a in range(len(uniq)):
+            for b in range(a + 1, len(uniq)):
+                candidate_pairs.add((uniq[a], uniq[b]))
+
+    for i, j in candidate_pairs:
+        if _is_duplicate(pages[i], pages[j], prefixes):
+            uf.union(i, j)
 
     groups: dict[int, list[Page]] = {}
     for idx, page in enumerate(pages):

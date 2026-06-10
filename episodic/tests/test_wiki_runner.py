@@ -4,8 +4,8 @@
   - --no-codex で空走完走（queue 空でも OK 終了）
   - --no-codex でキュー消化 → 成功削除
   - self-poll: 1 イテレーション後に追加 enqueue があれば次イテレーションで処理
-  - target lock 競合（既存 lock_dir で取れない場合はスキップ → failed 扱い）
-  - deadletter: attempt 上限超過で deadletter へ
+  - target lock 競合（既存 lock_dir で取れない場合は deferred → pending に戻し再試行に委ねる）
+  - deadletter: codex 失敗で attempt 上限超過すると deadletter へ
   - index.md 再生成と cocoindex trigger
 """
 from __future__ import annotations
@@ -252,10 +252,25 @@ def test_self_poll_via_no_codex_with_late_enqueue(
     assert q.read_text() == ""
 
 
-def test_target_lock_contention_marks_failed(
+def _held_target_lock(state_dir: Path, wiki_target: Path) -> Path:
+    """wiki_target の target lock を生存 PID(=init 1) で事前取得し、lock_dir を返す。"""
+    import hashlib
+
+    lock_id = hashlib.sha256(str(wiki_target).encode()).hexdigest()
+    lock_dir = state_dir / "wiki-target-locks" / f"{lock_id}.lock.d"
+    lock_dir.mkdir(parents=True)
+    (lock_dir / "pid").write_text("1\n")  # init PID = 必ず生存
+    return lock_dir
+
+
+def test_target_lock_contention_defers_without_penalty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """target lock を別 PID で取得状態にしておくと、batch は failed → retry/deadletter になる。"""
+    """target lock を取得できない batch は deferred → pending に戻り、失敗扱いされない。
+
+    worker を長時間ブロックせず、attempt_count を増やさず deadletter にもしない
+    （lock 競合は失敗ではなく一時的な延期）。
+    """
     memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
     raw = tmp_path / "r.md"
     raw.write_text("---\nproject: alpha\n---\n")
@@ -263,15 +278,7 @@ def test_target_lock_contention_marks_failed(
         {"raw_path": str(raw), "kind": "session", "status": "pending"},
     ])
 
-    # target lock を事前に取得しておく（生存 PID として init=1 をふりかえる）。
-    target_lock_root = state_dir / "wiki-target-locks"
-    import hashlib
-
-    wiki_target = memories_dir / "wiki" / "projects" / "alpha.md"
-    lock_id = hashlib.sha256(str(wiki_target).encode()).hexdigest()
-    lock_dir = target_lock_root / f"{lock_id}.lock.d"
-    lock_dir.mkdir(parents=True)
-    (lock_dir / "pid").write_text("1\n")  # init PID = 必ず生存
+    _held_target_lock(state_dir, memories_dir / "wiki" / "projects" / "alpha.md")
 
     rc = wiki_runner.run(
         memories_dir=memories_dir,
@@ -279,40 +286,90 @@ def test_target_lock_contention_marks_failed(
         state_dir=state_dir,
         log_dir=log_dir,
         notifier=NullNotifier(),
-        target_lock_timeout=1,  # 1 秒で諦める
+        target_lock_timeout=1,  # 1 秒で諦めて defer
         max_iterations=1,
         trigger_cocoindex=False,
     )
     assert rc == 0
-    # failed → retry がスケジュールされ entry は残る
+    # deferred → pending のまま残り、attempt_count は増えない
     rows = [json.loads(l) for l in q.read_text().splitlines() if l.strip()]
     assert len(rows) == 1
     assert rows[0]["status"] == "pending"
-    assert rows[0]["attempt_count"] == 1
+    assert "attempt_count" not in rows[0]
+    # processing マーカーはクリアされ、即時再試行可能（retry_after は設定されない）
+    assert "processing_started_epoch" not in rows[0]
+    assert "retry_after_epoch" not in rows[0]
+    assert rows[0].get("last_error") != "codex_failed"
+    # deadletter には送られない
+    dead = state_dir / "ingest-deadletter.jsonl"
+    assert not dead.exists() or dead.read_text().strip() == ""
+
+
+def test_target_lock_contention_not_deadlettered_at_high_attempts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """attempt_count が上限近くでも、lock 競合（deferred）では deadletter に落ちない。"""
+    memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    raw = tmp_path / "r.md"
+    raw.write_text("---\nproject: alpha\n---\n")
+    q = _write_queue(state_dir, [
+        {"raw_path": str(raw), "kind": "session", "status": "pending", "attempt_count": 4},
+    ])
+
+    _held_target_lock(state_dir, memories_dir / "wiki" / "projects" / "alpha.md")
+
+    rc = wiki_runner.run(
+        memories_dir=memories_dir,
+        no_codex=True,
+        state_dir=state_dir,
+        log_dir=log_dir,
+        notifier=NullNotifier(),
+        target_lock_timeout=1,
+        max_iterations=1,
+        max_attempts=5,
+        trigger_cocoindex=False,
+    )
+    assert rc == 0
+    # pending のまま残り attempt_count は据え置き（deferred は試行回数を消費しない）
+    rows = [json.loads(l) for l in q.read_text().splitlines() if l.strip()]
+    assert len(rows) == 1
+    assert rows[0]["status"] == "pending"
+    assert rows[0]["attempt_count"] == 4
+    dead = state_dir / "ingest-deadletter.jsonl"
+    assert not dead.exists() or dead.read_text().strip() == ""
+
+
+def _make_failing_factory():
+    """codex が rc!=0 を返す（=codex_failed）fake runner factory。"""
+
+    def make(model, sandbox_mode, cwd_dir, web_search=False):  # noqa: ARG001
+        class FakeRunner:
+            def run(self, prompt, log_file, capture):  # noqa: ARG002
+                from lib.codex_runner import CodexResult
+
+                return CodexResult(returncode=1)
+
+        return FakeRunner()
+
+    return make
 
 
 def test_max_attempts_exhausted_deadletters(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """attempt_count=max-1 で失敗するとそのまま deadletter へ落ちる。"""
+    """attempt_count=max-1 で codex 失敗するとそのまま deadletter へ落ちる。"""
     memories_dir, state_dir, log_dir = _setup_env(tmp_path, monkeypatch)
+    monkeypatch.setenv("CODEX_BINARY", "/usr/bin/true")
     raw = tmp_path / "r.md"
     raw.write_text("---\nproject: a\n---\n")
     q = _write_queue(state_dir, [
         {"raw_path": str(raw), "kind": "session", "status": "pending", "attempt_count": 4},
     ])
-    # target lock を持って失敗させる
-    import hashlib
-
-    wiki_target = memories_dir / "wiki" / "projects" / "a.md"
-    lock_id = hashlib.sha256(str(wiki_target).encode()).hexdigest()
-    lock_dir = state_dir / "wiki-target-locks" / f"{lock_id}.lock.d"
-    lock_dir.mkdir(parents=True)
-    (lock_dir / "pid").write_text("1\n")
 
     rc = wiki_runner.run(
         memories_dir=memories_dir,
-        no_codex=True,
+        no_codex=False,
+        codex_runner_factory=_make_failing_factory(),
         state_dir=state_dir,
         log_dir=log_dir,
         notifier=NullNotifier(),
@@ -525,3 +582,13 @@ def test_cocoindex_trigger_called_only_on_processed(
         )
     assert rc == 0
     assert called["n"] == 1
+
+
+def test_default_factory_transfers_cwd_dir() -> None:
+    # _default_codex_runner_factory が cwd_dir を CodexRunner へ転送する（sec 由来のギャップ修正）。
+    make = wiki_runner._default_codex_runner_factory(timeout_seconds=123)
+    runner = make(model="m", sandbox_mode="workspace-write", cwd_dir=Path("/tmp/wiki-root"))
+    assert runner.cwd_dir == "/tmp/wiki-root"
+    assert "-C" in runner.build_cmd(Path("/tmp/cap.log"))
+    # bypass_sandbox は既定 True のまま（触らない）
+    assert runner.bypass_sandbox is True

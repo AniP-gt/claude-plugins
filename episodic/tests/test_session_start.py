@@ -24,12 +24,28 @@ def mod(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_main_calls_mount_then_sync(mod, monkeypatch) -> None:
-    calls: list[str] = []
-    monkeypatch.setattr(mod, "_mount_attempt", lambda: calls.append("mount"))
-    monkeypatch.setattr(mod, "_detect_pending_sessions", lambda: calls.append("detect"))
-    monkeypatch.setattr(mod, "_sync_pending", lambda: calls.append("sync"))
+    calls: list[tuple] = []
+
+    def rec(name: str):
+        def _f(*a, **k):
+            calls.append((name, a, k))
+
+        return _f
+
+    monkeypatch.setattr(mod, "_mount_attempt", rec("mount"))
+    monkeypatch.setattr(mod, "_detect_pending_sessions", rec("detect"))
+    monkeypatch.setattr(mod, "_sync_pending", rec("sync"))
     assert mod.main() == 0
-    assert calls == ["mount", "detect", "sync"]
+    # 厳密な呼び出し順
+    names = [c[0] for c in calls]
+    assert names == ["mount", "detect", "sync"]
+    # 各段は 1 回だけ・位置/キーワード引数なしで呼ばれる
+    assert all(a == () and k == {} for _, a, k in calls)
+    assert names.count("mount") == 1
+    assert names.count("detect") == 1
+    assert names.count("sync") == 1
+    # main は副作用として LOG_DIR_LOCAL を作成する
+    assert mod.LOG_DIR_LOCAL.is_dir()
 
 
 def test_failed_mount_continues(mod, monkeypatch) -> None:

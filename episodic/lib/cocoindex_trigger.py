@@ -81,7 +81,10 @@ def trigger_cocoindex_update(
     # detached child を起動し、完了通知用の wrapper を別プロセスで動かす。
     # 親 hook を block しないため、Popen のみ実行して return する設計。
     runner_script = _build_runner_script()
+    # ログ用 fd は子へ継承させた後、親側で必ず close する（fd リーク防止）。
+    log_fd = None
     try:
+        log_fd = open(cocoindex_log, "ab")
         subprocess.Popen(
             [
                 "uv",
@@ -94,7 +97,7 @@ def trigger_cocoindex_update(
             cwd=str(app_dir),
             env=env,
             stdin=subprocess.DEVNULL,
-            stdout=open(cocoindex_log, "ab"),
+            stdout=log_fd,
             stderr=subprocess.STDOUT,
             close_fds=True,
             start_new_session=True,
@@ -103,6 +106,9 @@ def trigger_cocoindex_update(
     except (OSError, FileNotFoundError) as e:
         _append_log(cocoindex_log, f"cocoindex update launch failed: {e}")
         return False
+    finally:
+        if log_fd is not None:
+            log_fd.close()
 
 
 def _build_runner_script() -> str:
