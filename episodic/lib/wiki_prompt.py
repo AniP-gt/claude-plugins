@@ -63,29 +63,52 @@ _BOUNDARY_MARKERS = (
 )
 
 
-def _neutralize_boundary_markers(body: str) -> str:
-    """untrusted 本文中に現れる制御用境界タグを無害化する。
+def neutralize_untrusted(body: str, *, extra_markers: tuple[str, ...] = ()) -> str:
+    """untrusted 本文中に現れる制御トークンを無害化する。
 
-    `<<<RAW_END>>>` 等の制御トークンを ‹...› 形（guillemet）へ置換し、本物の
+    `<<<RAW_END>>>` 等の制御用境界タグを ‹...› 形（guillemet）へ置換し、本物の
     境界タグが untrusted 領域内に出現しないことを保証する。これにより本文側からの
     早期クローズ注入を防ぎつつ、無害化された痕跡（‹RAW_END› 等）は LLM 可読のまま残す。
+
+    extra_markers には `<<<...>>>` 形でない追加マーカー（命令エンベロープの
+    `<!-- CODEX-INSTRUCTION-END -->` や見出し `# 命令:` 等）を渡せる。これらは
+    先頭 1 文字の直後に guillemet を挿入してリテラル全体としての一致を崩す
+    （例: `<!-- X -->` → `<‹!-- X -->`）。session 経路の命令エンベロープ偽装を防ぐ。
     """
     out = body
     for marker in _BOUNDARY_MARKERS:
         if marker in out:
             defanged = "‹" + marker[3:-3] + "›"  # <<<X>>> → ‹X›
             out = out.replace(marker, defanged)
+    for marker in extra_markers:
+        if marker and marker in out:
+            out = out.replace(marker, marker[:1] + "‹" + marker[1:])
     return out
 
 
-def _wrap_untrusted(begin: str, end: str, body: str) -> str:
-    """untrusted 本文を境界タグで sandwich し、PRE / POST の防御文で挟む。"""
-    safe = _neutralize_boundary_markers(body)
+def wrap_untrusted(
+    begin: str, end: str, body: str, *, extra_markers: tuple[str, ...] = ()
+) -> str:
+    """untrusted 本文を境界タグで sandwich し、PRE / POST の防御文で挟む。
+
+    extra_markers は neutralize_untrusted にそのまま転送する（session 経路で
+    命令エンベロープマーカーを併せて無害化するために使う）。
+    """
+    safe = neutralize_untrusted(body, extra_markers=extra_markers)
     return (
         "\n" + DATA_BOUNDARY_PRE + "\n"
         f"\n{begin}\n{safe}\n{end}\n"
         "\n" + DATA_BOUNDARY_POST + "\n"
     )
+
+
+# 後方互換の internal alias。既存の wiki 経路呼び出し（境界タグのみ無害化）を維持する。
+def _neutralize_boundary_markers(body: str) -> str:
+    return neutralize_untrusted(body)
+
+
+def _wrap_untrusted(begin: str, end: str, body: str) -> str:
+    return wrap_untrusted(begin, end, body)
 
 
 def _expand_template(instruction_text: str, replacements: dict[str, str]) -> str:
