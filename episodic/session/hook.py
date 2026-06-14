@@ -838,6 +838,57 @@ def _entry_ts(path: Path) -> str:
     return path.name.split(".", 1)[0]
 
 
+# in-flight とみなさない（=完了済み）background_task の status 集合（小文字比較）。
+# これ以外（running / queued / 欠落 等）は in-flight 扱いで defer 側に倒す（OR=安全寄り）。
+_TERMINAL_TASK_STATUSES = frozenset({
+    "completed", "complete", "done", "finished",
+    "failed", "error", "errored",
+    "cancelled", "canceled", "killed", "stopped", "timeout", "timed_out",
+    "success", "succeeded",
+})
+
+
+def payload_has_pending_work(payload: dict[str, Any]) -> bool:
+    """defer すべき残作業（in-flight task / 単発 cron）が payload にあるか判定する。
+
+    判定方針:
+    - background_tasks: `status` が terminal 集合に無ければ in-flight 扱い
+      （running / queued はもちろん、欠落・不明も defer 側=取りこぼし防止）。
+    - session_crons: `recurring` が falsy のもの（単発 wakeup / 単発 loop）を
+      「再開予定」として defer 対象にする。`recurring=true` の恒久 cron は無視する
+      （永久ブロックを避けるため）。
+    """
+    for t in payload.get("background_tasks") or []:
+        if not isinstance(t, dict):
+            continue
+        status = str(t.get("status", "")).strip().lower()
+        if status not in _TERMINAL_TASK_STATUSES:
+            return True  # running / queued / 不明 → in-flight
+    for c in payload.get("session_crons") or []:
+        if not isinstance(c, dict):
+            continue
+        if not c.get("recurring"):  # recurring=false/欠落 → 単発=再開予定
+            return True
+    return False
+
+
+def _read_defer_count(session_dir: Path) -> int:
+    try:
+        return int((session_dir / ".defer.count").read_text(encoding="utf-8").strip() or "0")
+    except (OSError, ValueError):
+        return 0
+
+
+def _bump_defer_count(session_dir: Path) -> int:
+    n = _read_defer_count(session_dir) + 1
+    (session_dir / ".defer.count").write_text(str(n), encoding="utf-8")
+    return n
+
+
+def _reset_defer_count(session_dir: Path) -> None:
+    (session_dir / ".defer.count").unlink(missing_ok=True)
+
+
 def finalize(session_id: str) -> int:
     """debounce タイマーが満了したときに呼ばれる。
 
@@ -871,6 +922,35 @@ def finalize(session_id: str) -> int:
         pid_file.unlink(missing_ok=True)
     except OSError:
         pass
+
+    # 残作業ゲート: 消費対象が「最新 stop payload」になる経路（=新規 finalize）のときだけ、
+    # in-flight な background_tasks / 単発 session_crons が残っていれば解析せず defer する。
+    # metas のみ＝旧版/retry 経路や、payload が meta より古い経路ではゲートしない。
+    # 注意: run() の「valid session_id が取れない fallback 同期 prep 経路」は payload ファイルを
+    # 残さないため、本ゲートは効かない（稀な経路。対象外）。
+    latest_payload_path = payloads[-1] if payloads else None
+    gating_applies = latest_payload_path is not None and (
+        not metas or _entry_ts(latest_payload_path) > _entry_ts(metas[-1])
+    )
+    if gating_applies:
+        try:
+            gp = json.loads(latest_payload_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            gp = None
+        if gp is not None and payload_has_pending_work(gp):
+            count = _read_defer_count(session_dir)
+            defer_max = memcfg.resolve_stop_defer_max()
+            if count < defer_max:
+                # defer 時は payload を消費しない（再 finalize で最新 transcript を解析）。
+                # lock を解放してから debounce を再延長する（既存の kill→spawn 機構を再利用）。
+                n = _bump_defer_count(session_dir)
+                log(f"finalize: pending work detected; deferring ({n}/{defer_max}) session={sid}")
+                release_lock(lock_dir)
+                schedule_debounce(sid, memcfg.resolve_stop_debounce_seconds())
+                return 0
+            log(f"finalize: defer cap reached ({count}/{defer_max}); forcing analysis session={sid}")
+        # 残作業なし、または cap 到達で強制解析へ進む。どちらも defer カウンタをリセットする。
+        _reset_defer_count(session_dir)
 
     spawned = False
     try:

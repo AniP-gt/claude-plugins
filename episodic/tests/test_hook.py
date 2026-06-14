@@ -30,8 +30,9 @@ def hook(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     spec = importlib.util.spec_from_file_location(mod_name, HOOK_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    # debounce 秒数の解決が実 config.toml に触れないよう固定する。
+    # debounce 秒数 / defer 上限の解決が実 config.toml に触れないよう固定する。
     monkeypatch.setattr(mod.memcfg, "resolve_stop_debounce_seconds", lambda: 7)
+    monkeypatch.setattr(mod.memcfg, "resolve_stop_defer_max", lambda: 10)
     return mod
 
 
@@ -232,6 +233,113 @@ def test_finalize_skips_when_lock_held_by_live_pid(hook, monkeypatch) -> None:
 def test_finalize_nothing_pending(hook) -> None:
     assert hook.finalize(SID) == 0
     assert hook.finalize(str(uuid.uuid4())) == 0
+
+
+# --- payload_has_pending_work: 残作業ゲート判定 ---
+
+def test_payload_has_pending_work_running_task(hook) -> None:
+    assert hook.payload_has_pending_work({"background_tasks": [{"status": "running"}]}) is True
+
+
+def test_payload_has_pending_work_queued_task(hook) -> None:
+    assert hook.payload_has_pending_work({"background_tasks": [{"status": "queued"}]}) is True
+
+
+def test_payload_has_pending_work_missing_status_is_inflight(hook) -> None:
+    # status 欠落・不明は取りこぼし防止のため in-flight 扱い（defer 側）。
+    assert hook.payload_has_pending_work({"background_tasks": [{"id": "t1"}]}) is True
+
+
+def test_payload_has_pending_work_completed_only_is_false(hook) -> None:
+    assert hook.payload_has_pending_work({"background_tasks": [{"status": "completed"}]}) is False
+    assert hook.payload_has_pending_work({"background_tasks": [{"status": "FAILED"}]}) is False
+
+
+def test_payload_has_pending_work_single_shot_cron(hook) -> None:
+    assert hook.payload_has_pending_work({"session_crons": [{"recurring": False}]}) is True
+    # recurring 欠落も単発扱い。
+    assert hook.payload_has_pending_work({"session_crons": [{"id": "c1"}]}) is True
+
+
+def test_payload_has_pending_work_recurring_cron_is_ignored(hook) -> None:
+    assert hook.payload_has_pending_work({"session_crons": [{"recurring": True}]}) is False
+
+
+def test_payload_has_pending_work_empty_lists_is_false(hook) -> None:
+    assert hook.payload_has_pending_work({"background_tasks": [], "session_crons": []}) is False
+    assert hook.payload_has_pending_work({}) is False
+
+
+def test_payload_has_pending_work_ignores_non_dict_entries(hook) -> None:
+    assert hook.payload_has_pending_work(
+        {"background_tasks": ["bogus"], "session_crons": ["bogus"]}
+    ) is False
+
+
+# --- finalize(): 残作業ゲート defer / cap ---
+
+def _pending_stop_payload(sid: str = SID) -> dict:
+    """in-flight な background_task を含む Stop payload。"""
+    return _stop_payload(sid) | {"background_tasks": [{"status": "running"}]}
+
+
+def test_finalize_defers_on_pending_work(hook, monkeypatch) -> None:
+    hook.write_stop_payload(SID, _pending_stop_payload())
+    session_dir = hook.TMP_DIR / SID
+
+    spawned: list = []
+    scheduled: list = []
+    monkeypatch.setattr(hook, "spawn_runner", lambda mp: spawned.append(mp))
+    monkeypatch.setattr(hook, "schedule_debounce", lambda sid, sec: scheduled.append((sid, sec)))
+
+    assert hook.finalize(SID) == 0
+    assert not spawned, "残作業ありなら runner を起動しない"
+    assert len(_payload_files(hook)) == 1, "defer 時は payload を消費しない"
+    assert (session_dir / ".defer.count").read_text(encoding="utf-8") == "1"
+    assert not (session_dir / ".lock").exists(), "defer 時は lock を解放する"
+    assert scheduled == [(SID, 7)], "defer 時は debounce を再延長する"
+
+
+def test_finalize_forces_analysis_when_cap_reached(hook, monkeypatch) -> None:
+    hook.write_stop_payload(SID, _pending_stop_payload())
+    session_dir = hook.TMP_DIR / SID
+    (session_dir / ".defer.count").write_text("10", encoding="utf-8")
+
+    fake_meta = session_dir / "20990101T000000000000.codex.meta.json"
+
+    def fake_prepare(p, *a, **k):
+        fake_meta.write_text("{}", encoding="utf-8")
+        return fake_meta
+
+    spawned: list = []
+    monkeypatch.setattr(hook, "prepare_payload_artifacts", fake_prepare)
+    monkeypatch.setattr(hook, "spawn_runner", lambda mp: spawned.append(mp))
+
+    assert hook.finalize(SID) == 0
+    assert spawned == [fake_meta], "cap 到達なら残作業があっても強制解析する"
+    assert not _payload_files(hook), "強制解析時は payload を消費する"
+    assert not (session_dir / ".defer.count").exists(), "強制解析時はカウンタを削除する"
+
+
+def test_finalize_resets_defer_count_when_no_pending_work(hook, monkeypatch) -> None:
+    # 過去に defer していたが、今回は残作業なし → カウンタをリセットして通常 finalize。
+    hook.write_stop_payload(SID, _stop_payload())
+    session_dir = hook.TMP_DIR / SID
+    (session_dir / ".defer.count").write_text("3", encoding="utf-8")
+
+    fake_meta = session_dir / "20990101T000000000000.codex.meta.json"
+
+    def fake_prepare(p, *a, **k):
+        fake_meta.write_text("{}", encoding="utf-8")
+        return fake_meta
+
+    spawned: list = []
+    monkeypatch.setattr(hook, "prepare_payload_artifacts", fake_prepare)
+    monkeypatch.setattr(hook, "spawn_runner", lambda mp: spawned.append(mp))
+
+    assert hook.finalize(SID) == 0
+    assert spawned == [fake_meta]
+    assert not (session_dir / ".defer.count").exists(), "残作業なしでカウンタをリセット"
 
 
 # --- schedule_debounce / --debounce モード ---

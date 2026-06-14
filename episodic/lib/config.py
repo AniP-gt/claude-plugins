@@ -46,6 +46,7 @@ DEFAULTS: dict[str, Any] = {
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
     "stop_debounce_seconds": 60,
+    "stop_defer_max": 10,
     "session_codex_timeout_seconds": 300,
     "wiki_codex_timeout_seconds": 1200,
     "notification_level": "all",
@@ -100,6 +101,12 @@ def load_config() -> dict[str, Any]:
         n = int(debounce_env)
         if 0 <= n <= 600:
             cfg["stop_debounce_seconds"] = n
+
+    defer_max_env = os.environ.get("MEMORIES_STOP_DEFER_MAX")
+    if defer_max_env and defer_max_env.isdigit():
+        n = int(defer_max_env)
+        if 0 <= n <= 100:
+            cfg["stop_defer_max"] = n
 
     session_timeout_env = os.environ.get("MEMORIES_SESSION_CODEX_TIMEOUT_SECONDS")
     if session_timeout_env and session_timeout_env.isdigit():
@@ -186,6 +193,16 @@ def effective_snapshot_root() -> tuple[Path, bool]:
 def resolve_stop_debounce_seconds() -> int:
     """Stop hook 起動から Codex 要約までの debounce 秒数。範囲 0-600（既定 60）。"""
     return int(load_config().get("stop_debounce_seconds", 60))
+
+
+def resolve_stop_defer_max() -> int:
+    """残作業ゲートの連続 defer 上限回数。範囲 0-100（既定 10）。
+
+    バックグラウンド作業・単発 cron が残る間は finalize を defer するが、恒久的な
+    `tail -f` 等で永久に記録されない事故を防ぐため、連続 defer がこの回数に達したら
+    残作業があっても強制的に解析・出力する。
+    """
+    return int(load_config().get("stop_defer_max", 10))
 
 
 def resolve_session_codex_timeout_seconds() -> int:
