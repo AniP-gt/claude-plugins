@@ -55,6 +55,12 @@
       "version": "0.1.2",
       "source": "./slack",
       "description": "Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI とスキル群。ワークスペース単位で token を管理し、検索・履歴取得・送信を実行する。"
+    },
+    {
+      "name": "omo-orchestrator",
+      "version": "0.1.0",
+      "source": "./omo-orchestrator",
+      "description": "OMO-inspired Claude Code orchestration skills and agents for planning, implementation, research, review, and guardrails."
     }
   ]
 }

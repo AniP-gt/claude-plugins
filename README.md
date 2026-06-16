@@ -21,6 +21,7 @@ Custom Claude Code plugins by miya.
 /plugin install mermaid@hidetsugu-miya
 /plugin install episodic@hidetsugu-miya
 /plugin install slack@hidetsugu-miya
+/plugin install omo-orchestrator@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -97,3 +98,9 @@ Slack 公式 MCP サーバー（`https://mcp.slack.com/mcp`）に、公式 MCP P
 - ブラウザ認証可能なデスクトップ環境（OrbStack ゲストはホスト macOS のブラウザを呼び出し可能）
 
 インストール直後は `slack-setup` skill で `~/.config/slack/bin/slack-mcp` wrapper と `~/.codex/skills/slack-*` の symlink を作成し、`slack-connect` skill で `slack-mcp login` を実行する。実行系は `slack-bridge` skill から `slack-mcp call` で MCP tool を呼ぶ。詳細は `slack/skills/slack-core/SKILL.md`。
+
+### omo-orchestrator
+
+OMO-inspired Claude Code orchestration plugin. Provides portable skills and agents for intent routing, file-level planning, TDD-oriented implementation, parallel research, review gates, and safety guardrails.
+
+Use `/omo-orchestrate` for complex multi-step work. See `omo-orchestrator/README.md` for the included skills and agents.
