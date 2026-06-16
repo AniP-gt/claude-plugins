@@ -57,6 +57,12 @@
       "description": "Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI とスキル群。ワークスペース単位で token を管理し、検索・履歴取得・送信を実行する。"
     },
     {
+      "name": "ticktick",
+      "version": "0.1.0",
+      "source": "./ticktick",
+      "description": "TickTickタスク管理プラグイン。OAuth 2.0でブラウザ認証し、TickTick Open API v1でタスク・プロジェクト操作を行う。"
+    },
+    {
       "name": "omo-orchestrator",
       "version": "0.1.0",
       "source": "./omo-orchestrator",
