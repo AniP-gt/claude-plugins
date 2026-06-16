@@ -2,9 +2,7 @@
   "name": "omo-orchestrator",
   "version": "0.1.0",
   "description": "OMO-inspired Claude Code orchestration skills and agents for planning, implementation, research, review, and guardrails.",
-  "author": {
-    "name": "miya"
-  },
+  "author": { "name": "AniP-gt" },
   "keywords": [
     "omo",
     "orchestration",
