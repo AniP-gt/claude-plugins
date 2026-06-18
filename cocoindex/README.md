@@ -130,8 +130,5 @@ PostgreSQL 接続状態とインデックスのチャンク数を確認できる
 
 ```
 codeindex_{hostname}_{project}__code_chunks
-```
-
-例: `codeindex_tk_local_every_pharumo_com__code_chunks`
 
 同一の PostgreSQL を複数マシンで共有しても競合しない。
