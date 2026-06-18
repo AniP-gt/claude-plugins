@@ -19,5 +19,6 @@ Before reporting a finding, understand each changed file's role and verify uncer
 - Verified non-issues when a suspected issue was disproven.
 - Scope creep or unrelated changes.
 - Residual risks if no findings are found.
+- Stalled or unavailable evidence, clearly separated from confirmed findings.
 
-Do not rewrite code during review. Recommend minimal fixes for confirmed issues.
+Do not rewrite code during review. Recommend minimal fixes for confirmed issues. If the same review blocker repeats without new evidence, stop and report the repeated blocker instead of asking for another review loop.

@@ -16,7 +16,7 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 4. Implement only the requested change.
 5. Run diagnostics, targeted tests, build checks, and manual QA when applicable.
 6. Address confirmed blocking review findings with additional minimal edits.
-7. Re-run the relevant checks after every fix.
+7. Re-run the relevant checks after every fix, but stop if the same blocker survives one bounded retry round and report the exact blocker.
 
 ## Constraints
 

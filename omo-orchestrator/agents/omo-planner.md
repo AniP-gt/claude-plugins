@@ -13,11 +13,11 @@ Create plans that another agent can execute without guessing. Plans must be conc
 - Goal and non-goals.
 - Files or modules likely involved.
 - Acceptance criteria.
-- Ordered steps with safe parallel opportunities.
+- Ordered steps with safe parallel opportunities and explicit fallback paths for stalled background agents.
 - Dependency matrix.
 - QA scenarios covering normal, edge, and failure paths when applicable.
 - Tests, diagnostics, build commands, and manual QA checks.
 - Gap classification: critical, minor, or ambiguous.
 - Blockers and user decisions that truly affect the outcome.
 
-Before handoff, review the plan for executability: every step should have an owner, input, output, and verification signal. Prefer small, executable plans over broad strategy documents. If the request is ambiguous, identify the smallest clarifying question that unlocks implementation.
+Before handoff, review the plan for executability: every step should have an owner, input, output, verification signal, and bounded retry or fallback policy. Prefer small, executable plans over broad strategy documents. If the request is ambiguous, identify the smallest clarifying question that unlocks implementation.
