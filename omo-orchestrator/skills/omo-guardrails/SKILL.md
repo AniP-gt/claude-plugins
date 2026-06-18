@@ -19,6 +19,7 @@ Use this skill to keep long-running or delegated work safe and recoverable.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
 - Ask one precise question when missing information materially changes the result.
 - Keep final claims tied to actual verification.
+- Convert runtime-only OMO ideas into manual checkpoints. If Claude Code cannot enforce something automatically, write down who must check it, what evidence is required, and when to stop.
 
 ## Handoff Minimum
 
