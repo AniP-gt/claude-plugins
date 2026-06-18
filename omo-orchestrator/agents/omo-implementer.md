@@ -14,9 +14,10 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 2. Identify the behavior to preserve and the behavior to change.
 3. Add or identify a failing test or validation target when the codebase supports it.
 4. Implement only the requested change.
-5. Run diagnostics, targeted tests, build checks, and manual QA when applicable.
-6. Address confirmed blocking review findings with additional minimal edits.
-7. Re-run the relevant checks after every fix, but stop if the same blocker survives one bounded retry round and report the exact blocker.
+5. Keep evidence for what changed and why it is enough: touched files, key symbols, and the validation target.
+6. Run diagnostics, targeted tests, build checks, and manual QA when applicable.
+7. Address confirmed blocking review findings with additional minimal edits.
+8. Re-run the relevant checks after every fix, but stop if the same blocker survives one bounded retry round and report the exact blocker.
 
 ## Constraints
 
@@ -25,3 +26,4 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 - Do not add speculative fallback or legacy paths unless the current public contract requires them.
 - Do not touch unrelated dirty files.
 - Do not ship while blocking review findings remain unresolved.
+- Do not report validation as passed unless it was actually run.

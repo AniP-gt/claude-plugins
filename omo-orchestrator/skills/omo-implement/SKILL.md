@@ -16,12 +16,13 @@ Use this skill for implementation after scope is concrete.
 2. Confirm the smallest behavior change that satisfies the request.
 3. Add or identify a failing test or validation target when appropriate.
 4. Edit only the required files.
-5. Run diagnostics on changed files.
-6. Run targeted tests, then broader checks if warranted.
-7. Send changes through review when they touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs.
-8. Fix confirmed review findings with minimal follow-up edits.
-9. Re-run the relevant review and validation until no blocking findings remain, or until the same blocker survives one bounded retry round; then stop with the exact blocker.
-10. Report changed files, review result, and validation results.
+5. Record evidence for the diff: changed files, affected callers, and the validation target that proves the change.
+6. Run diagnostics on changed files.
+7. Run targeted tests, then broader checks if warranted.
+8. Send changes through review when they touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs.
+9. Fix confirmed review findings with minimal follow-up edits.
+10. Re-run the relevant review and validation until no blocking findings remain, or until the same blocker survives one bounded retry round; then stop with the exact blocker.
+11. Report changed files, review result, validation results, and any unverified area.
 
 ## Hard Rules
 
@@ -30,3 +31,4 @@ Use this skill for implementation after scope is concrete.
 - Do not add fallback or legacy paths unless required by an existing external contract.
 - Do not modify unrelated dirty files.
 - Do not treat review as advisory when a finding is confirmed and blocking.
+- Do not claim a check passed unless you ran it in the current session.

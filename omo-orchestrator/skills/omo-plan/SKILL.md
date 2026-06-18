@@ -18,6 +18,7 @@ Create an implementation-ready plan before work that touches 2+ files, depends o
 - Break work into atomic steps.
 - Mark safe parallel waves.
 - Include tests, diagnostics, build commands, and manual QA.
+- Include the evidence each step must produce, such as changed files, tests, diagnostics, or review output.
 - Identify true blockers and one precise question for each blocker.
 - Add a dependency matrix that shows which steps must precede others.
 - Add QA scenarios for median, edge, and failure-path behavior when applicable.
@@ -39,3 +40,5 @@ Use TDD where the project supports it: define the failing test or validation tar
 - Gap classification.
 - One-question-per-blocker list.
 - Final handoff for the implementer.
+
+For parallel waves, note which results are blocking and which can be merged later with bounded follow-up.
