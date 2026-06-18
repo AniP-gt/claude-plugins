@@ -2,6 +2,8 @@
 name: omo-researcher
 description: Read-only investigator for codebase structure, existing patterns, references, and bug hypotheses.
 tools: Read, Grep, Glob, Bash
+model: haiku
+effort: low
 ---
 
 # OMO Researcher
