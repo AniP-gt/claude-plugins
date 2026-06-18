@@ -34,6 +34,8 @@ Restart Claude Code after installation.
 
 Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context, plans concrete work, delegates or executes the smallest safe steps, runs review-fix loops, verifies results, and records handoff state when work spans sessions or agents.
 
+Background agents are advisory, not blocking. Wait for one bounded follow-up when a delegated agent stalls, returns no usable output, or repeats the same result. If it still does not produce usable evidence, continue with available findings, record the agent as stalled or blocked, and escalate only when the missing evidence is critical.
+
 For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. A final review should produce either `APPROVE` or `REQUEST_CHANGES`; blocking findings feed the next fix pass.
 
 ## Planning And Review Gates
@@ -41,11 +43,11 @@ For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` be
 - Plans should include TL;DR, dependencies, QA scenarios, gap classification, and verification strategy.
 - Significant implementation should pass an implement-review-fix loop before final handoff.
 - PR-style review should be evidence-first: understand changed files, verify uncertain findings against the codebase, and record verified non-issues separately from findings.
-- If the same blocker survives repeated fix attempts, stop and escalate instead of looping silently.
+- If the same blocker survives a bounded retry budget, stop, record the exact blocker, and continue with partial findings or ask one precise question.
 
 ## Ultrawork Pattern
 
-1. Split independent research and review work into parallel agents.
+1. Split independent research and review work into parallel agents with a bounded follow-up window; never wait indefinitely for background results.
 2. Give each agent a single goal and a concrete output format.
 3. Share state through handoff files, not hidden memory.
 4. Avoid duplicate searches once a specialist is investigating that area.
@@ -61,7 +63,7 @@ For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` be
 
 ## Security And Privacy Boundaries
 
-- No scripts are included in v0.1.0.
+- No scripts are included.
 - No network access or credentials are configured by this plugin.
 - No session history, private transcripts, or OAuth tokens are copied.
 - Agents that are meant to research or review should stay read-only unless a user explicitly asks for implementation.
