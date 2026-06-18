@@ -20,7 +20,7 @@ Use this skill for implementation after scope is concrete.
 6. Run targeted tests, then broader checks if warranted.
 7. Send changes through review when they touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs.
 8. Fix confirmed review findings with minimal follow-up edits.
-9. Re-run the relevant review and validation until no blocking findings remain, or stop with the exact blocker.
+9. Re-run the relevant review and validation until no blocking findings remain, or until the same blocker survives one bounded retry round; then stop with the exact blocker.
 10. Report changed files, review result, and validation results.
 
 ## Hard Rules

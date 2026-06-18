@@ -18,4 +18,4 @@ Use this skill when the next action depends on understanding existing code or re
 - Return paths, symbols, evidence, and recommended next steps.
 - Separate facts from assumptions.
 
-For broad research, split independent questions across agents and merge the findings before planning.
+For broad research, split independent questions across agents and merge the findings before planning. Do not block the plan on a stalled research agent: after one bounded follow-up, mark the missing result as stalled or blocked, separate the evidence gap from confirmed facts, and proceed only if the remaining evidence is sufficient.
