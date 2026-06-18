@@ -117,3 +117,27 @@ PID: `~/.claude/tmp/.pid_compass_<sanitized_index>`
 ### chunk_tsv 生成列（ハイブリッド検索の余地）
 
 `chunk_text` から `to_tsvector('simple', chunk_text)` の生成列 `chunk_tsv` と GIN index を `declare_sql_command_attachment` で付与している。現状の `search.py` は dense vector + voyage rerank のみだが、将来 BM25 RRF を組み込む際にこのインフラを活用できる。
+
+## アンインストール
+
+compass 専用リソース（DB / 設定 / LiveUpdater PID / ログ）を一括削除する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh            # 確認プロンプトあり
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --dry-run  # 削除予定の確認のみ
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --yes      # 確認なし（非対話シェルでは必須）
+```
+
+削除されるもの:
+
+- 実行中の LiveUpdater プロセスと `~/.claude/tmp/.pid_compass_*`
+- PostgreSQL の `compass` database（コンテナ `cocoindex` 上、`DROP DATABASE ... WITH (FORCE)`）
+- `~/.config/compass/`（`.env` / `secrets.env` / `cocoindex.toml`）
+- `/tmp/compass-live-updater.log`
+
+触れないもの（共有リソース）:
+
+- コンテナ `cocoindex` / ボリューム `pgdata`（pgvector-stack 所有）
+- `~/.config/cocoindex/secrets.env`（cocoindex-setup 所有、共有 hub）
+
+コンテナ未起動時は DROP DATABASE をスキップする（DB はボリューム削除時に消える）。プラグイン本体の削除は `/plugin uninstall compass@hidetsugu-miya`。

@@ -71,6 +71,20 @@ chmod 600 ~/.config/cocoindex/{secrets.env,config.toml}
 
 詳細は `templates/config.example.toml` を参照。
 
+## アンインストール
+
+共有 hub の `secrets.env` / `config.toml` を削除する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh            # 確認プロンプトあり
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --dry-run  # 削除予定の確認のみ
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --yes      # 確認なし（非対話シェルでは必須）
+```
+
+- **注意**: `secrets.env` は compass / episodic の fallback secrets hub。下流プラグインを使い続けるなら削除しない
+- `compose.yml`（pgvector-stack 所有）には触れない。`~/.config/cocoindex/` は空になった場合のみ削除される
+- プラグイン本体の削除は `/plugin uninstall cocoindex-setup@hidetsugu-miya`
+
 ## トラブルシュート
 
 - `VOYAGE_API_KEY` 未設定 → `compass` / `episodic` の embedding 実行が 401 で失敗する。`~/.config/cocoindex/secrets.env` に設定する
