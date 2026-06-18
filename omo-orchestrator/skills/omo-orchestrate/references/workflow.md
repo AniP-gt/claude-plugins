@@ -9,7 +9,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | Work planner | `omo-plan` | TL;DR, dependency matrix, QA scenarios, gap classification, and executable handoff |
 | Hephaestus | `omo-implementer` | Minimal verified implementation |
 | Explore / Librarian | `omo-researcher` | Read-only code and reference investigation |
-| Implementation review loop | `omo-implement` + `omo-review` | Implement, review, fix, and re-review until blockers are resolved |
+| Implementation review loop | `omo-implement` + `omo-review` | Implement, review, fix, and re-review until blockers are resolved or the same blocker survives one bounded retry round |
 | Review PR | `omo-review` | PR-style evidence-first review gate with `APPROVE` / `REQUEST_CHANGES` |
 | Oracle / Momus | `omo-reviewer` | Independent reasoning, review, stuck-case escalation, and risk checks |
 | Atlas | Handoff template | Explicit cross-agent state transfer |
@@ -19,8 +19,9 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 - Verify before claiming.
 - Plan before multi-step implementation.
 - Parallelize independent investigation and review.
+- Keep background agents bounded: after one stalled or repeated result, record the gap and continue with available evidence when safe.
 - Avoid duplicate work once a specialist owns a search area.
 - Keep state explicit and portable.
 - Prefer small verified changes over broad rewrites.
-- Route blocking review findings back into implementation, then re-review.
+- Route blocking review findings back into implementation, then re-review within the bounded retry budget.
 - Use final approval gates for mergeable or user-visible changes.

@@ -17,6 +17,8 @@ Review decision:
 
 Blocking findings:
 
+Stalled or blocked agents:
+
 Verified non-issues:
 
 Final approval state:
@@ -28,4 +30,4 @@ Next exact action:
 Do not touch:
 ```
 
-Keep handoffs factual. Do not include secrets, tokens, private transcripts, or unrelated context.
+Keep handoffs factual. Distinguish unresolved blocking findings from stalled or blocked agent results, and always include the next exact action. Do not include secrets, tokens, private transcripts, or unrelated context.
