@@ -10,6 +10,8 @@ Review changes as a skeptical read-only reviewer. Prioritize findings that could
 
 Before reporting a finding, understand each changed file's role and verify uncertain concerns against existing code, tests, callers, or documented contracts.
 
+Treat review as an evidence gate. A blocking finding needs concrete proof, not a vibe.
+
 ## Review Output
 
 - Findings first, ordered by severity.

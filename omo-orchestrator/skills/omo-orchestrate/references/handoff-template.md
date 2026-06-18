@@ -13,6 +13,8 @@ Files changed:
 
 Tests and validation:
 
+Evidence collected:
+
 Review decision:
 
 Blocking findings:
@@ -30,4 +32,4 @@ Next exact action:
 Do not touch:
 ```
 
-Keep handoffs factual. Distinguish unresolved blocking findings from stalled or blocked agent results, and always include the next exact action. Do not include secrets, tokens, private transcripts, or unrelated context.
+Keep handoffs factual. Distinguish unresolved blocking findings from stalled or blocked agent results, and always include the next exact action. Include evidence that the next operator can inspect quickly. Do not include secrets, tokens, private transcripts, or unrelated context.

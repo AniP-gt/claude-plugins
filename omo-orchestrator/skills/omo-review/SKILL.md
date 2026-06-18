@@ -26,6 +26,8 @@ Use this skill before handing off changes that touch 2+ files, public/API/CLI be
 
 Findings come first and must include concrete evidence. If no findings are found, state residual risks and what was not tested.
 
+Evidence means file paths, symbols, caller or callee references, test names, diagnostics, or command results. A vague concern is not enough for `REQUEST_CHANGES`.
+
 ## Report Contract
 
 - Decision: `APPROVE` or `REQUEST_CHANGES`.
@@ -35,5 +37,7 @@ Findings come first and must include concrete evidence. If no findings are found
 - Verified non-issues, only when useful to answer a suspected issue.
 - Missing validation.
 - Residual risks.
+
+Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 
 Do not convert every checklist item into a finding. A finding must be actionable, applicable, and proportional to the risk.
