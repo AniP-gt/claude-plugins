@@ -10,6 +10,8 @@ user-invocable: true
 
 Use this skill to run work through an OMO-style loop: classify intent, gather context, plan, delegate or execute, review, fix, verify, and hand off clearly.
 
+Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP servers, or hidden automation, convert it into an explicit manual step, evidence requirement, or handoff checkpoint.
+
 ## Flow
 
 1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup.
@@ -19,13 +21,15 @@ Use this skill to run work through an OMO-style loop: classify intent, gather co
 5. Track state explicitly with todos or a handoff file.
 6. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full loop: implement, review, fix confirmed blocking findings, then re-review.
 7. Use a PR-style final gate when the change is intended to be merged or shared: `APPROVE` exits, `REQUEST_CHANGES` feeds the next fix pass.
-8. Verify with diagnostics, tests, build checks, and manual QA where applicable.
-9. Finalize with changed files, review decision, validation performed, and any residual risks.
+8. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
+9. Verify with diagnostics, tests, build checks, and manual QA where applicable.
+10. Finalize with changed files, review decision, validation performed, and any residual risks.
 
 ## Review Loop Policy
 
 - Inner loop: implement, review, synthesize findings, fix confirmed blockers, and re-run affected checks.
 - Outer gate: review the resulting diff for security, robustness, quality, and goal alignment.
+- Evidence gate: a claim without a path, symbol, test, diagnostic, command result, or quoted code is not a review-grade finding.
 - Stuck condition: if the same blocking issue survives one bounded retry round, stop and route to `omo-reviewer` for independent analysis. If the blocker depends on product judgment or external constraints, ask the user one precise question.
 - Stalled delegation: do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question. Mark missing results as stalled or blocked in the handoff and proceed with partial findings when safe.
 - Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user.
@@ -42,6 +46,8 @@ Every delegated task should include:
 - Must do.
 - Must not do.
 - Context.
+
+Ask for output that another operator can verify quickly: changed files, evidence, blockers, and next exact action.
 
 ## References
 
