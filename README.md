@@ -60,7 +60,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check_config.sh
 
 CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群（failures / tests / status / flaky / rerun / config 等）を提供しつつ、`circleci-watch` skill で目的状態到達まで CircleCI REST API を直接ポーリングして監視する。
 
-環境変数 `CIRCLECI_TOKEN`（Personal API Token）の設定が必要です。Token は <https://app.circleci.com/settings/user/tokens> から取得してください。セルフホスト環境では `CIRCLECI_BASE_URL` も併せて設定します。MCPツールは deferred tools として on-demand ロードされる。
+環境変数 `CIRCLECI_TOKEN`（Personal API Token）を **Claude Code 起動前の shell に export** してください（`~/.zshrc` / `~/.bashrc` 等に `export CIRCLECI_TOKEN=...`）。`~/.claude/settings.json` の `env` ブロック経由では MCP サーバーへ伝播しません。Token は <https://app.circleci.com/settings/user/tokens> から取得してください。セルフホスト環境では `CIRCLECI_BASE_URL` も同じ要領で shell に export します。MCPツールは deferred tools として on-demand ロードされる。
 
 ### devin
 
@@ -76,7 +76,7 @@ Node.js 20以上が必要です。使い方は `/mermaid-render` を実行して
 
 ### episodic
 
-Claude Code セッションのエピソード記憶（Raw + Wiki）を管理するプラグイン。`SessionEnd` で会話履歴を Codex で要約して `<memories_dir>/raw/session/YYYY-MM-DD/` へ保存し、`SessionStart` で staging を正規パスへ移送する。`episodic-recording` skill から URL アーカイブ（kind: web）と議事録（kind: minutes）も手動保存でき、保存直後に Codex が `wiki/projects/<p>.md` / `wiki/references.md` / `wiki/decisions.md` を自動更新する。議事録は Notion URL を入力すると Notion MCP（`claude mcp add` で個別登録）経由でページ Markdown を取得して取り込める。`episodic-setup` / `episodic-recording` / `episodic-search` の 3 skill を同梱し、cocoindex プラグイン（同マーケットプレイス）と連携してベクトル検索を提供する。
+Claude Code セッションのエピソード記憶（Raw + Wiki）を管理するプラグイン。`SessionEnd` で会話履歴を Codex で要約して `<memories_dir>/raw/session/YYYY-MM-DD/` へ保存し、`SessionStart` で staging を正規パスへ移送する。`episodic-recording` skill から URL アーカイブ（kind: web）と議事録（kind: minutes）も手動保存でき、保存直後に Codex が `wiki/projects/<p>.md` / `wiki/references.md` / `wiki/decisions.md` を自動更新する。議事録は Notion URL を入力すると Notion MCP（`claude mcp add` で個別登録）経由でページ Markdown を取得して取り込める。minutes / diary からは人物 Wiki（`wiki/people/<slug>.md`、人名 slug・本人は `is_self` で 1 ページに集約）と組織 Wiki（`wiki/orgs/<slug>.md`、kind: org・web 裏取り付き）を Codex が自動抽出し、既存の人物・組織レジストリを注入してジョブ横断で名寄せする。重複検出・統合は `lib/wiki_reconcile.py`、組織の web 裏取り保守は `wiki/org_web_verify.py` の保守 CLI で行える。`episodic-setup` / `episodic-recording` / `episodic-search` の 3 skill を同梱し、cocoindex プラグイン（同マーケットプレイス）と連携してベクトル検索を提供する。
 
 前提条件:
 

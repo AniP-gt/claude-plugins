@@ -67,6 +67,12 @@ stop_debounce_seconds = 60
 session_codex_timeout_seconds = 300
 wiki_codex_timeout_seconds = 1200
 
+# macOS 通知センターへの通知レベル。環境変数 MEMORIES_NOTIFICATION_LEVEL で上書き可能。
+#   all     : 完了・スキップ・失敗すべて通知（既定、従来挙動）
+#   failure : 失敗のみ通知（並行セッションが多い環境で完了通知が洪水になる場合に推奨）
+#   none    : 通知なし（いずれの場合もログには常に記録される）
+# notification_level = "failure"
+
 # ============================================================================
 # 以下は secrets.env または環境変数で設定する項目。本ファイルでは説明のみ。
 # シークレット情報は ~/.config/episodic/secrets.env（chmod 600）に書く運用を推奨します。
@@ -95,7 +101,7 @@ wiki_codex_timeout_seconds = 1200
 #   export MEMORIES_WIKI_MAX_ATTEMPTS=5                     # 失敗時の最大試行回数（超過で dead-letter）
 #   export MEMORIES_WIKI_RETRY_BASE_SECONDS=300             # 指数 backoff の初期秒数（上限 86400）
 #   export MEMORIES_WIKI_PROCESSING_TIMEOUT_SECONDS=3600    # status: processing を stuck と判定する経過秒数
-#   export MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS=7200   # target lock 取得待ちの最大秒数
+#   export MEMORIES_WIKI_TARGET_LOCK_TIMEOUT_SECONDS=30     # target lock 取得待ちの最大秒数（超過時は batch を pending へ戻し再試行に委ねる / worker は即解放）
 #   export MEMORIES_WIKI_KICK_DEBOUNCE_SECONDS=5            # enqueue 後の runner 起動 debounce 秒数
 
 # trashbox 自動削除（wiki-runner.sh 起動時に mtime ベースで実行）。
@@ -105,3 +111,6 @@ wiki_codex_timeout_seconds = 1200
 # ~/.local/state/episodic/logs/*.log のローテーション（各 runner 起動時に閾値超過なら gzip 退避）。
 #   export MEMORIES_LOG_ROTATE_BYTES=5242880  # 既定 5MB
 #   export MEMORIES_LOG_ROTATE_KEEP=3         # 保持世代数
+
+# session JSONL snapshot の zstd 圧縮レベル（範囲 1-19、不正値は既定 9）。
+#   export MEMORIES_SNAPSHOT_ZSTD_LEVEL=9     # 既定 9（テキスト JSONL では -19 比で圧縮率差小・時間大）

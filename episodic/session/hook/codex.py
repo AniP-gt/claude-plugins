@@ -114,8 +114,11 @@ def current_git_branch(cwd: str | None) -> str:
     return text[:12] if text else "unknown"
 
 
-def write_markdown(jsonl: Path, output: Path, jsonl_to_md: Path) -> None:
-    meta = scan_metadata(jsonl)
+def write_markdown(jsonl: Path, output: Path, jsonl_to_md: Path,
+                   meta: dict[str, Any] | None = None) -> None:
+    """JSONL を Markdown 化する。meta を渡すと scan_metadata の再スキャンを省略する。"""
+    if meta is None:
+        meta = scan_metadata(jsonl)
     sections: list[str] = ["# 会話履歴"]
     meta_lines: list[str] = []
     if meta.get("session_id"):

@@ -115,58 +115,74 @@ def parse_frontmatter(path: Path) -> dict:
         pass
     return fm
 
-def _walk_kind_root(root: Path) -> list[tuple[str, str, Path]]:
-    """kind 別ディレクトリ root（直下に YYYY-MM-DD/）から (date, hhmmss, path) を返す。"""
-    out: list[tuple[str, str, Path]] = []
-    if not root.exists():
-        return out
-    for date_dir in sorted(root.iterdir(), reverse=True):
-        if not date_dir.is_dir() or not DATE_RE.match(date_dir.name):
+def _collect_date_dirs(roots: list[Path]) -> dict[str, list[Path]]:
+    """各 root 直下の YYYY-MM-DD ディレクトリを日付キーで集約する（cutoff 適用）。
+
+    ファイル列挙はせずディレクトリ列挙のみ。複数 root（kind=all）は同日付をまとめる。
+    """
+    by_date: dict[str, list[Path]] = {}
+    for root in roots:
+        if not root.exists():
             continue
-        try:
-            d = datetime.strptime(date_dir.name, "%Y-%m-%d").date()
-        except ValueError:
-            continue
-        if cutoff and d < cutoff:
-            continue
+        for date_dir in root.iterdir():
+            if not date_dir.is_dir() or not DATE_RE.match(date_dir.name):
+                continue
+            try:
+                d = datetime.strptime(date_dir.name, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            if cutoff and d < cutoff:
+                continue
+            by_date.setdefault(date_dir.name, []).append(date_dir)
+    return by_date
+
+
+kind = os.environ.get("KIND", "session")
+if kind == "all":
+    roots = [raw_dir / sub for sub in ("session", "web", "minutes", "diary")]
+else:
+    # raw_dir は kind=all なら memories/raw、それ以外なら memories/raw/<kind>
+    roots = [raw_dir]
+
+date_dirs_by_date = _collect_date_dirs(roots)
+
+# 日付ディレクトリを YYYY-MM-DD 降順に走査し、top 充足で打ち切る。
+# 全日付の全ファイルを列挙→全ソートする旧実装に対し、古い日付のファイル列挙・
+# frontmatter 読込を回避する。日付単位の前進なので結果は旧実装と一致する。
+results = []
+for date_str in sorted(date_dirs_by_date, reverse=True):
+    # 同日付の全 root のファイルを集約し、HHMMSS 降順に整列する。
+    # roots 順（session→web→minutes→diary）で append するため、同 HHMMSS の
+    # 安定ソートでの並びは旧グローバルソートと一致する。
+    day_entries: list[tuple[str, Path]] = []
+    for date_dir in date_dirs_by_date[date_str]:
         for f in date_dir.iterdir():
             m = FILE_RE.match(f.name)
             if not m:
                 continue
-            out.append((date_dir.name, m.group(1), f))
-    return out
+            day_entries.append((m.group(1), f))
+    day_entries.sort(key=lambda x: x[0], reverse=True)
 
-
-kind = os.environ.get("KIND", "session")
-entries: list[tuple[str, str, Path]] = []
-if kind == "all":
-    for sub in ("session", "web", "minutes", "diary"):
-        entries.extend(_walk_kind_root(raw_dir / sub))
-else:
-    # raw_dir は kind=all なら memories/raw、それ以外なら memories/raw/<kind>
-    entries = _walk_kind_root(raw_dir)
-
-entries.sort(key=lambda x: (x[0], x[1]), reverse=True)
-
-results = []
-for date_str, hhmmss, path in entries:
+    for hhmmss, path in day_entries:
+        if len(results) >= top:
+            break
+        fm = parse_frontmatter(path)
+        if project_filter and fm.get("project", "") != project_filter:
+            continue
+        results.append({
+            "date": date_str,
+            "time": f"{hhmmss[0:2]}:{hhmmss[2:4]}:{hhmmss[4:6]}",
+            "ended_at": fm.get("ended_at", ""),
+            "started_at": fm.get("started_at", ""),
+            "title": fm.get("title", path.stem),
+            "project": fm.get("project", ""),
+            "duration_minutes": fm.get("duration_minutes", ""),
+            "tags": fm.get("tags", ""),
+            "status": fm.get("status", ""),
+            "path": str(path),
+        })
     if len(results) >= top:
         break
-    fm = parse_frontmatter(path)
-    if project_filter and fm.get("project", "") != project_filter:
-        continue
-    results.append({
-        "date": date_str,
-        "time": f"{hhmmss[0:2]}:{hhmmss[2:4]}:{hhmmss[4:6]}",
-        "ended_at": fm.get("ended_at", ""),
-        "started_at": fm.get("started_at", ""),
-        "title": fm.get("title", path.stem),
-        "project": fm.get("project", ""),
-        "duration_minutes": fm.get("duration_minutes", ""),
-        "tags": fm.get("tags", ""),
-        "status": fm.get("status", ""),
-        "path": str(path),
-    })
 
 if fmt == "json":
     print(json.dumps(results, ensure_ascii=False, indent=2))

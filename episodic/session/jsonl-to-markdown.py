@@ -17,7 +17,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 LOCAL_COMMAND_TAGS = (
     "<local-command-caveat>",
@@ -66,6 +66,18 @@ def iter_lines(path: str | None) -> Iterable[str]:
         return
     with open(path, encoding="utf-8") as f:
         yield from f
+
+
+def _line_source(path: str | None) -> Callable[[], Iterable[str]]:
+    """2 パス走査のための再走査可能な行ソースを返す。
+
+    ファイルは呼ばれるたびに開き直すため、行を list 保持せずピークメモリを
+    O(マップ) に抑えられる。stdin は再走査できないため一度だけ全行をバッファする。
+    """
+    if path is None:
+        buffered = list(sys.stdin)
+        return lambda: iter(buffered)
+    return lambda: iter_lines(path)
 
 
 def format_timestamp(ts: str | None) -> str:
@@ -377,12 +389,15 @@ def main(argv: list[str]) -> int:
     first_ts: str | None = None
     last_ts: str | None = None
 
-    # 2パス構成: 1パス目は生のレコードを収集しつつ tool_use の id→name/input を記録
-    records: list[dict[str, Any]] = []
     tool_name_by_id: dict[str, str] = {}
     tool_input_by_id: dict[str, dict[str, Any]] = {}
 
-    for raw in iter_lines(input_path):
+    # 2パス構成: レコードを list 保持せず行ソースを 2 回走査し、ピークメモリを
+    # O(ファイルサイズ) から O(マップ) に削減する。
+    line_source = _line_source(input_path)
+
+    # 1パス目: tool_use の id→name/input マッピングとメタ情報のみ構築する。
+    for raw in line_source():
         raw = raw.strip()
         if not raw:
             continue
@@ -398,7 +413,6 @@ def main(argv: list[str]) -> int:
             first_ts = first_ts or ts
             last_ts = ts
 
-        # 1パス目: tool_use の id→name/input マッピングを構築
         content = record.get("message", {}).get("content")
         if isinstance(content, list):
             for b in content:
@@ -411,10 +425,16 @@ def main(argv: list[str]) -> int:
                     if tid and isinstance(inp, dict):
                         tool_input_by_id[tid] = inp
 
-        records.append(record)
-
-    # 2パス目: マッピングを参照して圧縮しつつ render
-    for record in records:
+    # 2パス目: 再走査し、マッピングを参照して圧縮しつつ render する。
+    # JSON パースエラーは 1パス目で warn 済みのため、ここでは黙って読み飛ばす。
+    for raw in line_source():
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            record = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
         if should_skip(record):
             continue
         section = render_message(record, tool_name_by_id, tool_input_by_id)

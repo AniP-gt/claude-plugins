@@ -3,11 +3,7 @@
     "circleci": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@circleci/mcp-server-circleci@0.15.1"],
-      "env": {
-        "CIRCLECI_TOKEN": "${CIRCLECI_TOKEN}",
-        "CIRCLECI_BASE_URL": "${CIRCLECI_BASE_URL:-https://circleci.com}"
-      }
+      "args": ["-y", "@circleci/mcp-server-circleci@0.15.1"]
     }
   }
 }

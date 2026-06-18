@@ -35,8 +35,8 @@ CONFIG_PATH = Path.home() / ".config" / "episodic" / "config.toml"
 
 
 def _default_remount_script() -> str:
-    # source repo / codex-hook-runtime いずれも bin/mount-memory-share.sh で統一済み。
-    return str(plugin_root() / "bin" / "mount-memory-share.sh")
+    # source repo / codex-hook-runtime いずれも bin/mount_memory_share.py で統一済み。
+    return str(plugin_root() / "bin" / "mount_memory_share.py")
 
 DEFAULTS: dict[str, Any] = {
     "memories_dir": "/Volumes/memory",
@@ -46,9 +46,13 @@ DEFAULTS: dict[str, Any] = {
     "mount_canary_filename": ".mount-canary",
     "hostname_hash_length": 8,
     "stop_debounce_seconds": 60,
+    "stop_defer_max": 10,
     "session_codex_timeout_seconds": 300,
     "wiki_codex_timeout_seconds": 1200,
+    "notification_level": "all",
 }
+
+NOTIFICATION_LEVELS = ("all", "failure", "none")
 
 
 def _expand(path_str: str) -> Path:
@@ -98,6 +102,12 @@ def load_config() -> dict[str, Any]:
         if 0 <= n <= 600:
             cfg["stop_debounce_seconds"] = n
 
+    defer_max_env = os.environ.get("MEMORIES_STOP_DEFER_MAX")
+    if defer_max_env and defer_max_env.isdigit():
+        n = int(defer_max_env)
+        if 0 <= n <= 100:
+            cfg["stop_defer_max"] = n
+
     session_timeout_env = os.environ.get("MEMORIES_SESSION_CODEX_TIMEOUT_SECONDS")
     if session_timeout_env and session_timeout_env.isdigit():
         n = int(session_timeout_env)
@@ -109,6 +119,12 @@ def load_config() -> dict[str, Any]:
         n = int(wiki_timeout_env)
         if 0 <= n <= 86400:
             cfg["wiki_codex_timeout_seconds"] = n
+
+    notify_env = os.environ.get("MEMORIES_NOTIFICATION_LEVEL")
+    if notify_env and notify_env.lower() in NOTIFICATION_LEVELS:
+        cfg["notification_level"] = notify_env.lower()
+    if cfg.get("notification_level") not in NOTIFICATION_LEVELS:
+        cfg["notification_level"] = "all"
 
     return cfg
 
@@ -179,6 +195,16 @@ def resolve_stop_debounce_seconds() -> int:
     return int(load_config().get("stop_debounce_seconds", 60))
 
 
+def resolve_stop_defer_max() -> int:
+    """残作業ゲートの連続 defer 上限回数。範囲 0-100（既定 10）。
+
+    バックグラウンド作業・単発 cron が残る間は finalize を defer するが、恒久的な
+    `tail -f` 等で永久に記録されない事故を防ぐため、連続 defer がこの回数に達したら
+    残作業があっても強制的に解析・出力する。
+    """
+    return int(load_config().get("stop_defer_max", 10))
+
+
 def resolve_session_codex_timeout_seconds() -> int:
     """session 要約の Codex 実行 timeout 秒数。0 は timeout 無効（既定 300）。"""
     return int(load_config().get("session_codex_timeout_seconds", 300))
@@ -189,6 +215,20 @@ def resolve_wiki_codex_timeout_seconds() -> int:
     return int(load_config().get("wiki_codex_timeout_seconds", 1200))
 
 
+def resolve_notification_level() -> str:
+    """macOS 通知センターへの通知レベル。
+
+    all     : 完了・スキップ・失敗すべて通知（既定、従来挙動）
+    failure : 失敗のみ通知（並行セッションが多い環境での完了通知の洪水対策）
+    none    : 通知なし（ログには常に記録される）
+    """
+    return str(load_config().get("notification_level", "all"))
+
+
+def _machine_id_cache_path() -> Path:
+    return Path.home() / ".local" / "state" / "episodic" / "machine_id"
+
+
 @lru_cache(maxsize=1)
 def _machine_id() -> str:
     """macOS の IOPlatformUUID をマシン固有 ID として返す。
@@ -197,7 +237,18 @@ def _machine_id() -> str:
     同一マシン内でも値が揺れる（例: MacBookPro.local ↔ 別形式）。揺れると
     host_hash も変わり、report_path のパス重複検知が空振りする。
     IOPlatformUUID はハードウェア固有の不変値なので、これをハッシュ元にする。
+
+    lru_cache はプロセス内のみ有効で、hook はイベントごとに新プロセスのため
+    ioreg subprocess が毎回走る。不変値なのでファイルキャッシュで永続化する。
     """
+    cache = _machine_id_cache_path()
+    try:
+        cached = cache.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+    except OSError:
+        pass
+
     try:
         proc = subprocess.run(
             ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
@@ -212,7 +263,15 @@ def _machine_id() -> str:
         if "IOPlatformUUID" in line:
             parts = line.split('"')
             if len(parts) >= 4 and parts[3]:
-                return parts[3]
+                machine_id = parts[3]
+                try:
+                    cache.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = cache.with_name(cache.name + ".tmp")
+                    tmp.write_text(machine_id + "\n", encoding="utf-8")
+                    os.replace(tmp, cache)
+                except OSError:
+                    pass
+                return machine_id
     raise RuntimeError("IOPlatformUUID not found in ioreg output")
 
 

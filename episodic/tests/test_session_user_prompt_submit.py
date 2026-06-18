@@ -1,0 +1,47 @@
+"""bin/session_user_prompt_submit.py の単体テスト。"""
+from __future__ import annotations
+
+import importlib
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "bin"))
+
+
+@pytest.fixture
+def mod(monkeypatch: pytest.MonkeyPatch):
+    sys.modules.pop("session_user_prompt_submit", None)
+    return importlib.import_module("session_user_prompt_submit")
+
+
+def test_passes_through(mod, monkeypatch) -> None:
+    """hook.py を直接 import し、stdin payload を run() に渡して rc を返す。"""
+    calls: list = []
+
+    class _FakeHook:
+        @staticmethod
+        def read_hook_input():
+            return {"hook_event_name": "UserPromptSubmit", "session_id": "s"}
+
+        @staticmethod
+        def run(payload):
+            calls.append(payload)
+            return 0
+
+    monkeypatch.setattr(mod, "_load_hook_module", lambda: _FakeHook)
+    rc = mod.main()
+    assert rc == 0
+    assert calls and calls[0]["hook_event_name"] == "UserPromptSubmit"
+
+
+def test_hook_exception_yields_zero(mod, monkeypatch) -> None:
+    """hook のロード・実行が例外を投げてもフックは 0 を返す（Claude Code を阻害しない）。"""
+    def raise_load():
+        raise OSError("boom")
+
+    monkeypatch.setattr(mod, "_load_hook_module", raise_load)
+    assert mod.main() == 0

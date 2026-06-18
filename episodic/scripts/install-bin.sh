@@ -73,17 +73,17 @@ cat > "$RUNTIME_ROOT/README.md" <<'README'
 
 `episodic/scripts/install-bin.sh` が plugin source ツリーをここへミラーコピーしています。
 Codex / Claude Code の hook は plugin cache の場所に依存しないよう、展開後の
-`bin/session-start.sh` / `bin/session-stop.sh` / `bin/session-user-prompt-submit.sh`
+`bin/session_start.py` / `bin/session_stop.py` / `bin/session_user_prompt_submit.py`
 を呼びます。
 
 ディレクトリ構成は plugin source と同一です:
 
 ```
-bin/         エントリラッパー（session-{start,stop,user-prompt-submit}.sh など）
+bin/         エントリラッパー（session_{start,stop,user_prompt_submit}.py など）
 lib/         共通ヘルパー（config / cocoindex_trigger / log_rotate ...）
-session/     Stop hook 本体（hook.py + runner.sh + retry queue ...）
+session/     Stop hook 本体（hook.py + runner.py + retry queue ...）
 recording/   cocoindex flow（main_episodic.py）と web/minutes 補助
-wiki/        wiki ingest pipeline（enqueue / kick-runner / wiki-runner）
+wiki/        wiki ingest pipeline（enqueue / kick_runner / wiki_runner）
 scripts/     setup_db / search などの補助 CLI
 templates/   main_episodic.py が参照するテンプレ（cocoindex.toml.example）
 pyproject.toml / uv.lock  episodic 専用 Python 環境の定義

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -87,9 +88,11 @@ def scan_metadata(jsonl: Path) -> dict[str, Any]:
     }
 
 
-def write_markdown(jsonl: Path, output: Path, jsonl_to_md: Path) -> None:
+def write_markdown(jsonl: Path, output: Path, jsonl_to_md: Path,
+                   meta: dict[str, Any] | None = None) -> None:
+    """JSONL を Markdown 化する。meta は codex 形式とのシグネチャ統一用（本形式では未使用）。"""
     subprocess.run(
-        ["python3", str(jsonl_to_md), str(jsonl), str(output)],
+        [sys.executable, str(jsonl_to_md), str(jsonl), str(output)],
         check=True,
         timeout=60,
     )

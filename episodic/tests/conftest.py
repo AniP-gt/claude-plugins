@@ -14,7 +14,35 @@ from pathlib import Path
 import pytest
 
 
-WIKI_DIR = Path(__file__).resolve().parent.parent / "wiki"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+WIKI_DIR = REPO_ROOT / "wiki"
+
+
+@pytest.fixture(autouse=True)
+def _block_real_side_effects(monkeypatch: pytest.MonkeyPatch):
+    """テストから実環境への副作用（macOS 通知・実 codex 起動）を多層で遮断する。
+
+    2026-06-10 のインシデント: test_sync_pending が実 _kick_wiki_runner 経由で
+    detached の kick_runner → wiki_runner → 実 codex（401 で 90 秒リトライ）を起動し、
+    テスト終了の約 2 分後に「Episodic Wiki 失敗」の macOS 通知を毎回 2 件発火していた。
+    直接原因は当該テストでモック済みだが、将来のテストが detached チェーンを
+    取りこぼしても実害が出ないよう、ここで包括的に防御する。
+
+    - MEMORIES_NOTIFICATION_LEVEL=none: 漏れた detached 子プロセスにも env で伝播し
+      通知を抑止する（v3.14.0 の notification_level ゲーティングが効く）
+    - CODEX_BINARY=/usr/bin/false: 漏れた子プロセスが codex を解決しても即 rc=1 で
+      終了し、実 API 呼び出し（トークン消費）を防ぐ
+    - OsascriptNotifier.notify: in-process の osascript 発火を no-op 化
+      （test_notify.py は元実装を自前で復元して検証する）
+    """
+    monkeypatch.setenv("MEMORIES_NOTIFICATION_LEVEL", "none")
+    monkeypatch.setenv("CODEX_BINARY", "/usr/bin/false")
+    from lib.notify import OsascriptNotifier
+
+    monkeypatch.setattr(OsascriptNotifier, "notify", lambda self, *a, **k: None)
 
 
 @pytest.fixture

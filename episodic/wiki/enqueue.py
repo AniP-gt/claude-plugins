@@ -69,8 +69,11 @@ def sanitize_slug(slug: str) -> str:
 # CLI から --kind 引数で指定できる kind 一覧。
 USER_KINDS = ("session", "web", "minutes", "diary")
 # 内部派生 kind（wiki-runner の people_extract ジョブから enqueue.py が呼ばれる）。
-INTERNAL_KINDS = ("people_extract", "person")
+INTERNAL_KINDS = ("people_extract", "person", "org")
 VALID_KINDS = USER_KINDS + INTERNAL_KINDS
+
+# org エントリの category 選択肢。
+ORG_CATEGORIES = ("company", "hospital", "government", "academic", "other")
 
 
 def detect_kind(raw_path: Path) -> str:
@@ -93,13 +96,13 @@ def detect_kind(raw_path: Path) -> str:
 def _entry_identity(entry: dict) -> tuple[str, str, str]:
     """dedupe 判定のための identity tuple を返す。
 
-    person kind は同じ raw_path に対して複数 slug が共存し得るので
+    person / org kind は同じ raw_path に対して複数 slug が共存し得るので
     slug を識別子に含める。それ以外の kind は slug 空文字。
     """
     return (
         entry.get("raw_path", ""),
         entry.get("kind", ""),
-        entry.get("slug", "") if entry.get("kind") == "person" else "",
+        entry.get("slug", "") if entry.get("kind") in ("person", "org") else "",
     )
 
 
@@ -107,10 +110,17 @@ def _append_entry(queue_path: Path, entry: dict) -> bool:
     """queue ファイルに 1 エントリを排他追記する。dedupe ヒット時は False を返す。"""
     line = json.dumps(entry, ensure_ascii=False) + "\n"
     target_id = _entry_identity(entry)
+    # 走査効率化: raw_path の JSON 表現で行をリテラル前置フィルタし、
+    # raw_path が一致し得ない行は json.loads を省く。identity の第一要素は
+    # raw_path なので、token を含まない行は重複になり得ない。JSON エンコード形で
+    # 比較するためエスケープ差異による取りこぼしは生じず、重複判定基準は不変。
+    raw_path_token = json.dumps(entry.get("raw_path", ""), ensure_ascii=False)
     with queue_path.open("a+", encoding="utf-8") as f:
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         f.seek(0)
         for existing in f:
+            if raw_path_token not in existing:
+                continue
             existing = existing.strip()
             if not existing:
                 continue
@@ -151,7 +161,13 @@ def main() -> int:
         "--source-kind",
         choices=("minutes", "diary"),
         default=None,
-        help="kind=person: 言及元 Raw の kind",
+        help="kind=person/org: 言及元 Raw の kind",
+    )
+    p.add_argument(
+        "--category",
+        choices=ORG_CATEGORIES,
+        default="other",
+        help="kind=org: 組織のカテゴリ（company|hospital|government|academic|other）",
     )
     args = p.parse_args()
 
@@ -165,17 +181,17 @@ def main() -> int:
         print(f"invalid kind: {kind}", file=sys.stderr)
         return 2
 
-    if kind == "person":
+    if kind in ("person", "org"):
         if not args.name or not args.slug or not args.source_kind:
             print(
-                "kind=person requires --name, --slug, --source-kind",
+                f"kind={kind} requires --name, --slug, --source-kind",
                 file=sys.stderr,
             )
             return 3
         sanitized = sanitize_slug(args.slug)
         if not sanitized:
             print(
-                f"kind=person: slug becomes empty after sanitize: original={args.slug!r}",
+                f"kind={kind}: slug becomes empty after sanitize: original={args.slug!r}",
                 file=sys.stderr,
             )
             return 3
@@ -206,6 +222,18 @@ def main() -> int:
                 "name": args.name,
                 "slug": args.slug,
                 "aliases": aliases,
+                "context": args.context,
+                "source_kind": args.source_kind,
+            }
+        )
+    elif kind == "org":
+        aliases = [a.strip() for a in args.aliases.split(",") if a.strip()]
+        base_entry.update(
+            {
+                "name": args.name,
+                "slug": args.slug,
+                "aliases": aliases,
+                "category": args.category,
                 "context": args.context,
                 "source_kind": args.source_kind,
             }

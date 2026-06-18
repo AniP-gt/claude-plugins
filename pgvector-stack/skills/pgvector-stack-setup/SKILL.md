@@ -58,3 +58,17 @@ docker compose -f ~/.config/cocoindex/compose.yml down
 # データも削除（注意: 全 database が消える）
 docker compose -f ~/.config/cocoindex/compose.yml down -v
 ```
+
+## アンインストール
+
+コンテナ `cocoindex`・ボリューム `pgdata`・`~/.config/cocoindex/compose.yml` を一括削除する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh            # 確認プロンプトあり
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --dry-run  # 削除予定の確認のみ
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/uninstall.sh --yes      # 確認なし（非対話シェルでは必須）
+```
+
+- **警告**: ボリューム削除で compass / episodic を含む全 database が消える。下流プラグインを使い続けるなら実行しない
+- `secrets.env` / `config.toml`（cocoindex-setup 所有）には触れない。`~/.config/cocoindex/` は空になった場合のみ削除される
+- プラグイン本体の削除は `/plugin uninstall pgvector-stack@hidetsugu-miya`

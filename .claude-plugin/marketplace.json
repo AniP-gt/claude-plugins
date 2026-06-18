@@ -10,25 +10,25 @@
   "plugins": [
     {
       "name": "pgvector-stack",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "source": "./pgvector-stack",
       "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / episodic など下流プラグインの DB 基盤として共有する。"
     },
     {
       "name": "cocoindex-setup",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./cocoindex-setup",
       "description": "~/.config/cocoindex/ の secrets.env / config.toml を所有・auto-provision する共通基盤プラグイン。compass・episodic が fallback で参照する secrets hub。"
     },
     {
       "name": "compass",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./compass",
       "description": "コードベースのセマンティック検索プラグイン。pgvector + voyage embedding + voyage rerank で関連コードを発見。専用 DB compass、cocoindex 1.0 LiveUpdater 対応。"
     },
     {
       "name": "circleci",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "source": "./circleci",
       "description": "CircleCI調査・ワークフロー監視プラグイン。@circleci/mcp-server-circleciをstdioで起動して調査ツール群を提供しつつ、watch CLIスクリプトでREST APIを直接ポーリングして目的状態到達まで監視する。"
     },
@@ -46,9 +46,9 @@
     },
     {
       "name": "episodic",
-      "version": "3.7.1",
+      "version": "3.16.0",
       "source": "./episodic",
-      "description": "Claude Code セッション・Web・議事録・日記のエピソード記憶を Wiki に統合し cocoindex で検索。minutes/diary からの人物 Wiki 自動生成も内蔵。"
+      "description": "Claude Code セッション・Web・議事録・日記のエピソード記憶を Wiki に統合し cocoindex で検索。minutes/diary からの人物・組織 Wiki 自動生成（組織は codex web 検索で裏取り）も内蔵。"
     },
     {
       "name": "slack",

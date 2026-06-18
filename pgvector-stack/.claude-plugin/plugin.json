@@ -1,6 +1,6 @@
 {
   "name": "pgvector-stack",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "pgvector 搭載 PostgreSQL コンテナを提供する最小プラグイン。compass / episodic など下流プラグインの DB 基盤として共有する。",
   "author": { "name": "miya" },
   "keywords": ["pgvector", "postgres", "docker-compose", "vector-search"]
