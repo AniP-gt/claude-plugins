@@ -64,7 +64,7 @@
     },
     {
       "name": "omo-orchestrator",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./omo-orchestrator",
       "description": "OMO-inspired Claude Code orchestration skills and agents for planning, implementation, research, review, and guardrails."
     }
