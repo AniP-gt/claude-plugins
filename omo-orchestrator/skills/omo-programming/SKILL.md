@@ -18,6 +18,7 @@ Use this skill when writing or editing production code.
 - Add or identify the validation target before claiming success.
 - Run real diagnostics and real tests when the project supports them.
 - Record evidence for each claim: changed files, diagnostics, tests, builds, or manual QA.
+- Use reference checks before deleting code, exports, commands, plugin metadata, or public docs.
 
 ## Hard Rules
 
@@ -27,6 +28,7 @@ Use this skill when writing or editing production code.
 - Do not widen scope with cleanup or refactors unless they are required for the requested change.
 - Do not edit unrelated dirty files.
 - Do not add fallback logic unless an existing contract requires it.
+- Do not delete code as dead unless references, registries, tests, docs, and runtime entry points have been checked or explicitly marked inconclusive.
 
 ## Delivery Contract
 

@@ -21,6 +21,8 @@ Restart Claude Code after installation.
 - `omo-research`: read-only local/codebase research workflow.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
+- `omo-hyperplan`: adversarial planning for hard, risky, or ambiguous work.
+- `omo-ralph-loop`: manual continuation loop for iterative fix, review, validation, and handoff.
 
 ## Specialized Skills
 
@@ -34,6 +36,12 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
 - `omo-remove-ai-slop`: regression-first cleanup for AI-generated comments, complexity, duplication, and weak abstractions.
 - `omo-ultraresearch`: exhaustive read-only research mode with source matrix, evidence thresholds, non-goals, and stop conditions.
+- `omo-get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
+- `omo-pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
+- `omo-work-with-pr`: end-to-end PR lifecycle workflow from issue understanding through review and validation.
+- `omo-security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
+- `omo-github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
+- `omo-remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
 
 ## Included Agents
 
@@ -69,6 +77,8 @@ Examples:
 - Ultrawork -> explicit parallel waves, bounded follow-up, evidence-first outputs, and no duplicate searches once an owner is assigned.
 - Continuation and handoff -> durable handoff notes with current state, blockers, validation, and next exact action.
 - Review gates -> `APPROVE` or `REQUEST_CHANGES`, with confirmed blockers fed back into the next fix pass.
+- Release and PR lifecycle -> unpublished-change analysis, pre-publish review, PR handoff, and version-impact checks.
+- Ralph loop and continuation hooks -> explicit completion promises, iteration ledgers, and recovery handoffs.
 - LSP, rules, and comment-checker ideas -> manual equivalents: read project rules, run diagnostics or targeted checks when available, and keep findings tied to file-level evidence.
 
 ## What Was Translated From LazyCodex
@@ -77,6 +87,7 @@ Examples:
 - Bounded delegation, so background research or review cannot stall work forever.
 - Strong continuation rules for long tasks, compacted sessions, and multi-agent handoff.
 - Review as a real gate, not a cosmetic final step.
+- Adversarial planning, release gates, security research, PR lifecycle, and deletion-safe cleanup as prompt-level workflows.
 - Claude Code compatibility language instead of Codex or OpenCode runtime assumptions.
 
 ## What Is Deliberately Not Ported
@@ -86,6 +97,7 @@ Examples:
 - No scripts, no telemetry, no package manager setup, and no executable loop runner.
 - No automatic LSP injection, comment scanner, or rules engine. The skills describe how to do those checks manually with normal Claude Code tools.
 - No hidden runtime hooks behind the specialized skills. They remain prompt-only guidance.
+- No automatic Ralph loop, background continuation, GitHub mutation, publishing, or release execution. The related skills provide operator checklists and handoff contracts only.
 
 ## Optional Future Runtime Mapping
 
@@ -94,6 +106,7 @@ If a future version ever gains runtime pieces, keep them optional and separate f
 - Hooks could mirror the current handoff and continuation prompts.
 - MCP servers could backfill documentation, code search, or diagnostics that the prompts currently treat as manual checks.
 - Review automation could mirror the existing `APPROVE` or `REQUEST_CHANGES` gate instead of replacing it with opaque summaries.
+- Loop automation could mirror the `omo-ralph-loop` completion promise and iteration ledger, but must remain opt-in and visible.
 
 ## Recommended Workflow
 
@@ -103,10 +116,14 @@ Background agents are advisory, not blocking. Wait for one bounded follow-up whe
 
 For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. A final review should produce either `APPROVE` or `REQUEST_CHANGES`; blocking findings feed the next fix pass.
 
+For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publish-review`, then use `/omo-work-with-pr` to prepare the handoff or reviewer response. Publishing, pushing, merging, and external comments remain user-approved actions.
+
 ## Planning And Review Gates
 
 - Plans should include TL;DR, dependencies, QA scenarios, gap classification, and verification strategy.
 - Significant implementation should pass an implement-review-fix loop before final handoff.
+- Hard or risky plans should pass `/omo-hyperplan` before implementation.
+- Release candidates should pass unpublished-change analysis and pre-publish review before publishing.
 - PR-style review should be evidence-first: understand changed files, verify uncertain findings against the codebase, and record verified non-issues separately from findings.
 - If the same blocker survives a bounded retry budget, stop, record the exact blocker, and continue with partial findings or ask one precise question.
 
@@ -153,5 +170,5 @@ Also verify that `.claude-plugin/marketplace.json` and this plugin's `plugin.jso
 For content review, inspect these files after editing:
 
 ```bash
-grep -n "0.3.2\|content-only\|PASS\|FAIL\|INCONCLUSIVE\|bounded\|model: haiku" omo-orchestrator/README.md omo-orchestrator/.claude-plugin/plugin.json .claude-plugin/marketplace.json omo-orchestrator/skills/*/SKILL.md omo-orchestrator/agents/*.md omo-orchestrator/skills/omo-orchestrate/references/*.md
+grep -n "0.4.0\|content-only\|PASS\|FAIL\|INCONCLUSIVE\|bounded\|model: haiku" omo-orchestrator/README.md omo-orchestrator/.claude-plugin/plugin.json .claude-plugin/marketplace.json omo-orchestrator/skills/*/SKILL.md omo-orchestrator/agents/*.md omo-orchestrator/skills/omo-orchestrate/references/*.md
 ```

@@ -18,6 +18,7 @@ Use this skill to clean AI-generated code smells without changing intended behav
 4. Reduce needless indirection, nesting, and placeholder abstractions.
 5. Tighten names, types, and control flow.
 6. Re-verify after each cleanup cluster.
+7. For deletion cleanup, prove candidates are unreachable before removing them.
 
 ## Targets
 
@@ -27,6 +28,7 @@ Use this skill to clean AI-generated code smells without changing intended behav
 - overly long condition chains
 - fake helper layers that hide simple logic
 - unnecessary fallback logic
+- dead code only after reference, registry, test, docs, and runtime entry-point checks
 
 ## Hard Rules
 
@@ -34,6 +36,7 @@ Use this skill to clean AI-generated code smells without changing intended behav
 - Do not replace one vague abstraction with another.
 - Do not preserve bad comments for sentimentality.
 - Do not turn cleanup into a feature change.
+- Do not remove an unused-looking symbol when dynamic registration, plugin metadata, scripts, generated files, or public contracts could still reach it.
 
 ## Delivery Contract
 

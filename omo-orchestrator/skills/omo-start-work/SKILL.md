@@ -19,6 +19,8 @@ Use this skill at the start of non-trivial work, especially when the task spans 
 5. Create an executable plan with atomic steps and clear dependencies.
 6. Mark safe parallel work only when the steps do not share state.
 7. Set up a short handoff note if the task is likely to outlive the current session.
+8. For iterative work, write the completion promise and first iteration state before starting the loop.
+9. For release or PR work, identify the baseline, publish target, branch state, and approval gates before editing.
 
 ## Evidence Targets
 
@@ -26,6 +28,8 @@ Use this skill at the start of non-trivial work, especially when the task spans 
 - Validation commands or diagnostics to run.
 - Review gate, if the task changes public behavior, data flow, or security-sensitive code.
 - Explicit blockers and the single question each blocker would require.
+- Completion promise and iteration ledger when looped work is expected.
+- Release or PR gate when publish, merge, or review handoff is part of done.
 
 ## Hard Rules
 

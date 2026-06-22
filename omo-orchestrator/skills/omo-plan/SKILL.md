@@ -24,6 +24,7 @@ Create an implementation-ready plan before work that touches 2+ files, depends o
 - Add QA scenarios for median, edge, and failure-path behavior when applicable.
 - Classify gaps as critical, minor, or ambiguous.
 - Review the plan for executability before handing it to an implementer.
+- Use adversarial planning for hard, high-risk, ambiguous, security-sensitive, release-facing, or cross-system work.
 
 Use TDD where the project supports it: define the failing test or validation target before implementation.
 
@@ -39,6 +40,7 @@ Use TDD where the project supports it: define the failing test or validation tar
 - Verification strategy.
 - Gap classification.
 - One-question-per-blocker list.
+- Escalation decision: normal plan, hyperplan, security research, or release review.
 - Final handoff for the implementer.
 
 For parallel waves, note which results are blocking and which can be merged later with bounded follow-up.

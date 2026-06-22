@@ -18,6 +18,8 @@ Use this skill after implementation and before final handoff.
 - Code quality and maintainability.
 - Test and validation coverage.
 - Scope control and unrelated changes.
+- Release readiness when the work changes published behavior, package metadata, installation, or docs.
+- Exploitability when the work touches security-sensitive boundaries.
 
 ## Decision Contract
 
@@ -42,3 +44,4 @@ Return one result only:
 - Non-blocking warnings.
 - Missing evidence.
 - Required next action.
+- Escalation target: fix pass, pre-publish review, security research, or user decision.

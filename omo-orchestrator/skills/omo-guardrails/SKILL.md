@@ -20,7 +20,9 @@ Use this skill to keep long-running or delegated work safe and recoverable.
 - Ask one precise question when missing information materially changes the result.
 - Keep final claims tied to actual verification.
 - Convert runtime-only OMO ideas into manual checkpoints. If Claude Code cannot enforce something automatically, write down who must check it, what evidence is required, and when to stop.
+- Treat runtime fallback, hook enforcement, automatic continuation, comment scanning, rule injection, and provider routing as unavailable unless the current environment proves otherwise.
+- For content-only equivalents, make the operator-visible control point explicit: trigger condition, evidence required, stop condition, and handoff field.
 
 ## Handoff Minimum
 
-Record goal, current state, files changed, validation, stalled or blocked agents, blockers, next action, and files not to touch.
+Record goal, current state, completion promise when iterative, files changed, validation, stalled or blocked agents, blockers, next action, and files not to touch.
