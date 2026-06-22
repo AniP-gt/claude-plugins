@@ -64,7 +64,7 @@
     },
     {
       "name": "omo-orchestrator",
-      "version": "0.3.2",
+      "version": "0.4.0",
       "source": "./omo-orchestrator",
       "description": "Content-only Claude Code OMO skills and agents for planning, implementation, review, debugging, refactoring, research, and handoff."
     }
