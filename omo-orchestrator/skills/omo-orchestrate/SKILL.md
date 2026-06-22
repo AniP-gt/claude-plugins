@@ -20,10 +20,12 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 4. Split independent research or review into parallel agents when useful. Background agents are advisory, not blocking: wait for one bounded follow-up, then continue with available evidence if an agent stalls, returns no usable output, or repeats the same result.
 5. Track state explicitly with todos or a handoff file.
 6. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full loop: implement, review, fix confirmed blocking findings, then re-review.
-7. Use a PR-style final gate when the change is intended to be merged or shared: `APPROVE` exits, `REQUEST_CHANGES` feeds the next fix pass.
-8. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
-9. Verify with diagnostics, tests, build checks, and manual QA where applicable.
-10. Finalize with changed files, review decision, validation performed, and any residual risks.
+7. Escalate hard or high-risk plans to `omo-hyperplan` before implementation.
+8. For release work, run unpublished-change analysis and pre-publish review before any publish, merge, or handoff claim.
+9. Use a PR-style final gate when the change is intended to be merged or shared: `APPROVE` exits, `REQUEST_CHANGES` feeds the next fix pass.
+10. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
+11. Verify with diagnostics, tests, build checks, and manual QA where applicable.
+12. Finalize with changed files, review decision, validation performed, and any residual risks.
 
 ## Review Loop Policy
 
@@ -33,6 +35,13 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 - Stuck condition: if the same blocking issue survives one bounded retry round, stop and route to `omo-reviewer` for independent analysis. If the blocker depends on product judgment or external constraints, ask the user one precise question.
 - Stalled delegation: do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question. Mark missing results as stalled or blocked in the handoff and proceed with partial findings when safe.
 - Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user.
+
+## Continuation Policy
+
+- For iterative work, define a completion promise before looping.
+- Keep an iteration ledger with current state, changed files, blockers, validation, and next exact action.
+- Resume from the ledger or handoff before asking the user to restate context.
+- Stop when the promise is satisfied, the same blocker survives one bounded retry round, an external side effect is required, or critical validation cannot be run.
 
 Use [Workflow](references/workflow.md) when deciding whether a result should `APPROVE`, `REQUEST_CHANGES`, or escalate.
 
