@@ -10,9 +10,12 @@ user-invocable: true
 
 Use this skill to keep long-running or delegated work safe and recoverable.
 
+Main-context boundary: when OMO is used as an orchestration layer, the main context must stay coordinator-only. It may route, track state, synthesize evidence, and hand off, but implementation, investigation, review, validation commands, and fixes must be assigned to sub-agents.
+
 ## Rules
 
 - Do not duplicate a search already assigned to a specialist.
+- Do not let the main context take over substantive work that should be delegated to a specialist sub-agent.
 - Stop loops after repeated identical attempts and change strategy.
 - Treat stalled delegated agents as recoverable blockers: wait for one bounded follow-up, then stop retrying, record the gap, and continue with available evidence when safe.
 - Preserve state through a short handoff when context may be lost.
