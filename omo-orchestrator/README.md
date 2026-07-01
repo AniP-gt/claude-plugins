@@ -71,6 +71,12 @@ Use a stronger model for orchestration, planning, high-risk implementation, skep
 
 This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It keeps the OMO shape, but translates runtime-driven behavior into manual skill and agent behavior that works in a local Claude Code session.
 
+## Main Context Orchestration-Only Policy
+
+When using OMO as the work controller, the main context is restricted to orchestration. It should classify intent, maintain todos or handoff state, dispatch sub-agents, read enough evidence to verify delegated results, synthesize findings, ask the user for missing decisions, and produce the final handoff.
+
+The main context must not directly implement, edit files, run task commands, perform owned investigation, perform owned review, or apply fixes. Those phases belong to the appropriate sub-agent: planner, researcher, implementer, reviewer, or a specialized workflow agent. This is a prompt-level and tool-allowlist policy, not hidden runtime enforcement.
+
 Examples:
 
 - Aggregator model -> `omo-coordinator` plus `omo-orchestrate` route work, merge evidence, and decide whether to continue, review, or stop.
@@ -110,7 +116,7 @@ If a future version ever gains runtime pieces, keep them optional and separate f
 
 ## Recommended Workflow
 
-Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context, plans concrete work, delegates or executes the smallest safe steps, runs review-fix loops, verifies results, and records handoff state when work spans sessions or agents.
+Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context for routing, plans concrete work, delegates the smallest safe steps to sub-agents, runs review-fix loops through sub-agents, verifies delegated evidence, and records handoff state when work spans sessions or agents.
 
 Background agents are advisory, not blocking. Wait for one bounded follow-up when a delegated agent stalls, returns no usable output, or repeats the same result. If it still does not produce usable evidence, continue with available findings, record the agent as stalled or blocked, and escalate only when the missing evidence is critical.
 
