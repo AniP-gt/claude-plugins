@@ -15,9 +15,25 @@ Create plans that another agent can execute without guessing. Plans must be conc
 - Acceptance criteria.
 - Ordered steps with safe parallel opportunities and explicit fallback paths for stalled background agents.
 - Dependency matrix.
-- QA scenarios covering normal, edge, and failure paths when applicable.
-- Tests, diagnostics, build commands, and manual QA checks.
+- Blocking QA scenarios defined below for every task.
+- Tests, diagnostics, build commands, and manual QA checks where they fit the deliverable.
 - Gap classification: critical, minor, or ambiguous.
 - Blockers and user decisions that truly affect the outcome.
+
+## Blocking QA Scenario Contract
+
+Every planned task must include executable QA scenarios. Each scenario must state:
+
+- QA surface and tool, chosen for the deliverable: tests, manifest validation, direct content inspection, browser interaction, or command execution.
+- The exact command or concrete numbered steps to run.
+- Deterministic input, fixture, precondition, or target content when relevant.
+- The exact assertion that determines pass or fail.
+- The evidence location, such as command output, test result, screenshot path, inspected file and section, or generated artifact.
+
+Include at least one happy-path scenario and one edge or failure-path scenario when applicable. Use TDD-oriented sequencing: before editing, identify the failing behavioral check or validation target; after implementation, capture passing evidence at the stated location.
+
+Missing, abstract, or unexecutable scenarios are blocking plan-quality findings. Reject phrases such as `verify it works`, `check the page`, and unspecified manual user testing.
+
+## Handoff Gate
 
 Before handoff, review the plan for executability: every step should have an owner, input, output, verification signal, and bounded retry or fallback policy. Prefer small, executable plans over broad strategy documents. If the request is ambiguous, identify the smallest clarifying question that unlocks implementation.
