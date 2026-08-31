@@ -49,7 +49,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Not pinned to Haiku because orchestration quality is high leverage.
 - `omo-planner`: executable plans, blocker discovery, and plan review. Not pinned to Haiku because planning quality is high leverage.
 - `omo-implementer`: deep executor for minimal verified changes.
-- `omo-researcher`: the Explore/Librarian equivalent for read-only code and reference investigation. Uses `model: haiku`.
+- `omo-researcher`: the Explore/Librarian equivalent for read-only local code and external reference investigation, with evidence labels and access limits disclosed. Uses `model: haiku`.
 - `omo-reviewer`: the Oracle/Momus-style independent reviewer for risk, quality, and scope control.
 
 ## Model Guidance
