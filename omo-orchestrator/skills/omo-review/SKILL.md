@@ -8,7 +8,7 @@ user-invocable: true
 
 # OMO Review
 
-Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Treat it as a PR-style gate: either approve the change or request concrete fixes.
+Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Treat it as a PR-style gate with one completion state: `APPROVE`.
 
 ## Review Areas
 
@@ -32,15 +32,26 @@ Evidence means file paths, symbols, caller or callee references, test names, dia
 
 ## Report Contract
 
-- Decision: `APPROVE` or `REQUEST_CHANGES`.
+- Decision: `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 - Scope reviewed.
 - Blocking findings with file references and evidence.
 - Warnings or non-blocking improvements.
-- Verified non-issues, only when useful to answer a suspected issue.
+- Verified non-issues, separate from findings, with evidence that disproves each suspected concern.
 - Missing validation.
 - Residual risks.
+- Approval evidence that supports every required final check when the decision is `APPROVE`.
 - Release or security escalation needed, if applicable.
 
 Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 
 Do not convert every checklist item into a finding. A finding must be actionable, applicable, and proportional to the risk.
+
+## Final Outcome Rules
+
+- `APPROVE` is the sole completion state. Return it only when evidence verifies requested scope, task-specific constraints, dependency and retry state, executable QA evidence, validation results, and handoff completeness. Apply content-only checks, including unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior, only when the original task, repository, or plugin contract requires them. For release-facing changes, also verify plugin and marketplace version parity.
+- `REQUEST_CHANGES` requires confirmed findings. Append the outcome and evidence to the handoff ledger, then route only the affected area through a bounded targeted fix, affected validation, and re-review.
+- `INCONCLUSIVE` means required evidence is missing, unavailable, or untrustworthy. It blocks completion. Append the exact evidence gap, blocker, owner, and next action to the handoff ledger before obtaining the evidence or handing the blocker off.
+
+Append either non-approval outcome to the handoff ledger before retrying or stopping.
+
+Do not approve because a review found no issue by inspection alone. Cite the validation, QA, dependency, retry, and scope evidence that supports approval.

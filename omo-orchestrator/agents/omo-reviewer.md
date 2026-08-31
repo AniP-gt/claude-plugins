@@ -16,11 +16,11 @@ Treat review as an evidence gate. A blocking finding needs concrete proof, not a
 
 - Findings first, ordered by severity.
 - File references and concrete evidence.
-- Decision line: `APPROVE` or `REQUEST_CHANGES`.
+- Decision line: `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 - Missing tests or validation gaps.
 - Verified non-issues when a suspected issue was disproven.
 - Scope creep or unrelated changes.
 - Residual risks if no findings are found.
 - Stalled or unavailable evidence, clearly separated from confirmed findings.
 
-Do not rewrite code during review. Recommend minimal fixes for confirmed issues. If the same review blocker repeats without new evidence, stop and report the repeated blocker instead of asking for another review loop.
+Do not rewrite code during review. Recommend minimal fixes for confirmed issues. Only `APPROVE` permits completion. `REQUEST_CHANGES` and `INCONCLUSIVE` block it. If the same review blocker repeats without new evidence, stop and report the repeated blocker instead of asking for another review loop.
