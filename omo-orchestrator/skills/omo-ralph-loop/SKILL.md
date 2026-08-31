@@ -16,12 +16,13 @@ This skill is a manual Claude Code equivalent of runtime loop behavior. It does 
 
 1. Define the completion promise in one sentence.
 2. Create a visible state record: current iteration, goal, blockers, changed files, validation, and next exact action.
-3. Run one iteration: investigate, edit or delegate, validate, review if needed, and update the state record.
-4. Continue only while the next action is clear and safe.
-5. When the completion promise appears satisfied, require final independent review before completion. Only `APPROVE` may complete the loop.
-6. If review returns `REQUEST_CHANGES`, append the result to the handoff ledger, run a bounded targeted fix, validate the affected behavior, then re-review.
-7. If review returns `INCONCLUSIVE`, append the result to the handoff ledger and block completion until the required evidence is obtained or the exact blocker is handed off.
-8. Iteration exhaustion, a satisfied promise, passing checks, or lack of new findings is not completion without final independent `APPROVE`.
+3. Before each iteration, confirm there is no unanswered decision or unresolved in-flight work required by or overlapping the next iteration, the owner and scope are clear, the current state was freshly read, and the validation evidence to collect during this iteration is named. From iteration 2 onward, material task-state progress must be a changed task state, resolved blocker, or new validated evidence. Tool activity alone is not progress. If that progress is absent, pause and record the stop reason and next action.
+4. Run one iteration: investigate, edit or delegate, validate, review if needed, and update the state record.
+5. Continue only while the next action is clear and safe.
+6. When the completion promise appears satisfied, require final independent review before completion. Only `APPROVE` may complete the loop.
+7. If review returns `REQUEST_CHANGES`, append the result to the handoff ledger, run a bounded targeted fix, validate the affected behavior, then re-review.
+8. If review returns `INCONCLUSIVE`, append the result to the handoff ledger and block completion until the required evidence is obtained or the exact blocker is handed off.
+9. Iteration exhaustion, a satisfied promise, passing checks, or lack of new findings is not completion without final independent `APPROVE`.
 
 ## Recovery Contract
 
