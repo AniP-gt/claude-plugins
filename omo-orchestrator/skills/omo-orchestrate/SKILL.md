@@ -21,32 +21,38 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 3. Create a file-level plan before editing when the work touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
 4. Delegate implementation, investigation, review, validation commands, and fix work to sub-agents. Do not perform those work phases directly in the main context.
 5. Split independent research or review into parallel agents when useful. Background agents are advisory, not blocking: wait for one bounded follow-up, then continue with available evidence if an agent stalls, returns no usable output, or repeats the same result.
-6. Track state explicitly with todos or a handoff file.
-7. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full delegated loop: implement, review, fix confirmed blocking findings, then re-review.
-8. Escalate hard or high-risk plans to `omo-hyperplan` before implementation.
-9. For release work, run unpublished-change analysis and pre-publish review before any publish, merge, or handoff claim.
-10. Use a PR-style final gate when the change is intended to be merged or shared: `APPROVE` exits, `REQUEST_CHANGES` feeds the next fix pass.
-11. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
-12. Verify delegated diagnostics, tests, build checks, and manual QA evidence where applicable.
-13. Finalize with changed files, review decision, validation performed, and any residual risks.
+6. For multi-phase work, delegate `omo-handoff` or another writable owner to create or locate the task-slug-linked append-only ledger at `.claude/omo/handoffs/<task-slug>.md`, then read and verify the full ledger before routing or resuming work.
+7. Before delegating an edit, require a dependency check for the original request and constraints, predecessor artifacts, executable QA scenarios, and existing validation evidence. Delegate the ledger append to `omo-handoff` or another writable owner, then read and verify the appended findings and state before delegating dependent work.
+8. Require an appended phase report after research or exploration, planning, implementation, validation, review or fix, and final verification where those phases apply. Delegate each append to `omo-handoff` or another writable owner, then read and verify the result. Each report must name dependencies, evidence, blockers, retries, and one next exact action.
+   Use the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
+9. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full delegated loop: implement, validate with the plan's executable QA scenarios, review, fix confirmed blocking findings, then re-review and perform final verification.
+10. Require implementers to use `omo-plan` QA scenarios during implementation and final verification. The ledger must preserve the tool, exact steps, assertion, and evidence location for every executed scenario.
+11. Escalate hard or high-risk plans to `omo-hyperplan` before implementation.
+12. For release work, run unpublished-change analysis and pre-publish review before any publish, merge, or handoff claim.
+13. Use a PR-style final gate when the change is intended to be merged or shared: only `APPROVE` permits completion. `REQUEST_CHANGES` feeds the next fix pass, and `INCONCLUSIVE` blocks completion until its evidence gap or decision is resolved.
+14. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
+15. Verify delegated diagnostics, tests, build checks, and manual QA evidence where applicable.
+16. Before accepting completion, require a re-read of the original user request and constraints, then finalize with changed files, review decision, validation performed, and residual risks.
 
 ## Review Loop Policy
 
 - Inner loop: delegate implementation, delegate review, synthesize findings, delegate fixes for confirmed blockers, and require affected checks.
 - Outer gate: delegate review of the resulting diff for security, robustness, quality, and goal alignment.
 - Evidence gate: a claim without a path, symbol, test, diagnostic, command result, or quoted code is not a review-grade finding.
-- Stuck condition: if the same blocking issue survives one bounded retry round, stop and route to `omo-reviewer` for independent analysis. If the blocker depends on product judgment or external constraints, ask the user one precise question.
+- Retry budget: allow one initial attempt plus at most two materially different retries. A different retry revisits a dependency, reduces the change surface, uses a different validation target, or consults an independent reviewer. Re-running an unchanged command does not count as a new approach.
+- Evidence preservation: retain failed attempts in the ledger. Invalidate validation evidence only when an edit changes the prerequisite on which that evidence depends, and record the invalidated dependency.
+- Stuck condition: after the retry budget is exhausted, append every attempt and the blocker, stop honestly, and do not claim success. Route to `omo-reviewer` for independent analysis when that can answer the blocker. If the blocker depends on product judgment or external constraints, ask the user one precise question.
 - Stalled delegation: do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question. Mark missing results as stalled or blocked in the handoff and proceed with partial findings when safe.
-- Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user.
+- Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user. Only `APPROVE` permits completion. `REQUEST_CHANGES` and `INCONCLUSIVE` block it.
 
 ## Continuation Policy
 
 - For iterative work, define a completion promise before looping.
-- Keep an iteration ledger with current state, changed files, blockers, validation, and next exact action.
+- Keep the task-slug-linked append-only ledger with current state, changed files, blockers, validation, and next exact action.
 - Resume from the ledger or handoff before asking the user to restate context.
-- Stop when the promise is satisfied, the same blocker survives one bounded retry round, an external side effect is required, or critical validation cannot be run.
+- Stop when the promise is satisfied, the retry budget is exhausted, an external side effect is required, or critical validation cannot be run.
 
-Use [Workflow](references/workflow.md) when deciding whether a result should `APPROVE`, `REQUEST_CHANGES`, or escalate.
+Use [Workflow](references/workflow.md) when deciding whether a result should `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 
 ## Delegation Contract
 
