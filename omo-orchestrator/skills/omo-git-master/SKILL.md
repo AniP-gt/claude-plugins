@@ -2,7 +2,7 @@
 name: omo-git-master
 description: Git workflow for atomic commits, rebase and squash, and history archaeology (pickaxe, blame, bisect). Detects commit style and language from existing history instead of assuming a convention.
 argument-hint: [commit message, rebase target, or history question]
-allowed-tools: Read, Grep, Glob, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Bash, TodoWrite
 user-invocable: true
 ---
 
@@ -23,11 +23,12 @@ Parse the actual request. Do not default to commit mode.
 ## Shared Rules
 
 - Read state before changing it. Gather status, diff, log, branch, and upstream in parallel before deciding anything.
-- Never rewrite history that has been pushed without explicit user permission.
+- Never rewrite history that has been pushed without explicit user permission. Explicit means the user named the rewrite in this session; never infer it from a general request to tidy up.
 - Never use `--force`. Use `--force-with-lease`.
 - Never rebase or rewrite `main` or `master`.
 - Never run destructive `reset --hard`, `checkout --`, or `clean` against work you did not record first. Preserve pre-existing uncommitted changes that are not part of this task.
 - Do not push, force-push, or create a pull request unless the user asked. Report the command and let them run it.
+- Never pass `--no-verify`. If a pre-commit or commit-msg hook fails, report the failure output and stop rather than bypassing it.
 - Report what you actually did. If a step failed or was skipped, say so with the output.
 
 ---
@@ -68,14 +69,16 @@ Rewrite safety by branch state:
 | State | Allowed |
 |---|---|
 | On `main` or `master` | New commits only. Never rewrite. |
-| No upstream, or all commits local | Fixup, autosquash, and reset are safe |
+| No upstream, or all commits local | Fixup, autosquash, and `reset --soft` are safe. Never `reset --hard`. |
 | Pushed but not merged | Fixup allowed, but warn that force-with-lease will be required and confirm first |
 
-A full `reset --soft` to the merge-base to rebuild history is acceptable only when every commit involved is local and the user allows it or the branch is clearly work in progress. It discards commit boundaries, so confirm before using it.
+A full `reset --soft` to the merge-base to rebuild history is acceptable only when every commit involved is local and the user has confirmed it in this session. It discards commit boundaries, so never infer that permission from a general request to clean things up. Record the current HEAD first so the prior state can be recovered from the reflog.
 
 ### Step 5: Execute
 
-Stage each group explicitly by path. Verify what is staged before committing, so unrelated working-tree changes do not ride along. Commit with a message matching the detected language and shape. Apply fixups with a single `--autosquash` rebase at the end rather than one rebase per fixup.
+Before any fixup rebase or `reset --soft`, record the current HEAD so the pre-operation state can be recovered with `git reflog`.
+
+Stage each group explicitly by path, never a bare directory, which can pull in untracked files. Verify with `git status --short` and a staged diffstat that exactly the intended paths are staged, so unrelated working-tree changes do not ride along. Commit with a message matching the detected language and shape. Apply fixups with a single `--autosquash` rebase at the end rather than one rebase per fixup.
 
 Validate each message against the detected style before committing. If it does not match, rewrite it.
 
@@ -92,7 +95,7 @@ Confirm the working tree is in the expected state, review the resulting log agai
 | Condition | Action |
 |---|---|
 | On `main` or `master` | Abort. Do not rebase. |
-| Dirty working tree | Stash with a named message first, and restore it afterward |
+| Dirty working tree | Stop and ask. Stash with a named message only once the user confirms, then verify the restore with `git stash list` and report a conflicted pop instead of dropping the entry. |
 | Commits already pushed | Force-with-lease will be required. Confirm with the user first. |
 | All commits local | Proceed |
 | Upstream diverged | Consider `--onto`; explain the plan before running it |
@@ -134,7 +137,7 @@ Check the tree is clean, review the new log, and confirm the content still match
 
 ### Step 2: Search precisely
 
-Scope by path, revision range, or `--all` when the code may live on another branch or be deleted. Use `blame -C -w` when code may have moved or been reformatted, otherwise attribution lands on the wrong commit. For bisect, establish genuinely good and bad boundaries first; a wrong boundary invalidates the whole search. Automate with `git bisect run` when a command can decide, and always `git bisect reset` when finished. If bisect aborts or the run command fails partway, run `git bisect reset` anyway before doing anything else; leaving the session open strands the repository on a detached HEAD.
+Scope by path, revision range, or `--all` when the code may live on another branch or be deleted. Use `blame -C -w` when code may have moved or been reformatted, otherwise attribution lands on the wrong commit. For bisect, record the current branch and HEAD before `git bisect start`, and establish genuinely good and bad boundaries first; a wrong boundary invalidates the whole search. Automate with `git bisect run` when a command can decide, and always `git bisect reset` when finished. If bisect aborts or the run command fails partway, run `git bisect reset` anyway before doing anything else; leaving the session open strands the repository on a detached HEAD.
 
 ### Step 3: Report with evidence
 
