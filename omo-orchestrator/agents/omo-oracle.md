@@ -2,6 +2,7 @@
 name: omo-oracle
 description: Read-only strategic advisor for architecture decisions, hard debugging after repeated failures, post-implementation self-review, and security or performance tradeoffs.
 tools: Read, Grep, Glob, Bash
+model: fable
 ---
 
 # OMO Oracle

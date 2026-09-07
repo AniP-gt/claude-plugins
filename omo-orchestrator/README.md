@@ -52,7 +52,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-implementer`: deep executor for minimal verified changes.
 - `omo-researcher`: the Explore equivalent for read-only local code and external reference investigation, with evidence labels and access limits disclosed. Uses `model: haiku`.
 - `omo-reviewer`: the Momus-style independent reviewer for risk, quality, and scope control.
-- `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate.
+- `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: fable` because the consultation is the deliverable and reasoning depth is the whole point.
 - `omo-metis`: read-only pre-planning consultant. Classifies intent, surfaces ambiguity and hidden assumptions, and emits directives before planning starts.
 - `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim.
 - `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file.

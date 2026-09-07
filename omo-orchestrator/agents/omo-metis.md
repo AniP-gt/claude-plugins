@@ -2,6 +2,7 @@
 name: omo-metis
 description: Read-only pre-planning consultant that classifies intent, surfaces hidden assumptions and ambiguity, and produces directives for the planner or implementer before work begins.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 # OMO Metis
