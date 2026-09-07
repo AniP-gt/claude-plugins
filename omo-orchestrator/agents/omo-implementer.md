@@ -2,6 +2,7 @@
 name: omo-implementer
 description: Deep executor for minimal verified code changes after exploration, planning, and review-fix iteration.
 tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+model: opus
 ---
 
 # OMO Implementer

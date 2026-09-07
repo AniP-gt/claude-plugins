@@ -2,6 +2,7 @@
 name: omo-coordinator
 description: OMO-inspired coordinator for intent routing, delegation, review loops, state tracking, verification, and completion checks.
 tools: Read, Grep, Glob, Task, TodoWrite
+model: opus
 ---
 
 # OMO Coordinator

@@ -2,6 +2,7 @@
 name: omo-planner
 description: Creates executable file-level plans with blockers, dependency matrix, QA scenarios, verification commands, and plan review.
 tools: Read, Grep, Glob
+model: opus
 ---
 
 # OMO Planner

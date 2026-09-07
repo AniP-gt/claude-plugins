@@ -2,6 +2,7 @@
 name: omo-media-reader
 description: Read-only interpreter for PDFs, images, and diagrams. Extracts only the requested information so the caller never loads the raw file.
 tools: Read
+model: opus
 ---
 
 # OMO Media Reader
