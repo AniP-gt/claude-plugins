@@ -43,14 +43,19 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
 - `omo-github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
 - `omo-remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
+- `omo-git-master`: git workflow for atomic commits, rebase and squash, and history archaeology. Detects commit style and language from existing history instead of assuming a convention.
 
 ## Included Agents
 
 - `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Not pinned to Haiku because orchestration quality is high leverage.
 - `omo-planner`: executable plans, blocker discovery, and plan review. Not pinned to Haiku because planning quality is high leverage.
 - `omo-implementer`: deep executor for minimal verified changes.
-- `omo-researcher`: the Explore/Librarian equivalent for read-only local code and external reference investigation, with evidence labels and access limits disclosed. Uses `model: haiku`.
-- `omo-reviewer`: the Oracle/Momus-style independent reviewer for risk, quality, and scope control.
+- `omo-researcher`: the Explore equivalent for read-only local code and external reference investigation, with evidence labels and access limits disclosed. Uses `model: haiku`.
+- `omo-reviewer`: the Momus-style independent reviewer for risk, quality, and scope control.
+- `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate.
+- `omo-metis`: read-only pre-planning consultant. Classifies intent, surfaces ambiguity and hidden assumptions, and emits directives before planning starts.
+- `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim.
+- `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file.
 
 ## Model Guidance
 
