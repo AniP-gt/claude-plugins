@@ -204,8 +204,13 @@ const required = [
   'tool or surface',
   'concrete commands or steps',
   'evidence location',
-  'Explore/Librarian equivalent',
-  'Oracle/Momus-style independent reviewer',
+  'the Explore equivalent',
+  'the Momus-style independent reviewer',
+  '`omo-oracle`',
+  '`omo-metis`',
+  '`omo-librarian`',
+  '`omo-media-reader`',
+  '`omo-git-master`',
   'Separate specialist aliases, `init-deep`, and `stop-continuation` are deferred',
   'No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation'
 ];
