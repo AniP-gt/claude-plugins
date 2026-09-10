@@ -16,11 +16,11 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 
 ## Flow
 
-1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup.
+1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup. For planning, classify the desired outcome as `CLEAR` or `UNCLEAR` and route to `omo-plan` before implementation.
 2. Read only the project rules and evidence needed to route work and verify delegated results before making claims.
 3. Create a file-level plan before editing when the work touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
 4. Delegate implementation, investigation, review, validation commands, and fix work to sub-agents. Do not perform those work phases directly in the main context.
-5. Split independent research or review into parallel agents when useful. Background agents are advisory, not blocking: wait for one bounded follow-up, then continue with available evidence if an agent stalls, returns no usable output, or repeats the same result.
+5. Split independent research or review into parallel agents when useful. Dependency-aware parallelism is mandatory: independent files and questions may fan out, while shared mutable state, same-file writes, shared contracts, and named predecessors serialize. Background agents are advisory, not blocking: wait for one bounded follow-up, then continue with available evidence if an agent stalls, returns no usable output, or repeats the same result.
 6. For multi-phase work, delegate `omo-handoff` or another writable owner to create or locate the task-slug-linked append-only ledger at `.claude/omo/handoffs/<task-slug>.md`, then read and verify the full ledger before routing or resuming work.
 7. Before delegating an edit, require a dependency check for the original request and constraints, predecessor artifacts, executable QA scenarios, and existing validation evidence. Delegate the ledger append to `omo-handoff` or another writable owner, then read and verify the appended findings and state before delegating dependent work.
 8. Require an appended phase report after research or exploration, planning, implementation, validation, review or fix, and final verification where those phases apply. Delegate each append to `omo-handoff` or another writable owner, then read and verify the result. Each report must name dependencies, evidence, blockers, retries, and one next exact action.
@@ -33,6 +33,12 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 14. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
 15. Verify delegated diagnostics, tests, build checks, and manual QA evidence where applicable.
 16. Before accepting completion, require a re-read of the original user request and constraints, then finalize with changed files, review decision, validation performed, and residual risks.
+
+## Discovered Work
+
+- A worker reports defects, stale guidance, failing tests, or missing docs outside its assigned scope instead of changing them opportunistically.
+- The coordinator records the discovery in the ledger, decides whether it is necessary for the requested outcome, and adds a scoped task with dependencies and QA before dispatching it.
+- Do not silently defer required discovered work or silently expand the request with unrelated cleanup. Record either decision and its reason.
 
 ## Review Loop Policy
 

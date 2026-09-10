@@ -18,7 +18,7 @@ Use this skill for implementation after scope is concrete.
 4. Edit only the required files.
 5. Record evidence for the diff: changed files, affected callers, and the validation target that proves the change.
 6. Run diagnostics on changed files.
-7. Run targeted tests, then broader checks if warranted.
+7. Run targeted tests, then broader checks if warranted. Run manual QA against the real deliverable surface: a live HTTP request for an API, a real CLI/TUI session, a real browser interaction, an import-and-use driver for a library, or the resulting artifact for data-shaped work.
 8. Send changes through review when they touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs.
 9. Fix confirmed review findings with minimal follow-up edits.
 10. Re-run the relevant review and validation until no blocking findings remain, or until the same blocker survives one bounded retry round; then stop with the exact blocker.
@@ -32,3 +32,4 @@ Use this skill for implementation after scope is concrete.
 - Do not modify unrelated dirty files.
 - Do not treat review as advisory when a finding is confirmed and blocking.
 - Do not claim a check passed unless you ran it in the current session.
+- Report discovered work outside the assigned scope to the coordinator. Do not fix it until it is recorded, scoped, dependency-checked, and dispatched as required work.
