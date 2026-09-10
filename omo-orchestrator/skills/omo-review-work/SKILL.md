@@ -10,6 +10,13 @@ user-invocable: true
 
 Use this skill after implementation and before final handoff.
 
+## Two-Lane Gate
+
+1. Run or verify real-surface QA against the final tree before code review. Cover the named happy path, the riskiest applicable edge, adjacent regression behavior, and every stated success criterion. Each row records scenario, exact command or action, expected result, observed result, verdict, and artifact or evidence location.
+2. If any QA row fails, return `REQUEST_CHANGES` without treating a code review as a substitute for working behavior.
+3. Launch exactly one independent read-only final reviewer after QA evidence is available. The reviewer audits the goal, constraints, diff, context, security, and QA artifacts. A review after a fix must be fresh and use the updated evidence.
+4. Missing, empty, or stalled reviewer output is `INCONCLUSIVE`, never approval.
+
 ## Review Angles
 
 - Goal alignment.
@@ -35,6 +42,7 @@ Before returning a final outcome, verify:
 - The original task, repository, and plugin constraints. When they require content-only work, verify that unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior are absent.
 - Dependency state and retry evidence, including failed or invalidated attempts where applicable.
 - Executable QA evidence and the validation results for the reviewed behavior.
+- The real-surface QA matrix, including its evidence artifacts and whether any later edit made a row stale.
 - Handoff completeness: current state, findings, blockers, retries, evidence, and one next exact action.
 - Version parity between plugin and marketplace metadata when the change is release-facing.
 
