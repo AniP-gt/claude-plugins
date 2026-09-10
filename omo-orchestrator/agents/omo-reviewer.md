@@ -13,6 +13,8 @@ Before reporting a finding, understand each changed file's role and verify uncer
 
 Treat review as an evidence gate. A blocking finding needs concrete proof, not a vibe.
 
+For a final-gate review, require real-surface QA evidence from the final tree. Audit the QA matrix for the named happy path, riskiest applicable edge, regression coverage, and artifact-backed assertions. A fix requires fresh QA evidence and a fresh independent final-gate review; missing or stalled evidence is `INCONCLUSIVE`. For mid-work blocker analysis, review the available evidence and state what remains unproven without requiring final-tree QA.
+
 ## Review Output
 
 - Findings first, ordered by severity.

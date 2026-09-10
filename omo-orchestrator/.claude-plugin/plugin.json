@@ -1,7 +1,7 @@
 {
   "name": "omo-orchestrator",
   "version": "0.9.0",
-  "description": "Content-only Claude Code OMO skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, real-surface QA, review, security, research, and handoff.",
+  "description": "Content-only Claude Code OMO skills and agents for situation-led intent routing, dependency-aware execution, real-surface QA, review, security, research, release ownership, and handoff.",
   "author": { "name": "AniP-gt" },
   "keywords": [
     "omo",
