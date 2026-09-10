@@ -1,6 +1,6 @@
 # omo-orchestrator
 
-OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for intent routing, file-level planning, TDD-oriented implementation, parallel research, review gates, safety guardrails, and focused specialist workflows.
+OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
 This plugin is content-only. It does not install scripts, hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals.
 
@@ -17,7 +17,7 @@ Restart Claude Code after installation.
 
 - `omo-orchestrate`: main workflow for complex multi-step work.
 - `omo-plan`: file-level planning with dependency matrix, QA scenarios, blockers, and verification commands.
-- `omo-implement`: autonomous implementation loop with exploration, minimal edits, review-fix iteration, and validation.
+- `omo-implement`: planned implementation with exploration, minimal edits, review-fix iteration, real-surface QA, and validation.
 - `omo-research`: read-only local/codebase research workflow.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
@@ -77,6 +77,12 @@ Use a stronger model for orchestration, planning, high-risk implementation, skep
 
 This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It keeps the OMO shape, but translates runtime-driven behavior into manual skill and agent behavior that works in a local Claude Code session.
 
+### Upstream Snapshot
+
+The portable contracts in version 0.9.0 were refreshed against `oh-my-openagent` commit `b5122f19db107e9ab76be51e2898d699c1b6e755`. The refresh carries planning intent routing, dependency-aware parallel waves, bounded follow-up, discovered-work discipline, evidence-led handoffs, real-surface QA, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
+
+This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
+
 ## Main Context Orchestration-Only Policy
 
 When using OMO as the work controller, the main context is restricted to orchestration. It should classify intent, maintain todos or handoff state, dispatch sub-agents, read enough evidence to verify delegated results, synthesize findings, ask the user for missing decisions, and produce the final handoff.
@@ -87,6 +93,9 @@ Examples:
 
 - Aggregator model -> `omo-coordinator` plus `omo-orchestrate` route work, merge evidence, and decide whether to continue, review, or stop.
 - Ultrawork -> explicit parallel waves, bounded follow-up, evidence-first outputs, and no duplicate searches once an owner is assigned.
+- Planning -> classify outcome clarity, research defaults for unclear goals, and ask only for irreducible owner decisions before a plan approval brief.
+- Dependency routing -> fan out independent lanes while serializing shared state, same-file writes, shared contracts, and named predecessors.
+- Discovered work -> report out-of-scope findings, then record and scope required follow-up before assigning it. Do not silently expand or defer the request.
 - Continuation and handoff -> manual, durable handoff notes with current state, blockers, validation, and next exact action.
 - Review gates -> `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`, with confirmed blockers fed back into the next fix pass.
 - Release and PR lifecycle -> unpublished-change analysis, pre-publish review, PR handoff, and version-impact checks.
@@ -105,8 +114,9 @@ Examples:
 ## What Is Deliberately Not Ported
 
 - No runtime hooks such as SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostCompact, SubagentStop, or Stop.
+- No OpenCode-only hooks, `team_*` APIs, Boulder state, workflow DAG APIs, worktree lifecycle promises, injected notifications, or runtime continuation.
 - No bundled MCP servers, no `.mcp.json`, and no automatic provider or tool routing.
-- No scripts, no telemetry, no package manager setup, and no executable loop runner.
+- No provider-specific model routing, native installers, telemetry, package-local scripts, package manager setup, or executable loop runner.
 - No automatic LSP injection, comment scanner, or rules engine. The skills describe how to do those checks manually with normal Claude Code tools.
 - No hidden runtime hooks behind the specialized skills. They remain prompt-only guidance.
 - No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation, GitHub mutation, publishing, or release execution. The related skills provide operator checklists and handoff contracts only.
@@ -123,7 +133,7 @@ If a future version ever gains runtime pieces, keep them optional and separate f
 
 ## Recommended Workflow
 
-Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context for routing, plans concrete work, delegates the smallest safe steps to sub-agents, runs review-fix loops through sub-agents, verifies delegated evidence, and records handoff state when work spans sessions or agents.
+Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context for routing, plans concrete work, delegates the smallest safe steps to sub-agents, runs dependency-aware waves, runs review-fix loops through sub-agents, verifies delegated evidence, and records handoff state when work spans sessions or agents.
 
 Background agents are advisory, not blocking. Wait for one bounded follow-up when a delegated agent stalls, returns no usable output, or repeats the same result. If it still does not produce usable evidence, continue with available findings, record the agent as stalled or blocked, and escalate only when the missing evidence is critical.
 
@@ -133,12 +143,15 @@ For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publ
 
 ## Planning And Review Gates
 
+- `omo-plan` classifies the requested outcome as `CLEAR` or `UNCLEAR`. Clear plans ask only for irreducible owner decisions. Unclear plans research and announce practical defaults before the approval brief. Plan approval never authorizes implementation.
 - Plans should include TL;DR, dependencies, QA scenarios, gap classification, and verification strategy.
+- Every parallel wave must state why its lanes are independent. Same-file writes, shared contracts, mutable state, and named predecessors serialize.
 - Every plan must define executable QA scenarios with a tool or surface, concrete commands or steps, a pass or fail assertion, and an evidence location. Abstract checks such as "verify it works" are blocking plan-quality findings.
 - Significant implementation should pass an implement-review-fix loop before final handoff.
 - Hard or risky plans should pass `/omo-hyperplan` before implementation.
 - Release candidates should pass unpublished-change analysis and pre-publish review before publishing.
 - PR-style review should be evidence-first: understand changed files, verify uncertain findings against the codebase, and record verified non-issues separately from findings.
+- `omo-review-work` uses two lanes: real-surface QA against the final tree, then exactly one independent read-only final reviewer. A failed QA row returns `REQUEST_CHANGES`; missing reviewer evidence is `INCONCLUSIVE`.
 - If the same blocker survives a bounded retry budget, stop, record the exact blocker, and continue with partial findings or ask one precise question.
 
 ## Manual Handoffs
@@ -155,12 +168,12 @@ The handoff is manual. No hook creates it, no process updates it, and no later s
 
 ## Ultrawork Pattern
 
-1. Split independent research and review work into parallel agents with a bounded follow-up window; never wait indefinitely for background results.
-2. Give each agent a single goal and a concrete output format.
-3. Require evidence in every agent return: paths, symbols, tests, commands, or quoted file lines.
-4. Share state through handoff files, not hidden memory.
-5. Avoid duplicate searches once a specialist is investigating that area.
-6. Converge with tests, diagnostics, build checks, and manual QA where applicable.
+1. Size work as `LIGHT` or `HEAVY`, and only increase rigor when risk increases.
+2. Split only independent research, implementation, or review work into parallel agents with a bounded follow-up window; never wait indefinitely for background results.
+3. Give each agent a single goal, dependency boundary, success criteria, and concrete output format.
+4. Require evidence in every agent return: paths, symbols, tests, commands, real-surface artifacts, or quoted file lines.
+5. Share state through handoff files, not hidden memory, and add required discovered work to the plan before dispatching it.
+6. Converge with tests, diagnostics, build checks, real-surface QA, and independent review when the change is heavy or release, security, persistence, public-behavior, or data-flow work.
 
 ## TDD-Oriented Pattern
 
