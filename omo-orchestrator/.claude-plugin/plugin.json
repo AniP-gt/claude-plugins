@@ -1,7 +1,7 @@
 {
   "name": "omo-orchestrator",
-  "version": "0.8.0",
-  "description": "Content-only Claude Code OMO skills and agents for planning, implementation, review, debugging, refactoring, research, and handoff.",
+  "version": "0.9.0",
+  "description": "Content-only Claude Code OMO skills and agents for intent-led planning, dependency-aware execution, real-surface QA, review, research, and handoff.",
   "author": { "name": "AniP-gt" },
   "keywords": [
     "omo",
