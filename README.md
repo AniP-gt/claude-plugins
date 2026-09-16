@@ -101,6 +101,6 @@ Slack 公式 MCP サーバー（`https://mcp.slack.com/mcp`）に、公式 MCP P
 
 ### omo-orchestrator
 
-OMO-inspired Claude Code orchestration plugin. Provides portable skills and agents for intent routing, planning, implementation, review, guardrails, and focused specialist workflows such as debugging, refactoring, ultrawork, and ultraresearch.
+OMO-inspired Claude Code orchestration plugin. Provides portable, content-only skills and agents for intent routing, approval-gated planning, dependency-aware execution and handoffs, bounded read-only research, review, guardrails, and specialist workflows such as debugging, refactoring, ultrawork, and ultraresearch.
 
-Use `/omo-orchestrate` for complex multi-step work. Specialized LazyCodex-inspired translations such as `/omo-start-work`, `/omo-programming`, `/omo-review-work`, `/omo-debugging`, and `/omo-ultraresearch` are also included as content-only Claude Code skills. See `omo-orchestrator/README.md` for details.
+Use `/omo-orchestrate` for complex multi-step work. Specialized LazyCodex-inspired translations include `omo-coding-agent-sessions` for manual session history reconstruction and search, and `omo-visual-qa` for manual browser and terminal/TUI visual QA with fresh evidence. `omo-start-work`, `omo-programming`, `omo-review-work`, `omo-debugging`, and `omo-ultraresearch` are also included as content-only Claude Code skills. See `omo-orchestrator/README.md` for details.

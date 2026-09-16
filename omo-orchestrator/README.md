@@ -16,7 +16,7 @@ Restart Claude Code after installation.
 ## Included Skills
 
 - `omo-orchestrate`: main workflow for complex multi-step work.
-- `omo-plan`: file-level planning with dependency matrix, QA scenarios, blockers, and verification commands.
+- `omo-plan`: file-level planning with an approval brief before the executable plan, dependency matrix, QA scenarios, blockers, and verification commands. Approval writes the plan only. It does not authorize implementation.
 - `omo-implement`: planned implementation with exploration, minimal edits, review-fix iteration, real-surface QA, and validation.
 - `omo-research`: read-only local/codebase research workflow.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
@@ -30,13 +30,15 @@ Restart Claude Code after installation.
 These are LazyCodex-inspired Claude Code translations. They are content-only prompts, not runtime hooks or automation.
 
 - `omo-programming`: implementation policy for type safety, minimal diffs, tests, diagnostics, and honest validation.
-- `omo-start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup.
+- `omo-start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
 - `omo-ultrawork`: high-throughput parallel work mode with independent waves, bounded follow-up, evidence ledger, and manual QA gate.
 - `omo-review-work`: post-implementation review gate with evidence-based `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` outcomes.
 - `omo-debugging`: hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verification.
 - `omo-refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
 - `omo-remove-ai-slop`: regression-first cleanup for AI-generated comments, complexity, duplication, and weak abstractions.
-- `omo-ultraresearch`: exhaustive read-only research mode with source matrix, evidence thresholds, non-goals, and stop conditions.
+- `omo-ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions.
+- `omo-coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
+- `omo-visual-qa`: manual rendered-surface QA for browser pages and terminal TUIs, requiring fresh visual evidence and an `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` verdict.
 - `omo-get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
 - `omo-pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
 - `omo-work-with-pr`: end-to-end PR lifecycle workflow from issue understanding through review and validation.
@@ -70,6 +72,8 @@ Haiku is sufficient for routine use of these prompt-only skills when the task is
 - `omo-research`
 - `omo-start-work`
 - `omo-ultraresearch`
+- `omo-coding-agent-sessions`
+- `omo-visual-qa`
 
 Use a stronger model for orchestration, planning, high-risk implementation, skeptical review, hard debugging, broad refactors, or ambiguous product decisions.
 
@@ -79,7 +83,7 @@ This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It 
 
 ### Upstream Snapshot
 
-The portable contracts in version 0.9.0 were refreshed against `oh-my-openagent` commit `b5122f19db107e9ab76be51e2898d699c1b6e755`. The refresh carries planning intent routing, dependency-aware parallel waves, bounded follow-up, discovered-work discipline, evidence-led handoffs, real-surface QA, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
+The portable contracts in version 0.10.0 were refreshed against `oh-my-openagent` commit `89321658864550ddee6e6fb88cbf0cc1ec425169`. The refresh carries planning intent routing and approval gates, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
 
 This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
 
@@ -94,6 +98,8 @@ Examples:
 - Aggregator model -> `omo-coordinator` plus `omo-orchestrate` route work, merge evidence, and decide whether to continue, review, or stop.
 - Ultrawork -> explicit parallel waves, bounded follow-up, evidence-first outputs, and no duplicate searches once an owner is assigned.
 - Planning -> classify outcome clarity, research defaults for unclear goals, and ask only for irreducible owner decisions before a plan approval brief.
+- Session investigation -> inspect raw transcript artifacts and linked child sessions, while reporting usage, token, model, time, and cost fields as accounting metadata rather than transcript content.
+- Visual QA -> drive the real rendered surface, capture fresh visual evidence for the final tree, and return `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 - Dependency routing -> fan out independent lanes while serializing shared state, same-file writes, shared contracts, and named predecessors.
 - Discovered work -> report out-of-scope findings, then record and scope required follow-up before assigning it. Do not silently expand or defer the request.
 - Continuation and handoff -> manual, durable handoff notes with current state, blockers, validation, and next exact action.
@@ -116,7 +122,8 @@ Examples:
 - No runtime hooks such as SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostCompact, SubagentStop, or Stop.
 - No OpenCode-only hooks, `team_*` APIs, Boulder state, workflow DAG APIs, worktree lifecycle promises, injected notifications, or runtime continuation.
 - No bundled MCP servers, no `.mcp.json`, and no automatic provider or tool routing.
-- No provider-specific model routing, native installers, telemetry, package-local scripts, package manager setup, or executable loop runner.
+- No bundled helpers, provider-specific model routing, native installers, telemetry, package-local scripts, package manager setup, or executable loop runner.
+- No browser automation, runtime session indexing, hooks, or automatic continuation for the session-investigation and visual-QA workflows.
 - No automatic LSP injection, comment scanner, or rules engine. The skills describe how to do those checks manually with normal Claude Code tools.
 - No hidden runtime hooks behind the specialized skills. They remain prompt-only guidance.
 - No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation, GitHub mutation, publishing, or release execution. The related skills provide operator checklists and handoff contracts only.
@@ -144,6 +151,8 @@ For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publ
 ## Planning And Review Gates
 
 - `omo-plan` classifies the requested outcome as `CLEAR` or `UNCLEAR`. Clear plans ask only for irreducible owner decisions. Unclear plans research and announce practical defaults before the approval brief. Plan approval never authorizes implementation.
+- `omo-ultraresearch` expands only leads with stated decision impact, source, owner, and bounded budget. Research converges when the evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence.
+- `omo-start-work` treats manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state. Compare them before dispatch, handoff, retry, review, and completion; correct disagreement with the current TodoWrite item and a new ledger entry, never by rewriting history.
 - Plans should include TL;DR, dependencies, QA scenarios, gap classification, and verification strategy.
 - Every parallel wave must state why its lanes are independent. Same-file writes, shared contracts, mutable state, and named predecessors serialize.
 - Every plan must define executable QA scenarios with a tool or surface, concrete commands or steps, a pass or fail assertion, and an evidence location. Abstract checks such as "verify it works" are blocking plan-quality findings.
@@ -186,6 +195,7 @@ The handoff is manual. No hook creates it, no process updates it, and no later s
 ## Security And Privacy Boundaries
 
 - No scripts are included.
+- No bundled helpers are included.
 - No network access or credentials are configured by this plugin.
 - No session history, private transcripts, or OAuth tokens are copied.
 - Agents that are meant to research or review should stay read-only unless a user explicitly asks for implementation.
@@ -224,6 +234,18 @@ const required = [
   '`omo-librarian`',
   '`omo-media-reader`',
   '`omo-git-master`',
+  '`omo-coding-agent-sessions`',
+  '`omo-visual-qa`',
+  '89321658864550ddee6e6fb88cbf0cc1ec425169',
+  'Approval writes the plan only. It does not authorize implementation.',
+  'bounded lead expansion',
+  'Research converges',
+  'manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state',
+  'transcript evidence',
+  'accounting metadata',
+  'linked child sessions',
+  'fresh visual evidence for the final tree',
+  'No bundled helpers',
   'Separate specialist aliases, `init-deep`, and `stop-continuation` are deferred',
   'No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation'
 ];

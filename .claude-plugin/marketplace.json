@@ -64,7 +64,7 @@
     },
     {
       "name": "omo-orchestrator",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "source": "./omo-orchestrator",
       "description": "Content-only Claude Code OMO skills and agents for situation-led intent routing, dependency-aware execution, real-surface QA, review, security, research, and handoff."
     }
