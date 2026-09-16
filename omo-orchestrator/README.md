@@ -46,6 +46,43 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
 - `omo-remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
 - `omo-git-master`: git workflow for atomic commits, rebase and squash, and history archaeology. Detects commit style and language from existing history instead of assuming a convention.
+- `omo-init-deep`: explicit, content-only generation and maintenance of a hierarchical Claude Code rule set for a Git worktree.
+
+## OMO Init Deep
+
+Version 0.11.0 adds `omo-init-deep`. Invoke it explicitly when a repository needs a generated, evidence-based Claude Code rule set:
+
+```text
+/omo-init-deep
+/omo-init-deep --create-new
+/omo-init-deep --committed
+/omo-init-deep --max-depth=2
+/omo-init-deep --create-new --committed --max-depth=2
+```
+
+Without a mode flag, it uses local update mode. `--create-new` rebuilds the skill-owned output set after approved conflict resolution and deletions. `--committed` makes those same outputs eligible to be tracked. It never stages, commits, untracks, or otherwise changes the Git index. When omitted, `--max-depth` defaults to `3`; `--max-depth=N` accepts a non-negative base-10 integer, and `0` permits only the root rule.
+
+The skill owns only these repository paths:
+
+```text
+.claude/rules/omo-init-deep/
+.claude/omo/init-deep.json
+```
+
+In local mode, it manages only this exact block in the repository's Git-resolved `info/exclude` file, never `.gitignore`:
+
+```gitignore
+# >>> omo-init-deep managed >>>
+/.claude/rules/omo-init-deep/
+/.claude/omo/init-deep.json
+# <<< omo-init-deep managed <<<
+```
+
+It finds that file through `git rev-parse --git-path info/exclude`, which matters for linked worktrees. Adding or normalizing the local block always needs explicit confirmation. In committed mode, the generated rules and manifest are eligible to track only after the exact managed block is removed with separate explicit confirmation. The skill preserves all bytes outside that block, never substitutes `.gitignore`, and does not automatically commit anything.
+
+Before changing files, it previews the mode, depth, generated candidates, conflicts, tracked-file warnings, deletions, and exclude action. Explicit confirmation is also required to delete a manifest-owned output or overwrite a file whose recorded hash differs. Future `schemaVersion > 1` aborts read-only without replacement. Malformed JSON, an absent or invalid schema, or a structurally invalid schema-1 manifest require read-only reconciliation and explicit replacement confirmation. When regenerating output in another worktree, resolve its `info/exclude` path again rather than assuming the prior worktree's Git administrative path applies. Git ignores are a convenience for local output, not a security boundary.
+
+This remains a content-only procedure. It does not add scripts, hooks, MCP servers, daemons, watchers, startup refresh, automatic continuation, atomic writes, or automatic Git operations. Generated rules are project guidance, not enforcement. After a run, inspect `/context` or `InstructionsLoaded` when available. Ignored-rule loading is not guaranteed, and child rules are scoped rather than eagerly loaded.
 
 ## Included Agents
 
@@ -127,7 +164,7 @@ Examples:
 - No automatic LSP injection, comment scanner, or rules engine. The skills describe how to do those checks manually with normal Claude Code tools.
 - No hidden runtime hooks behind the specialized skills. They remain prompt-only guidance.
 - No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation, GitHub mutation, publishing, or release execution. The related skills provide operator checklists and handoff contracts only.
-- Separate specialist aliases, `init-deep`, and `stop-continuation` are deferred. They add no distinct content-only benefit or imply runtime control outside this plugin's scope.
+- Separate specialist aliases and `stop-continuation` are deferred. They add no distinct content-only benefit or imply runtime control outside this plugin's scope.
 
 ## Optional Future Runtime Mapping
 
@@ -236,6 +273,20 @@ const required = [
   '`omo-git-master`',
   '`omo-coding-agent-sessions`',
   '`omo-visual-qa`',
+  '`omo-init-deep`',
+  '/omo-init-deep --create-new',
+  '/omo-init-deep --committed',
+  '/omo-init-deep --max-depth=2',
+  'When omitted, `--max-depth` defaults to `3`',
+  '.claude/rules/omo-init-deep/',
+  '.claude/omo/init-deep.json',
+  'git rev-parse --git-path info/exclude',
+  'explicit confirmation',
+  'Future `schemaVersion > 1` aborts read-only without replacement',
+  'Malformed JSON, an absent or invalid schema, or a structurally invalid schema-1 manifest require read-only reconciliation and explicit replacement confirmation',
+  'resolve its `info/exclude` path again',
+  'Ignored-rule loading is not guaranteed',
+  'does not automatically commit anything',
   '89321658864550ddee6e6fb88cbf0cc1ec425169',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
@@ -246,7 +297,7 @@ const required = [
   'linked child sessions',
   'fresh visual evidence for the final tree',
   'No bundled helpers',
-  'Separate specialist aliases, `init-deep`, and `stop-continuation` are deferred',
+  'Separate specialist aliases and `stop-continuation` are deferred',
   'No provider fallback, task engine, MCP runtime, automatic Ralph loop, background continuation'
 ];
 const readme = read('omo-orchestrator/README.md');
