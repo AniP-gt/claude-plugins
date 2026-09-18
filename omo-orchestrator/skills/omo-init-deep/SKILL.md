@@ -71,7 +71,9 @@ Never use `eval`, `sh -c`, command substitution, or shell-source interpolation o
 
 ## Evidence And Scoring
 
-Run independent evidence lanes in parallel where available: structure and module boundaries, entry points and interfaces, build and CI, tests, explicit constraints, current instruction hierarchy, and security-sensitive or generated areas. Use Codegraph and LSP for measured symbol density, exports, centrality, and reachability when available. If either is unavailable, use bounded filesystem inspection and record the capability gap. Never invent metrics.
+Run six independently identifiable evidence lanes in parallel where available: structure and module boundaries; entry points and interfaces; conventions and constraints, including the current instruction hierarchy; build and CI; tests; and security-sensitive or generated areas. For each lane, record supporting evidence or a capability gap. When available, use LSP for semantic symbols and references, and ast-grep (`sg`) for structural import and export evidence. If either is unavailable, use bounded filesystem inspection, record the capability gap, and leave dependent metrics unmeasured. Never invent metrics.
+
+Build one safe metadata inventory before selecting lanes. It may count paths and record normalized relative path, depth, extension or language, byte size, and package, configuration, test, or security-boundary classification without reading content. Each of the six baseline lanes reads content from at most 12 files total. Then add at most four focused lanes, for ten lanes total. Select focused lanes only for applicable scale signals, in this order: monorepo packages, multiple languages, depth of at least 4, and large-file hotspots. For each applicable signal, select exactly one not-yet-selected candidate, resolving ties by normalized relative path lexicographically. Each focused lane reads content from at most 12 files for its candidate, prioritizing entry points, configuration, tests, and security boundaries before lexicographic fill. The total content-read budget is at most 120 files: 72 across the six baseline lanes plus 48 across four focused lanes. These caps limit content inspection, not safe metadata counting. Evidence that the bounded inspection does not measure remains unmeasured.
 
 Always select the root. Score eligible child directories deterministically:
 
@@ -110,11 +112,11 @@ Write `.claude/omo/init-deep.json` as the ownership and freshness authority. Use
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "omo-init-deep", "pluginVersion": "0.11.0", "contentOnly": true },
+  "generator": { "name": "omo-init-deep", "pluginVersion": "0.12.0", "contentOnly": true },
   "mode": "local",
   "generatedAt": "RFC3339 UTC",
   "repository": { "head": "SHA or null", "branch": "name or null", "dirty": true, "maxDepth": 3 },
-  "capabilities": { "parallelExplore": true, "codegraph": "available", "lsp": "unavailable" },
+  "capabilities": { "parallelExplore": true, "lsp": "available", "astGrep": "unavailable" },
   "evidence": { "instructionFiles": [], "skippedSensitivePaths": [], "excludedSymlinks": [] },
   "generatedFiles": [],
   "excludeManagement": { "requested": true, "confirmed": true, "blockPresent": true, "blockVersion": 1 },
@@ -130,7 +132,10 @@ Write `.claude/omo/init-deep.json` as the ownership and freshness authority. Use
 - A byte-identical rerun is a no-op. Don't rewrite rules, manifest, or exclude content merely to change `generatedAt`. Preserve its timestamp on a no-op.
 - Never record a desired hash for a file the operator chose to skip.
 
-Before any ownership decision, validate the manifest as untrusted JSON. Accept only `schemaVersion: 1` and the exact supported `generator` identity: `name: "omo-init-deep"`, `pluginVersion: "0.11.0"`, and `contentOnly: true`. Validate every required field and its JSON type before reading `generatedFiles` as ownership evidence.
+Before any ownership decision, validate the manifest as untrusted JSON. Accept only `schemaVersion: 1` and the exact supported `generator` identity: `name: "omo-init-deep"`, `contentOnly: true`, and `pluginVersion: "0.11.0"` or `pluginVersion: "0.12.0"`. Validate every required field and its JSON type before reading `generatedFiles` as ownership evidence.
+
+- An accepted `0.11.0` manifest remains ownership evidence and is upgraded to `0.12.0` when an approved manifest write occurs.
+- A `pluginVersion` mismatch outside this explicit set enters read-only reconciliation and never grants ownership.
 
 - Require `generatedFiles` to be an array of unique entries. Each entry must structurally describe a normalized `.md` path strictly beneath `.claude/rules/omo-init-deep/`. Structural validation does not require the current file to exist.
 - Normalize and validate each output `path`, `sourcePath`, `paths`, `sha256`, `score`, and `kind`. Reject absolute, traversing, control-character, duplicate, colliding, or non-canonical paths and source identities. Require `sha256` to be a digest, `paths` to be normalized repository-relative scoped patterns, and a numeric child `score`.
