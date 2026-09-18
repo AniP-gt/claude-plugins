@@ -60,6 +60,8 @@ Version 0.11.0 adds `omo-init-deep`. Invoke it explicitly when a repository need
 /omo-init-deep --create-new --committed --max-depth=2
 ```
 
+Version 0.12.0 refines the procedure with six evidence lanes and one metadata inventory, capped at a maximum of ten lanes and 120 content reads. LSP and ast-grep have complementary roles, with unavailable metrics left unmeasured. Codegraph-to-ast-grep alignment follows upstream init-deep source change `8512ef8f6a4ea97d737007ca045755428be8ad91`; the latest description is `279017261f8e4cec26a02b796fff72d2e0648f0d`. Schema-1 manifests from 0.11.0 and 0.12.0 are accepted, but 0.11.0 manifests upgrade only on approved writes.
+
 Without a mode flag, it uses local update mode. `--create-new` rebuilds the skill-owned output set after approved conflict resolution and deletions. `--committed` makes those same outputs eligible to be tracked. It never stages, commits, untracks, or otherwise changes the Git index. When omitted, `--max-depth` defaults to `3`; `--max-depth=N` accepts a non-negative base-10 integer, and `0` permits only the root rule.
 
 The skill owns only these repository paths:
@@ -287,6 +289,16 @@ const required = [
   'resolve its `info/exclude` path again',
   'Ignored-rule loading is not guaranteed',
   'does not automatically commit anything',
+  'six evidence lanes',
+  'one metadata inventory',
+  'maximum of ten lanes',
+  '120 content reads',
+  'LSP and ast-grep have complementary roles',
+  'unavailable metrics left unmeasured',
+  '8512ef8f6a4ea97d737007ca045755428be8ad91',
+  '279017261f8e4cec26a02b796fff72d2e0648f0d',
+  'Schema-1 manifests from 0.11.0 and 0.12.0 are accepted',
+  '0.11.0 manifests upgrade only on approved writes',
   '89321658864550ddee6e6fb88cbf0cc1ec425169',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
