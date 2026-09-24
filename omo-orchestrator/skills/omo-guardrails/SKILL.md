@@ -29,3 +29,11 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 ## Handoff Minimum
 
 Record goal, current state, completion promise when iterative, files changed, validation, stalled or blocked agents, blockers, next action, and files not to touch.
+
+## Standalone Invocation
+
+When invoked on its own:
+
+1. State the situation, scope, and whether the main-context boundary applies.
+2. Check duplication, error class, available evidence, stop condition, and handoff need in that order. Do not perform the substantive work being guarded.
+3. Return a short report with: decision, evidence reviewed, guardrail triggered or cleared, blocker or risk, owner, and one next exact action. If a handoff is needed, include every Handoff Minimum field.
