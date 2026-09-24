@@ -20,6 +20,22 @@ Use this skill to clean AI-generated code smells without changing intended behav
 6. Re-verify after each cleanup cluster.
 7. For deletion candidates, follow `/omo-remove-deadcode`, the canonical reachability policy.
 
+## Cleanup Clusters And Evidence
+
+A cleanup cluster is one behavior-preserving group of related edits in one concern, such as noisy comments in a module, one duplicated branch family, or one unnecessary helper layer. Do not mix unrelated concerns in a cluster.
+
+For each cluster, record:
+
+```text
+Cluster and files:
+Behavior lock before cleanup:
+Validation before cleanup: command or procedure, result, evidence location
+Validation after cleanup: command or procedure, result, evidence location
+Removed patterns and retained exceptions:
+```
+
+For a deletion candidate, hand off to `/omo-remove-deadcode` with the candidate path or symbol, reachability evidence, protected validation target, uncertainty, and next exact action. Record the handoff outcome before claiming that deletion is complete.
+
 ## Targets
 
 - useless or noisy comments
@@ -45,4 +61,4 @@ Use this skill to clean AI-generated code smells without changing intended behav
 
 ## Delivery Contract
 
-Report what patterns were removed, which files changed, and how behavior was verified.
+Report each cleanup cluster, what patterns were removed, which files changed, the before and after validation fields, and any `/omo-remove-deadcode` handoff record.
