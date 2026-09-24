@@ -12,11 +12,12 @@ Use this skill after changing a browser-rendered page or terminal/TUI surface. I
 
 ## Select The Target
 
-1. Classify the target as `BROWSER_PAGE` or `TERMINAL_TUI`. If it has both surfaces, test each separately.
-2. List every required route, screen, tab, modal, state, viewport, terminal size, and scroll position. Do not approve a sampled subset.
-3. Use a browser, terminal, renderer, or inspection tool already available in the current environment. Drive the real rendered surface. Reading source code is not visual evidence.
-4. For authenticated work, use an isolated or cloned test profile with only the access required for the check. Never use, inspect, copy, or alter a live user browser profile.
-5. Record unavailable tools, credentials, references, or surfaces as evidence gaps. Do not infer success from source code or an unrendered artifact.
+1. Create a preflight inventory of the supplied rendered fixture or surface, access route or launch command, required states, viewports or terminal sizes, references, credentials, and available inspection tools. Mark every missing item before testing.
+2. Classify the target as `BROWSER_PAGE` or `TERMINAL_TUI`. If it has both surfaces, test each separately.
+3. List every required route, screen, tab, modal, state, viewport, terminal size, and scroll position. Do not approve a sampled subset.
+4. Use a browser, terminal, renderer, or inspection tool already available in the current environment. Drive the real rendered surface. Reading source code is not visual evidence.
+5. For authenticated work, use an isolated or cloned test profile with only the access required for the check. Never use, inspect, copy, or alter a live user browser profile.
+6. Record unavailable tools, credentials, references, or surfaces as evidence gaps. Do not infer success from source code or an unrendered artifact.
 
 ## Evidence Freshness
 
@@ -72,7 +73,7 @@ Return one outcome only:
 
 - `APPROVE`: every required row has fresh, trusted evidence from the final tree; expected and observed results agree; and both review perspectives have no blocking finding. Only `APPROVE` permits completion.
 - `REQUEST_CHANGES`: one or more rows show a confirmed failure. Name the failed surface, action, evidence path, and bounded fix required. Recheck affected rows on fresh evidence after the fix.
-- `INCONCLUSIVE`: required evidence is missing, stale, corrupted, untrusted, inaccessible, or insufficient to judge. Name the gap, owner if known, and next exact action. Never treat missing or stale evidence as approval.
+- `INCONCLUSIVE`: required evidence is missing, stale, corrupted, untrusted, inaccessible, or insufficient to judge. If no rendered fixture or runnable surface was supplied, return `INCONCLUSIVE` without attempting to infer or create one; name the missing fixture or surface, owner if known, and the exact next action needed to supply it. Never treat missing or stale evidence as approval.
 
 ## Report
 
