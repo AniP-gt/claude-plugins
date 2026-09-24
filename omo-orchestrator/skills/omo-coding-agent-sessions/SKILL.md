@@ -24,7 +24,7 @@ Use this skill when asked to find, read, reconstruct, or verify local coding-age
 
 1. State the question, requested platforms if any, and filters: project or working directory, time range, model, branch, agent, session ID, and keywords.
 2. For a fuzzy request, expand it into three to six short query lanes before searching. Include known product or tool aliases, project or package names, exact errors, issue or PR numbers, likely verbs, and alternate language phrasing when relevant.
-3. Identify available stores before an expensive search. Check only documented or locally discoverable roots, installed CLIs, configuration, and artifact layouts. Record each platform as `available`, `not found`, `unsupported`, or `not checked`, with the reason.
+3. Identify available stores before an expensive search. With the allowed read-only tools, inspect only documented or locally discoverable roots, configuration, installation artifacts, and session layouts. Do not invoke, enumerate, or infer installed CLIs. Record a CLI as available only when its readable configuration or installation artifact establishes that fact.
 4. Search the available stores broadly across the expanded query lanes. Narrow only after the first pass, using the requested filters or discriminating evidence. Do not fabricate support for a platform or format that was not found.
 5. For each candidate parent session, inspect its linkage and search its delegated or child sessions. A parent match does not prove that a child was inspected. Report matching children separately and mark uninspected children as a gap.
 6. Support Claude Code, OpenCode, Codex, and other stores only when their local artifacts are available. For each store, infer relationships from the artifacts actually present, such as parent IDs, child metadata, thread edges, or directory layout. Do not copy provider-specific APIs or assume one product's storage shape applies to another.
@@ -49,6 +49,7 @@ Use this skill when asked to find, read, reconstruct, or verify local coding-age
 ## Missing And Ambiguous Evidence
 
 - For a missing store, record the checked location or discovery method, the platform, and the next action, such as requesting a custom root or a copied artifact path.
+- If CLI or configuration discovery cannot be established with the allowed tools, record it as `not checked`, explain the tool limit, and request an operator-provided executable, configuration, or artifact path. Do not report it as `not found` or assume a default location.
 - For an unsupported format, preserve the path and format observed, explain why it could not be read safely, and request a compatible export or operator inspection.
 - For ambiguous matches, report the competing session IDs and paths, the shared evidence, the distinguishing evidence still needed, and a confidence level.
 - Never claim that no session exists when only one store, time range, query lane, or child relationship was checked.
