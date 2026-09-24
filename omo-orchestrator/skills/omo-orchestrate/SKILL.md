@@ -1,6 +1,6 @@
 ---
 name: omo-orchestrate
-description: OMO-inspired end-to-end orchestration for complex Claude Code work. Use for multi-step implementation, investigation, planning, review, or autonomous workflows.
+description: OMO-inspired manual orchestration for complex Claude Code work. Use for multi-step implementation, investigation, planning, or review.
 argument-hint: [goal]
 allowed-tools: Read, Grep, Glob, Task, TodoWrite
 user-invocable: true
@@ -8,11 +8,13 @@ user-invocable: true
 
 # OMO Orchestrate
 
-Use this skill to run work through an OMO-style loop: classify intent, gather context, plan, delegate to sub-agents, verify delegated results, and hand off clearly.
+Use this skill to coordinate an OMO-style workflow: classify intent, gather routing context, plan, delegate when available, verify returned evidence, and hand off clearly. It is prompt guidance, not an autonomous runtime.
 
 Strict main-context rule: the main context is an orchestrator only. It must not implement, edit, run task commands, perform direct investigation as the owner, or conduct direct review as the owner. All substantive work must be delegated to the appropriate sub-agent. The main context may only classify intent, create todos, read enough context to route and verify safely, dispatch sub-agents, synthesize their evidence, ask the user for missing decisions, and produce the final handoff.
 
 Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP servers, or hidden automation, convert it into an explicit manual step, evidence requirement, or handoff checkpoint.
+
+Delegation boundary: use `Task` only when a suitable sub-agent and required tools are available. If delegation is unavailable, returns no usable evidence after its bounded follow-up, or cannot safely own the phase, record the gap, owner, and one next action in the handoff. Stop when that missing work is critical; otherwise synthesize only the available evidence. Never simulate a delegated result or continue automatically.
 
 ## Flow
 
@@ -20,7 +22,7 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 2. Read only the project rules and evidence needed to route work and verify delegated results before making claims.
 3. Create a file-level plan before editing when the work touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
 4. Delegate implementation, investigation, review, validation commands, and fix work to sub-agents. Do not perform those work phases directly in the main context.
-5. Split independent research or review into parallel agents when useful. Dependency-aware parallelism is mandatory: independent files and questions may fan out, while shared mutable state, same-file writes, shared contracts, and named predecessors serialize. Background agents are advisory, not blocking: wait for one bounded follow-up, then continue with available evidence if an agent stalls, returns no usable output, or repeats the same result.
+5. Split independent research or review into parallel agents when useful. Dependency-aware parallelism is mandatory: independent files and questions may fan out, while shared mutable state, same-file writes, shared contracts, and named predecessors serialize. Background agents are advisory, not blocking: wait for one bounded follow-up, then record an unavailable result and follow the delegation boundary if an agent stalls, returns no usable output, or repeats the same result.
 6. For multi-phase work, delegate `omo-handoff` or another writable owner to create or locate the task-slug-linked append-only ledger at `.claude/omo/handoffs/<task-slug>.md`, then read and verify the full ledger before routing or resuming work.
 7. Before delegating an edit, require a dependency check for the original request and constraints, predecessor artifacts, executable QA scenarios, and existing validation evidence. Delegate the ledger append to `omo-handoff` or another writable owner, then read and verify the appended findings and state before delegating dependent work.
 8. Require an appended phase report after research or exploration, planning, implementation, validation, review or fix, and final verification where those phases apply. Delegate each append to `omo-handoff` or another writable owner, then read and verify the result. Each report must name dependencies, evidence, blockers, retries, and one next exact action.
@@ -47,7 +49,7 @@ Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP s
 - Evidence gate: a claim without a path, symbol, test, diagnostic, command result, or quoted code is not a review-grade finding.
 - Retry budget: allow one initial attempt plus at most two materially different retries. A different retry revisits a dependency, reduces the change surface, uses a different validation target, or consults an independent reviewer. Re-running an unchanged command does not count as a new approach.
 - Evidence preservation: retain failed attempts in the ledger. Invalidate validation evidence only when an edit changes the prerequisite on which that evidence depends, and record the invalidated dependency.
-- Stuck condition: after the retry budget is exhausted, append every attempt and the blocker, stop honestly, and do not claim success. Route to `omo-reviewer` for independent analysis when that can answer the blocker. If the blocker depends on product judgment or external constraints, ask the user one precise question.
+- Stuck condition: after the retry budget is exhausted, append every attempt and the blocker, stop honestly, and do not claim success. Delegate to `omo-reviewer` only when available and able to answer the blocker. If no suitable delegation is available, record that boundary. If the blocker depends on product judgment or external constraints, ask the user one precise question.
 - Stalled delegation: do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question. Mark missing results as stalled or blocked in the handoff and proceed with partial findings when safe.
 - Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user. Only `APPROVE` permits completion. `REQUEST_CHANGES` and `INCONCLUSIVE` block it.
 
