@@ -19,6 +19,7 @@ Use this skill when writing or editing production code.
 - Run real diagnostics and real tests when the project supports them.
 - Record evidence for each claim: changed files, diagnostics, tests, builds, or manual QA.
 - Use reference checks before deleting code, exports, commands, plugin metadata, or public docs.
+- State the requested boundary explicitly: what was requested, which files or behaviors changed to satisfy it, and which adjacent work remained out of scope.
 
 ## Hard Rules
 
@@ -29,7 +30,8 @@ Use this skill when writing or editing production code.
 - Do not edit unrelated dirty files.
 - Do not add fallback logic unless an existing contract requires it.
 - Do not delete code as dead unless references, registries, tests, docs, and runtime entry points have been checked or explicitly marked inconclusive.
+- Before deleting generated files, metadata, or registrations, identify their generator or owning metadata and check every registration or manifest that can publish, load, package, or reference them. Report the evidence, or mark the check inconclusive and do not claim deletion safety.
 
 ## Delivery Contract
 
-Report the behavior change, changed files, validation that was actually run, and any area left unverified.
+Report the requested-boundary statement, behavior change, changed files, validation that was actually run, generated or metadata registration evidence for any deletion, and any area left unverified.
