@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only. It does not install scripts, hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals.
+This plugin is content-only. It does not install scripts, hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
 
 ## Install
 
@@ -61,6 +61,8 @@ Version 0.11.0 adds `omo-init-deep`. Invoke it explicitly when a repository need
 ```
 
 Version 0.12.0 refines the procedure with six evidence lanes and one metadata inventory, capped at a maximum of ten lanes and 120 content reads. LSP and ast-grep have complementary roles, with unavailable metrics left unmeasured. Codegraph-to-ast-grep alignment follows upstream init-deep source change `8512ef8f6a4ea97d737007ca045755428be8ad91`; the latest description is `279017261f8e4cec26a02b796fff72d2e0648f0d`. Schema-1 manifests from 0.11.0 and 0.12.0 are accepted, but 0.11.0 manifests upgrade only on approved writes.
+
+Version 0.13.0 tunes the skill prompt contracts around evidence, scope boundaries, manual checkpoints, and honest `INCONCLUSIVE` outcomes. The work improves how the prompts state their operating rules. It does not add runtime automation or change this plugin's content-only boundaries.
 
 Without a mode flag, it uses local update mode. `--create-new` rebuilds the skill-owned output set after approved conflict resolution and deletions. `--committed` makes those same outputs eligible to be tracked. It never stages, commits, untracks, or otherwise changes the Git index. When omitted, `--max-depth` defaults to `3`; `--max-depth=N` accepts a non-negative base-10 integer, and `0` permits only the root rule.
 
@@ -185,7 +187,7 @@ Background agents are advisory, not blocking. Wait for one bounded follow-up whe
 
 For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. The mandatory final gate returns `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Only `APPROVE` permits completion. `REQUEST_CHANGES` feeds a bounded fix and re-review; `INCONCLUSIVE` blocks completion until the missing evidence or decision is recorded and resolved.
 
-For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publish-review`, then use `/omo-work-with-pr` to prepare the handoff or reviewer response. Publishing, pushing, merging, and external comments remain user-approved actions.
+For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publish-review`, then use `/omo-work-with-pr` to prepare a local handoff or reviewer-response artifact. GitHub changes and every publish, push, merge, or remote comment are outside these content-only skills and require an external operator with explicit permission for the specific action.
 
 ## Planning And Review Gates
 
