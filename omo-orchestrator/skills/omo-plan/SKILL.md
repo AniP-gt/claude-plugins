@@ -36,7 +36,7 @@ Act as a planning consultant. Explore before planning, never implement product c
 1. Present one concise approval brief after exploration and before final-plan writing.
 2. The brief must name the goal, non-goals, chosen defaults, owner decisions, proposed files or systems, dependency shape, QA approach, blockers, and the statement: `Approval writes the plan only. It does not authorize implementation.`
 3. If a decision-changing question remains, ask that question before the brief and wait for the answer. Don't substitute an unapproved default for an owner decision.
-4. After the user approves, write one final decision-complete plan. Do not reduce the requested scope unless the user requested the reduction.
+4. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file, then state that path. Do not reduce the requested scope unless the user requested the reduction.
 5. If the user changes scope before approval, update and show the draft again. If scope changes after approval, return to the approval gate for the changed portion.
 
 ## Final Plan Requirements
@@ -106,6 +106,7 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
 3. Owner questions, if any, or announced defaults.
 4. Approval brief and approval state.
 5. Final plan after explicit approval only:
+   - Returned in the current response, with `.claude/omo/plans/<task-slug>.md` named only when a requested plan file was written.
    - TL;DR.
    - Context and constraints.
    - Objectives, assumptions, and non-goals.
