@@ -15,7 +15,7 @@ This skill is a manual Claude Code equivalent of runtime loop behavior. It does 
 ## Loop Contract
 
 1. Define the completion promise in one sentence.
-2. Create a visible state record: current iteration, goal, blockers, changed files, validation, and next exact action.
+2. Create or continue the visible state record at `.claude/omo/handoffs/<task-slug>.md`: current iteration, goal, blockers, changed files, validation, and next exact action. Initialize it with an append-only first entry only when no record exists.
 3. Before each iteration, confirm there is no unanswered decision or unresolved in-flight work required by or overlapping the next iteration, the owner and scope are clear, the current state was freshly read, and the validation evidence to collect during this iteration is named. From iteration 2 onward, material task-state progress must be a changed task state, resolved blocker, or new validated evidence. Tool activity alone is not progress. If that progress is absent, pause and record the stop reason and next action.
 4. Run one iteration: investigate, edit or delegate, validate, review if needed, and update the state record.
 5. Continue only while the next action is clear and safe.
@@ -26,7 +26,7 @@ This skill is a manual Claude Code equivalent of runtime loop behavior. It does 
 
 ## Recovery Contract
 
-- On resume, read the state record before asking the user what happened.
+- On resume, read the full `.claude/omo/handoffs/<task-slug>.md` record, reconcile the latest entry with the current task state, and manually take its recorded next exact action or append a corrected one. Do not resume automatically.
 - Preserve previous validation results with timestamps or command names.
 - Mark stale assumptions before continuing.
 - If a background agent was pending, record whether its result was used, stalled, or superseded.
