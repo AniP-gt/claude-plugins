@@ -62,7 +62,7 @@ Version 0.11.0 adds `omo-init-deep`. Invoke it explicitly when a repository need
 
 Version 0.12.0 refines the procedure with six evidence lanes and one metadata inventory, capped at a maximum of ten lanes and 120 content reads. LSP and ast-grep have complementary roles, with unavailable metrics left unmeasured. Codegraph-to-ast-grep alignment follows upstream init-deep source change `8512ef8f6a4ea97d737007ca045755428be8ad91`; the latest description is `279017261f8e4cec26a02b796fff72d2e0648f0d`. Schema-1 manifests from 0.11.0 and 0.12.0 are accepted, but 0.11.0 manifests upgrade only on approved writes.
 
-Version 0.13.0 tunes the skill prompt contracts around evidence, scope boundaries, manual checkpoints, and honest `INCONCLUSIVE` outcomes. The work improves how the prompts state their operating rules. It does not add runtime automation or change this plugin's content-only boundaries.
+Version 1.0.0 replaces the retired `omo-metis` pre-planning agent with canonical `omo-plan-consultant` and adds `omo-plan-reviewer`. Planning now names affected users, records `IS-*` ideal-state rows and `GAP-*` shortfalls, closes each gap with a task, and maps each ideal state to task, QA, and evidence. It remains a prompt-only update with no runtime automation.
 
 Without a mode flag, it uses local update mode. `--create-new` rebuilds the skill-owned output set after approved conflict resolution and deletions. `--committed` makes those same outputs eligible to be tracked. It never stages, commits, untracks, or otherwise changes the Git index. When omitted, `--max-depth` defaults to `3`; `--max-depth=N` accepts a non-negative base-10 integer, and `0` permits only the root rule.
 
@@ -91,12 +91,13 @@ This remains a content-only procedure. It does not add scripts, hooks, MCP serve
 ## Included Agents
 
 - `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Uses `model: opus` because orchestration quality is high leverage.
-- `omo-planner`: executable plans, blocker discovery, and plan review. Uses `model: opus` because planning quality is high leverage.
+- `omo-planner`: executable plans, affected-user ideal states, gap closure, blockers, and QA mappings. Uses `model: opus` because planning quality is high leverage.
 - `omo-implementer`: deep executor for minimal verified changes. Uses `model: opus`.
 - `omo-researcher`: the Explore equivalent for read-only local code and external reference investigation, with evidence labels and access limits disclosed. Uses `model: haiku`.
-- `omo-reviewer`: the Momus-style independent reviewer for risk, quality, and scope control. Uses `model: opus`.
+- `omo-plan-consultant`: read-only pre-planning consultant for intent classification, exploration, affected-user ideal-state gaps, and planning directives. Uses `model: opus`.
+- `omo-plan-reviewer`: read-only plan executability reviewer with an approval-biased `OKAY` or `REJECT` verdict. Uses `model: opus`.
+- `omo-reviewer`: independent implementation and PR-style reviewer for risk, quality, and scope control. Its lifecycle remains `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Uses `model: opus`.
 - `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: fable` because the consultation is the deliverable and reasoning depth is the whole point.
-- `omo-metis`: read-only pre-planning consultant. Classifies intent, surfaces ambiguity and hidden assumptions, and emits directives before planning starts. Uses `model: opus`.
 - `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim. Uses `model: sonnet`.
 - `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file. Uses `model: opus`.
 
@@ -124,7 +125,7 @@ This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It 
 
 ### Upstream Snapshot
 
-The portable contracts in version 0.10.0 were refreshed against `oh-my-openagent` commit `89321658864550ddee6e6fb88cbf0cc1ec425169`. The refresh carries planning intent routing and approval gates, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
+The portable contracts in version 1.0.0 were refreshed against `oh-my-openagent` commit `0c76f2d9838a664884739877da1692aa754eab1a`. The refresh carries planning intent routing, affected-user ideal-state and gap mapping, plan executability review, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
 
 This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
 
@@ -191,10 +192,11 @@ For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publ
 
 ## Planning And Review Gates
 
-- `omo-plan` classifies the requested outcome as `CLEAR` or `UNCLEAR`. Clear plans ask only for irreducible owner decisions. Unclear plans research and announce practical defaults before the approval brief. Plan approval never authorizes implementation.
+- `omo-plan-consultant` classifies intent, explores before asking, and records affected users, concrete `IS-*` ideal states, and `GAP-*` shortfalls. `omo-plan` then creates one plan that closes every gap and maps every ideal state to a task, executable QA scenario, and evidence location. Clear plans ask only for irreducible owner decisions. Unclear plans research and announce practical defaults before the approval brief. Plan approval never authorizes implementation.
+- `omo-plan-reviewer` checks plan references, task startability, QA executability, ideal-state coverage, and gap closure. It returns `OKAY` by default and `REJECT` only for up to three verified blockers. It is not a substitute for `omo-reviewer`.
 - `omo-ultraresearch` expands only leads with stated decision impact, source, owner, and bounded budget. Research converges when the evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence.
 - `omo-start-work` treats manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state. Compare them before dispatch, handoff, retry, review, and completion; correct disagreement with the current TodoWrite item and a new ledger entry, never by rewriting history.
-- Plans should include TL;DR, dependencies, QA scenarios, gap classification, and verification strategy.
+- Plans should include TL;DR, affected users, `IS-*` and `GAP-*` rows, dependencies, QA scenarios, task closure, gap classification, and verification strategy.
 - Every parallel wave must state why its lanes are independent. Same-file writes, shared contracts, mutable state, and named predecessors serialize.
 - Every plan must define executable QA scenarios with a tool or surface, concrete commands or steps, a pass or fail assertion, and an evidence location. Abstract checks such as "verify it works" are blocking plan-quality findings.
 - Significant implementation should pass an implement-review-fix loop before final handoff.
@@ -215,6 +217,12 @@ The handoff is manual. No hook creates it, no process updates it, and no later s
 - Treat Claude Code tools as the execution layer. The plugin text should tell the operator what to check, not assume hidden runtime automation.
 - When the original OMO flow mentions hooks or MCP-only capabilities, translate them into manual steps, explicit checkpoints, or optional future mapping.
 - Keep outputs grounded in file paths, symbols, test names, diagnostics, and command results. Avoid unsupported claims such as "auto-verified" unless the current session actually ran that check.
+
+## Planning Role Migration
+
+Version 1.0.0 adopts the Native and Senpi canonical names: `omo-plan-consultant` for pre-planning analysis and `omo-plan-reviewer` for plan executability review. The retired `omo-metis` agent is removed and has no compatibility alias. The standalone `~/.claude/agents/plan/momus.md` remains outside plugin ownership and is not managed by this plugin.
+
+OpenCode has legacy metis and momus names in its own adapter. They are not aliases in this Claude Code plugin. Use `omo-plan-consultant` and `omo-plan-reviewer` for planning, then use `omo-reviewer` only for implementation or PR-style review.
 
 ## Ultrawork Pattern
 
@@ -268,10 +276,17 @@ const required = [
   'tool or surface',
   'concrete commands or steps',
   'evidence location',
+  'omo-plan-consultant',
+  'omo-plan-reviewer',
+  'Affected users',
+  '`IS-*`',
+  '`GAP-*`',
+  'closes every gap',
+  'task, executable QA scenario, and evidence location',
+  '`OKAY`',
+  '`REJECT`',
   'the Explore equivalent',
-  'the Momus-style independent reviewer',
   '`omo-oracle`',
-  '`omo-metis`',
   '`omo-librarian`',
   '`omo-media-reader`',
   '`omo-git-master`',
@@ -301,7 +316,7 @@ const required = [
   '279017261f8e4cec26a02b796fff72d2e0648f0d',
   'Schema-1 manifests from 0.11.0 and 0.12.0 are accepted',
   '0.11.0 manifests upgrade only on approved writes',
-  '89321658864550ddee6e6fb88cbf0cc1ec425169',
+  '0c76f2d9838a664884739877da1692aa754eab1a',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
   'Research converges',

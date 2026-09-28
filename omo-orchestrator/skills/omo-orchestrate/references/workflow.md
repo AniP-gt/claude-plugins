@@ -6,6 +6,8 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 |---|---|---|
 | Sisyphus | `omo-coordinator` | Intent routing, delegation, verification, and completion checks |
 | Prometheus | `omo-planner` | File-level implementation planning |
+| Plan consultant | `omo-plan-consultant` | Read-only intent classification, exploration, affected-user ideal-state and gap analysis, and planning directives |
+| Plan reviewer | `omo-plan-reviewer` | Read-only plan executability check with `OKAY` or `REJECT` |
 | Work planner | `omo-plan` | TL;DR, dependency matrix, blocking executable QA scenarios, gap classification, and handoff inputs |
 | Hyperplan | `omo-hyperplan` | Adversarial planning for high-risk or ambiguous work before implementation |
 | Hephaestus | `omo-implementer` | Minimal verified implementation |
@@ -17,7 +19,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | Security research | `omo-security-research` | Exploitability-first security investigation and severity calibration |
 | GitHub triage | `omo-github-triage` | Evidence-first issue and PR classification, priority, and next action |
 | Dead-code cleanup | `omo-remove-deadcode` | Reference-checked deletion workflow with zero-false-positive discipline |
-| Oracle / Momus | `omo-reviewer` | Independent reasoning, review, stuck-case escalation, and risk checks |
+| Implementation / PR reviewer | `omo-reviewer` | Independent change review with `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` |
 | Cross-agent handoff | `omo-handoff` + handoff template | Manual task-slug-linked append-only ledger with explicit phase checkpoints |
 | Ralph loop / hook-driven continuation | `omo-ralph-loop` + `omo-handoff` + guardrails | Completion promise, append-only phase ledger, and manual continuation checkpoint |
 | MCP-backed rules or diagnostics | Manual Claude Code checks | Read rules, inspect files, run diagnostics or tests when available |
@@ -26,6 +28,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 
 - Verify before claiming.
 - Plan before multi-step implementation.
+- Before an approval brief, name affected users and record concrete `IS-*` ideal-state rows and `GAP-*` shortfalls. Every gap needs a closing task; every ideal-state row needs a delivering task, proving QA scenario, and evidence location.
 - Parallelize independent investigation and review.
 - Keep background agents bounded: after one stalled or repeated result, record the gap and continue with available evidence when safe.
 - Avoid duplicate work once a specialist owns a search area.
@@ -38,6 +41,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 - Use the manual ledger at `.claude/omo/handoffs/<task-slug>.md` for every multi-phase task. Before an edit or dependent delegation, check the original user request and constraints, predecessor artifacts, executable QA scenarios, and validation evidence. Delegate ledger creation and append operations to `omo-handoff` or another writable owner, then read and verify the resulting entry.
 - Append reports after research or exploration, planning, implementation, validation, review or fix, and final verification where applicable. Use the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
 - Consume `omo-plan` executable QA scenarios during implementation and final verification. Preserve the tool, steps, assertion, and evidence location for each executed scenario.
+- Use `omo-plan-reviewer` for bounded plan executability review. It approves with `OKAY` unless verified blockers require `REJECT`; it does not replace `omo-reviewer` or its implementation-review lifecycle.
 - Keep failed evidence. Invalidate validation evidence only when a changed prerequisite actually affects it.
 - Use one initial attempt plus at most two materially different retries. Valid changes include revisiting a dependency, reducing the change surface, using a different validation target, or consulting an independent reviewer. An unchanged command rerun is not a new approach.
 - Before claiming completion, re-read the original user request and constraints. After the retry budget is exhausted, record attempts and the blocker, then stop without claiming success.

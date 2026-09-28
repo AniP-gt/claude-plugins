@@ -10,7 +10,7 @@ user-invocable: true
 
 Use this skill only when the user explicitly asks for a plan, planning, a work breakdown, or a plan before coding. Do not activate from a bare orchestration request, an agent-side routing decision, or reading this file.
 
-Act as a planning consultant. Explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks, runtime automation, automatic execution, or automatic continuation.
+Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and gap analysis when available, explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks, runtime automation, automatic execution, or automatic continuation.
 
 ## Planning Boundary
 
@@ -18,9 +18,10 @@ Act as a planning consultant. Explore before planning, never implement product c
 2. Treat requests to build, fix, or change something as a request to plan that work while this skill is active.
 3. Start with read-only repository exploration. Use external research only when repository evidence cannot answer a material question.
 4. Announce one intent verdict after grounding: `CLEAR` when the requested outcome is specific enough to plan, or `UNCLEAR` when the outcome itself needs practical defaults.
-5. Show a visible draft before the approval gate. The draft must include the intent verdict, evidence, assumptions, decisions, open blockers, proposed scope, and the next planning action.
-6. Do not present an executable final plan before the user explicitly approves the draft or approval brief.
-7. Approval authorizes writing the final plan only. Plan approval never authorizes implementation, delegation of implementation, edits, or execution commands. A separate user-directed workflow starts execution.
+5. Name affected users, state their concrete `IS-*` ideal-state rows, and record each current shortfall as a `GAP-*` row before questions or the approval brief.
+6. Show a visible draft before the approval gate. The draft must include the intent verdict, evidence, assumptions, decisions, open blockers, affected users, `IS-*` rows, `GAP-*` rows, proposed scope, and the next planning action.
+7. Do not present an executable final plan before the user explicitly approves the draft or approval brief.
+8. Approval authorizes writing the final plan only. Plan approval never authorizes implementation, delegation of implementation, edits, or execution commands. A separate user-directed workflow starts execution.
 
 ## Intent And Decision Routing
 
@@ -42,11 +43,13 @@ Act as a planning consultant. Explore before planning, never implement product c
 ## Final Plan Requirements
 
 - State the goal, constraints, assumptions, selected defaults, and explicit non-goals.
+- Open the scope with affected users, how they use the result, concrete `IS-*` ideal-state rows, and `GAP-*` rows before must-have and must-not-have boundaries.
 - Name exact files, symbols, or systems for every task. Use `all matching <symbol or path pattern>` only when the affected set is intentionally broad and explain how it is identified.
 - Give each task one exact action and the expected result.
 - Name each task's dependencies and the tasks it unblocks.
 - Define measurable acceptance criteria for every task.
 - Include an evidence target for every task, such as changed files, test output, diagnostics, command output, review result, screenshot path, or inspected content.
+- Map every `IS-*` row to at least one delivering task, proving QA scenario, and evidence location. Close every `GAP-*` row with a task. Do not leave an ideal state unproven or a gap open.
 - Define how newly discovered work is recorded, assessed, scoped before dispatch when required, or explicitly deferred.
 - Classify gaps as critical, minor, or ambiguous. Give each true blocker one precise question.
 - Include a verification strategy, review gate, and final handoff checkpoint.
@@ -78,9 +81,9 @@ Use TDD-oriented sequencing when the codebase supports it: identify the failing 
 
 ## Bounded Plan Review
 
-1. Review the draft for executability, goal alignment, scope control, dependencies, security-sensitive risks, and QA completeness before handoff.
+1. Review the draft with `omo-plan-reviewer` when available. It checks references, task startability, executable QA, affected-user coverage, `IS-*` task and QA mapping, `GAP-*` closure, and whether the approach reaches the ideal state.
 2. Escalate hard, high-risk, ambiguous, security-sensitive, release-facing, or cross-system work to `omo-hyperplan` before the approval brief.
-3. Use one independent read-only review or an explicit manual critique when a reviewer is unavailable. Keep review bounded to one initial pass and at most two materially different revisions.
+3. Use one independent read-only critique when `omo-plan-reviewer` is unavailable. Keep plan review bounded to one initial pass and at most two materially different revisions. `omo-plan-reviewer` returns `OKAY` or `REJECT`; reserve `omo-reviewer` and its `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` lifecycle for implementation and PR-style review.
 4. A review finding needs evidence from a file, symbol, contract, test, command, or documented assumption. Keep verified non-issues separate from findings.
 5. If a critical blocker survives the review budget, record the evidence and one exact question or next action. Do not claim the plan is ready.
 
@@ -113,7 +116,7 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
    - File and symbol-level task list.
    - Parallel execution waves.
    - Dependency matrix.
-   - Per-task acceptance criteria and QA scenarios.
+   - Affected users, `IS-*` ideal states, `GAP-*` rows, task closure, and per-task acceptance criteria and QA scenarios.
    - Verification strategy.
    - Gap classification and one-question-per-blocker list.
    - Escalation decision: normal plan, hyperplan, security research, or release review.
