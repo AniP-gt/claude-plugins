@@ -67,6 +67,12 @@
       "version": "1.1.0",
       "source": "./omo-orchestrator",
       "description": "Content-only Claude Code OMO skills and agents for situation-led intent routing, dependency-aware execution, real-surface QA, review, security, research, and handoff."
+    },
+    {
+      "name": "llm-wiki",
+      "version": "0.1.0",
+      "source": "./llm-wiki",
+      "description": "LLM Wiki 手法でリポジトリごとの知識を Obsidian の Markdown wiki に育てるプラグイン。ingest / query / lint skill と、wiki の場所を伝える SessionStart hook。パスは各自のローカル設定。"
     }
   ]
 }

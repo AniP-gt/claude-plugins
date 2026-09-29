@@ -22,6 +22,7 @@ Custom Claude Code plugins by miya.
 /plugin install episodic@hidetsugu-miya
 /plugin install slack@hidetsugu-miya
 /plugin install omo-orchestrator@hidetsugu-miya
+/plugin install llm-wiki@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -104,3 +105,17 @@ Slack 公式 MCP サーバー（`https://mcp.slack.com/mcp`）に、公式 MCP P
 OMO-inspired Claude Code orchestration plugin. Provides portable, content-only skills and agents for intent routing, approval-gated planning, dependency-aware execution and handoffs, bounded read-only research, review, guardrails, and specialist workflows such as debugging, refactoring, ultrawork, and ultraresearch.
 
 Use `/omo-orchestrate` for complex multi-step work. Specialized LazyCodex-inspired translations include `omo-coding-agent-sessions` for manual session history reconstruction and search, and `omo-visual-qa` for manual browser and terminal/TUI visual QA with fresh evidence. `omo-init-deep` provides manual, content-only generation of managed hierarchical Claude Code project rules. `omo-start-work`, `omo-programming`, `omo-review-work`, `omo-debugging`, and `omo-ultraresearch` are also included as content-only Claude Code skills. See `omo-orchestrator/README.md` for details.
+
+### llm-wiki
+
+LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・障害対応・用語）を Markdown の wiki に育てるプラグイン。wiki は Obsidian Vault 内など任意の場所に置ける。LLM が `raw/` の元資料を読み、`wiki/` のページと `index.md` / `log.md` を更新する。
+
+- `/llm-wiki:setup`: リポジトリと wiki フォルダの対応を登録し、必要なら wiki の雛形を作る
+- `/llm-wiki:ingest`: PR・Issue・議事録・URL・MemPalace の検索結果などを取り込む
+- `/llm-wiki:query`: wiki を根拠に答え、良い答えは wiki に書き戻す
+- `/llm-wiki:lint`: リンク切れ・孤立ページ・index 漏れを機械的に検出し、矛盾や古い記述を点検する
+- SessionStart hook: 登録済みリポジトリでは wiki の場所をセッションに伝える。未登録なら何もしない
+
+パスはプラグインに含めず、各ユーザーのローカル設定 `~/.config/llm-wiki/projects.json`（環境変数 `LLM_WIKI_CONFIG` で変更可）に保存する。ひな形は `llm-wiki/templates/projects.example.json`。git worktree 内でも本体リポジトリの登録に一致する。複数リポジトリで 1 つの wiki を共有できる。
+
+前提条件: Python 3.9 以上（標準ライブラリのみ）。
