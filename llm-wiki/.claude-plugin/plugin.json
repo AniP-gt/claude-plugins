@@ -1,0 +1,7 @@
+{
+  "name": "llm-wiki",
+  "version": "0.1.0",
+  "description": "LLM Wiki 手法でリポジトリごとの知識を Obsidian の Markdown wiki に育てるプラグイン。ingest / query / lint skill と、wiki の場所を伝える SessionStart hook。パスは各自のローカル設定。",
+  "author": { "name": "AniP-gt" },
+  "keywords": ["wiki", "obsidian", "knowledge-base", "llm-wiki", "memory"]
+}

@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "my-app": {
+      "repo": "~/src/my-app",
+      "wiki": "~/Obsidian/MyVault/Projects/MyApp"
+    },
+    "my-app-frontend": {
+      "repo": "~/src/my-app-frontend",
+      "wiki": "~/Obsidian/MyVault/Projects/MyApp"
+    }
+  }
+}

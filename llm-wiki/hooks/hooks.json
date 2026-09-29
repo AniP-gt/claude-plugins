@@ -1,0 +1,16 @@
+{
+  "description": "LLM Wiki: 登録済みリポジトリで wiki の場所をセッションに伝える",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py\" hook-session-start || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
