@@ -48,7 +48,7 @@ Before returning a final outcome, verify:
 - Executable QA evidence and the validation results for the reviewed behavior.
 - The real-surface QA matrix, including its evidence artifacts and whether any later edit made a row stale.
 - Handoff completeness: current state, findings, blockers, retries, evidence, and one next exact action.
-- Version parity between plugin and marketplace metadata when the change is release-facing.
+- Version agreement across every manifest that declares the version when the change is release-facing.
 
 ## Findings Rules
 

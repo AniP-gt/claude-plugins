@@ -25,7 +25,7 @@ Classify first, then state the type, confidence, and rationale.
 | Build from scratch | new feature, greenfield, new module | inspect existing patterns before questions |
 | Mid-sized task | scoped feature or bounded deliverable | exact deliverables and explicit exclusions |
 | Collaborative | help me plan, figure this out | build clarity through focused dialogue |
-| Architecture | system design or long-term structure | surface durable tradeoffs and consult `omo-oracle` when needed |
+| Architecture | system design or long-term structure | surface durable tradeoffs and recommend an `omo-oracle` consultation to the caller when needed |
 | Research | goal exists but path is unclear | define exit criteria and bounded probes |
 
 If the intent is genuinely ambiguous, ask one precise question before further analysis.

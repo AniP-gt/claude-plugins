@@ -61,7 +61,7 @@ Do not convert every checklist item into a finding. A finding must be actionable
 
 ## Final Outcome Rules
 
-- `APPROVE` is the sole completion state. Return it only when evidence verifies requested scope, task-specific constraints, dependency and retry state, executable QA evidence, validation results, and handoff completeness. Apply content-only checks, including unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior, only when the original task, repository, or plugin contract requires them. For release-facing changes, also verify plugin and marketplace version parity.
+- `APPROVE` is the sole completion state. Return it only when evidence verifies requested scope, task-specific constraints, dependency and retry state, executable QA evidence, validation results, and handoff completeness. Apply content-only checks, including unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior, only when the original task, repository, or plugin contract requires them. For release-facing changes, also verify version agreement across every manifest that declares the version.
 - `REQUEST_CHANGES` requires confirmed findings. Append the outcome and evidence to the handoff ledger, then route only the affected area through a bounded targeted fix, affected validation, and re-review.
 - `INCONCLUSIVE` means required evidence is missing, unavailable, or untrustworthy. It blocks completion. Append the exact evidence gap, blocker, owner, and next action to the handoff ledger before obtaining the evidence or handing the blocker off.
 

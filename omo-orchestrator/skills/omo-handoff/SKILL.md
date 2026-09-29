@@ -43,7 +43,7 @@ Use explicit values when a field does not apply: `none`, `not run`, `not applica
 
 ## Outcome Guidance
 
-- `APPROVE`: the sole completion state. Preserve the approval evidence, satisfied dependencies, executable QA evidence, validation results, and handoff completeness. Preserve content-only compliance only when the original task, repository, or plugin contract requires it. For release-facing changes, preserve plugin and marketplace version-parity evidence.
+- `APPROVE`: the sole completion state. Preserve the approval evidence, satisfied dependencies, executable QA evidence, validation results, and handoff completeness. Preserve content-only compliance only when the original task, repository, or plugin contract requires it. For release-facing changes, preserve evidence of version agreement across every manifest that declares the version.
 - `REQUEST_CHANGES`: preserve the confirmed finding, evidence, and reviewer or owner. Set the final gate to `REQUEST_CHANGES`, mark the affected dependency blocked, and make the next exact action a bounded targeted fix, affected validation, and re-review.
 - `INCONCLUSIVE`: preserve the missing or untrusted evidence and why it is unavailable. Set the final gate to `INCONCLUSIVE`, block completion, and name the exact evidence or decision needed before work resumes or the blocker is handed off.
 - Failed attempt: record the attempted action, result, and retry count. Do not rewrite the earlier attempt after a later fix succeeds.

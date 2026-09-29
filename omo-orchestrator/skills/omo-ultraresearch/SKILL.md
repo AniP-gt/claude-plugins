@@ -1,6 +1,6 @@
 ---
 name: omo-ultraresearch
-description: Bounded saturation research for decision-critical questions, with parallel source lanes, claim evidence, and explicit convergence.
+description: Bounded saturation research for decision-critical questions, with parallel source lanes, claim evidence, and explicit convergence. Use only when the user explicitly asks for exhaustive or saturation research.
 argument-hint: [question]
 allowed-tools: Read, Grep, Glob, Bash, TodoWrite
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # OMO Ultraresearch
 
-Use this skill only when the user explicitly asks for ultraresearch, saturation research, exhaustive research, deep research, or an equivalent evidence-heavy investigation. It is a read-only, content-only research contract. It does not edit files, create runtime state, invoke hooks, depend on MCP or providers, use a team engine, retain runtime memory, or continue automatically.
+Use only on an explicit user request for exhaustive or saturation research. It is read-only and does not edit files, create runtime state, invoke hooks, or continue automatically.
 
 Stay read-only. Do not turn research into implementation.
 

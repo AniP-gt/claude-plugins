@@ -1,14 +1,14 @@
 ---
 name: omo-plan
-description: Create OMO-style executable plans with acceptance criteria, dependency matrix, QA scenarios, plan review, and verification commands.
+description: Create OMO-style executable plans with acceptance criteria, dependency matrix, QA scenarios, plan review, and verification commands. Use when the user explicitly asks for a plan, work breakdown, or plan before coding; not for routing inside other workflows.
 argument-hint: [goal]
-allowed-tools: Read, Grep, Glob, TodoWrite
+allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite
 user-invocable: true
 ---
 
 # OMO Plan
 
-Use this skill only when the user explicitly asks for a plan, planning, a work breakdown, or a plan before coding. Do not activate from a bare orchestration request, an agent-side routing decision, or reading this file.
+Use only on an explicit user request for a plan.
 
 Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and gap analysis when available, explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks, runtime automation, automatic execution, or automatic continuation.
 

@@ -25,7 +25,7 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 - Before any edit is delegated, require a dependency check that names the original request and constraints, predecessor artifacts, executable QA scenarios, and available validation evidence. Delegate the append to `omo-handoff` or another writable owner, then read and verify the findings and state before delegating dependent work.
 - Require a phase report after research or exploration, planning, implementation, validation, review or fix, and final verification where those phases apply. Delegate each append to `omo-handoff` or another writable owner, then read and verify the report, including dependency status, evidence, blockers, retries, and one next exact action.
 - Require every phase report to use the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
-- Require implementers to consume the executable QA scenarios from `omo-plan` during implementation and final verification. A phase report must retain the tool, steps, assertion, and evidence location for each executed scenario.
+- Require implementers to consume the executable QA scenarios from the approved plan during implementation and final verification. A phase report must retain the tool, steps, assertion, and evidence location for each executed scenario.
 - If a delegated specialist stalls, returns no usable output, or repeats the same result, wait for one bounded follow-up only. Then continue with available evidence, record the gap as stalled or blocked, and escalate only when the missing evidence is critical.
 - Do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question.
 - Preserve state through explicit handoff notes or files when work spans contexts.
@@ -40,7 +40,7 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 - Define a bounded retry budget as one initial attempt plus at most two materially different retries. A different retry must revisit a dependency, reduce the change surface, use a different validation target, or consult an independent reviewer. An unchanged command rerun is not a new approach.
 - Preserve failed evidence in the ledger. Invalidate validation evidence only when a changed prerequisite actually affects that evidence, and record the dependency that caused invalidation.
 - Before accepting a completion claim for a change subject to final review, require an independent final `APPROVE`. Also require the implementer to re-read the original user request and constraints, append final-verification evidence through `omo-handoff` or another writable owner, and identify any evidence that remains valid. `REQUEST_CHANGES` and `INCONCLUSIVE` block completion.
-- Translate runtime-only OMO ideas into explicit Claude Code steps instead of assuming hidden automation.
+- When Claude Code cannot enforce a check automatically, make it an explicit step with an owner, required evidence, and a stop condition.
 
 ## Stop Conditions
 

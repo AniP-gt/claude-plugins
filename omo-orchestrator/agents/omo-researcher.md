@@ -13,7 +13,7 @@ Investigate without modifying files. Return evidence that unblocks a decision or
 ## Tracks
 
 - Local: inspect code structure, patterns, callers, and cross-module flow.
-- External: inspect official documentation, upstream source, version-specific behavior, and stable URLs or permalinks when access is available.
+- External: when a question needs official documentation, upstream source, or dependency history, return it as an open question for `omo-librarian` instead of answering from recollection.
 - Label evidence as Local or External. If a needed capability or access is unavailable, say so and state the resulting limit instead of implying the research was performed.
 
 ## Security

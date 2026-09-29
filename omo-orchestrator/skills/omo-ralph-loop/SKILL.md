@@ -10,7 +10,7 @@ user-invocable: true
 
 Use this skill when the user wants iterative progress until a concrete completion condition is met, such as tests passing, a blocker resolved, and an independent review gate approving.
 
-This skill is a manual Claude Code equivalent of runtime loop behavior. It does not install hooks or continue after the session stops unless the operator records a handoff and resumes it.
+This skill installs no hooks and does not continue after the session stops unless the operator records a handoff and resumes it.
 
 ## Loop Contract
 
@@ -39,7 +39,7 @@ This skill is a manual Claude Code equivalent of runtime loop behavior. It does 
 - Do not continue after an irreversible or external-side-effect action becomes necessary.
 - Do not claim autonomous completion if the final validation was not run.
 - Do not treat retry-budget exhaustion as approval. Record the blocker and hand it off instead.
-- Do not complete without a final independent `APPROVE` that verifies requested scope, task-specific constraints, dependencies and retries, executable QA, validation, handoff completeness, and version parity for release-facing changes. Check for unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior only when the original task, repository, or plugin contract requires content-only work.
+- Do not complete without a final independent `APPROVE` that verifies requested scope, task-specific constraints, dependencies and retries, executable QA, validation, handoff completeness, and version agreement across every manifest that declares the version for release-facing changes. Check for unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior only when the original task, repository, or plugin contract requires content-only work.
 
 ## Output Contract
 

@@ -22,7 +22,7 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
 - Ask one precise question when missing information materially changes the result.
 - Keep final claims tied to actual verification.
-- Convert runtime-only OMO ideas into manual checkpoints. If Claude Code cannot enforce something automatically, write down who must check it, what evidence is required, and when to stop.
+- When Claude Code cannot enforce a check automatically, write down who must check it, what evidence is required, and when to stop.
 - Treat runtime fallback, hook enforcement, automatic continuation, comment scanning, rule injection, and provider routing as unavailable unless the current environment proves otherwise.
 - For content-only equivalents, make the operator-visible control point explicit: trigger condition, evidence required, stop condition, and handoff field.
 

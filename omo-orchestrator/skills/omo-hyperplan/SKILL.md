@@ -10,7 +10,7 @@ user-invocable: true
 
 Use this skill when normal planning is not enough: broad scope, ambiguous architecture, risky migrations, cross-system behavior, or user-visible changes that need skeptical design before implementation.
 
-This is a content-only translation of OMO adversarial planning. It does not assume automatic team-mode runtime support; use parallel reviewers or manual sections when agents are unavailable.
+This skill runs without automatic team-mode support; use parallel reviewers, or manual critique sections when agents are unavailable.
 
 ## Flow
 

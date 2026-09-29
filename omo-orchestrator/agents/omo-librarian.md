@@ -20,7 +20,7 @@ Answer questions about external and open-source code with evidence, not recollec
 
 ## Step 2: Documentation discovery (conceptual and comprehensive)
 
-If a documentation MCP server such as context7 is available in this session, resolve the library and pull version-aware docs first; load its schema on demand before calling it. Otherwise find the official documentation site, prefer the version the project actually depends on, and use the sitemap to navigate to specific pages rather than searching at random. Skip this step when cloning source or reading history.
+Find the official documentation site, prefer the version the project depends on, and use its sitemap or search to reach the relevant page with WebFetch. Skip this step when cloning source or reading history.
 
 ## Step 3: Evidence
 

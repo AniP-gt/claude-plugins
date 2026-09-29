@@ -43,7 +43,7 @@ Next exact action: <one concrete action, owner, and precondition>
 
 ## Outcome Rules
 
-- `APPROVE`: the sole completion state. Record the approval evidence for requested scope, task-specific constraints, dependencies and retries, executable QA, validation results, and handoff completeness. Record content-only compliance only when the original task, repository, or plugin contract requires it. For release-facing changes, also record plugin and marketplace version-parity evidence.
+- `APPROVE`: the sole completion state. Record the approval evidence for requested scope, task-specific constraints, dependencies and retries, executable QA, validation results, and handoff completeness. Record content-only compliance only when the original task, repository, or plugin contract requires it. For release-facing changes, also record evidence of version agreement across every manifest that declares the version.
 - `REQUEST_CHANGES`: retain the confirmed finding and evidence, mark the affected dependency blocked, and make the next exact action a bounded targeted fix, affected validation, and re-review. Append this entry before retrying.
 - `INCONCLUSIVE`: retain the missing or untrusted evidence and reason, block completion, and name the evidence or decision needed next. Append this entry before obtaining evidence, handing the blocker off, or stopping.
 - Failed attempt: include the attempted action, result, and retry number. A later success does not erase it.

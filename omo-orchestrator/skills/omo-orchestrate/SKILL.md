@@ -12,13 +12,13 @@ Use this skill to coordinate an OMO-style workflow: classify intent, gather rout
 
 Strict main-context rule: the main context is an orchestrator only. It must not implement, edit, run task commands, perform direct investigation as the owner, or conduct direct review as the owner. All substantive work must be delegated to the appropriate sub-agent. The main context may only classify intent, create todos, read enough context to route and verify safely, dispatch sub-agents, synthesize their evidence, ask the user for missing decisions, and produce the final handoff.
 
-Claude Code translation rule: when a runtime OMO feature depends on hooks, MCP servers, or hidden automation, convert it into an explicit manual step, evidence requirement, or handoff checkpoint.
+When a step would need hooks, MCP servers, or background automation this session does not provide, turn it into an explicit manual step, evidence requirement, or handoff checkpoint.
 
 Delegation boundary: use `Task` only when a suitable sub-agent and required tools are available. If delegation is unavailable, returns no usable evidence after its bounded follow-up, or cannot safely own the phase, record the gap, owner, and one next action in the handoff. Stop when that missing work is critical; otherwise synthesize only the available evidence. Never simulate a delegated result or continue automatically.
 
 ## Flow
 
-1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup. For planning, classify the desired outcome as `CLEAR` or `UNCLEAR` and route to `omo-plan` before implementation.
+1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup. For planning, classify the desired outcome as `CLEAR` or `UNCLEAR` and route to `omo-plan-consultant` and `omo-planner` before implementation; use `omo-plan` only when the user explicitly asks for a plan.
 2. Read only the project rules and evidence needed to route work and verify delegated results before making claims.
 3. Create a file-level plan before editing when the work touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
 4. Delegate implementation, investigation, review, validation commands, and fix work to sub-agents. Do not perform those work phases directly in the main context.
@@ -28,7 +28,7 @@ Delegation boundary: use `Task` only when a suitable sub-agent and required tool
 8. Require an appended phase report after research or exploration, planning, implementation, validation, review or fix, and final verification where those phases apply. Delegate each append to `omo-handoff` or another writable owner, then read and verify the result. Each report must name dependencies, evidence, blockers, retries, and one next exact action.
    Use the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
 9. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full delegated loop: implement, validate with the plan's executable QA scenarios, review, fix confirmed blocking findings, then re-review and perform final verification.
-10. Require implementers to use `omo-plan` QA scenarios during implementation and final verification. The ledger must preserve the tool, exact steps, assertion, and evidence location for every executed scenario.
+10. Require implementers to use QA scenarios from the approved plan during implementation and final verification. The ledger must preserve the tool, exact steps, assertion, and evidence location for every executed scenario.
 11. Escalate hard or high-risk plans to `omo-hyperplan` before implementation.
 12. For release work, run unpublished-change analysis and pre-publish review before any publish, merge, or handoff claim.
 13. Use a PR-style final gate when the change is intended to be merged or shared: only `APPROVE` permits completion. `REQUEST_CHANGES` feeds the next fix pass, and `INCONCLUSIVE` blocks completion until its evidence gap or decision is resolved.
