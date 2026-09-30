@@ -1,5 +1,5 @@
 {
-  "description": "OMO keyword trigger: ulw / ultrawork and its variants inject a pointer to the matching omo-orchestrator skill",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, and JSON argument error recovery after failed tool calls",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,6 +7,28 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ulw-keyword.mjs\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
             "timeout": 5
           }
         ]
