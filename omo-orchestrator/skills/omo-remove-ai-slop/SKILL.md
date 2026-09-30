@@ -13,7 +13,7 @@ Use this skill to clean AI-generated code smells without changing intended behav
 ## Cleanup Priorities
 
 1. Lock behavior first with regression coverage or an equivalent validation target.
-2. Remove comments that restate the code or sound machine-generated.
+2. Remove comments that restate the code or sound machine-generated. Classify each added comment with `references/comment-patterns.md` (detection signals, KEEP cases, report table). Use it on its own for a comment-only check after editing code.
 3. Collapse duplicate code and repeated branches.
 4. Reduce needless indirection, nesting, and placeholder abstractions.
 5. Tighten names, types, and control flow.

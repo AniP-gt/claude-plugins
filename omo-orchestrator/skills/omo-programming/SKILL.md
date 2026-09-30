@@ -14,6 +14,7 @@ Use this skill when writing or editing production code.
 
 - Read nearby code first and match existing patterns.
 - Prefer the smallest diff that satisfies the requested behavior.
+- Keep new code modular: thin entry files, no catch-all `utils` / `helpers` files, one responsibility per file, about 200 LOC per file. These are defaults that yield to project conventions; see `references/modular-code.md`.
 - Keep types honest. Fix the type problem instead of hiding it.
 - Add or identify the validation target before claiming success.
 - Run real diagnostics and real tests when the project supports them.
