@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only. It does not install scripts, hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
+This plugin is content-only apart from one opt-in keyword hook (see [Ulw Keyword Trigger](#ulw-keyword-trigger)). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
 
 ## Install
 
@@ -31,7 +31,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 
 - `omo-programming`: implementation policy for type safety, minimal diffs, tests, diagnostics, and honest validation.
 - `omo-start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
-- `omo-ultrawork`: high-throughput parallel work mode with independent waves, bounded follow-up, evidence ledger, and manual QA gate.
+- `omo-ultrawork`: ultrawork (`ulw`) mode ported from the upstream ultrawork directive: `ULTRAWORK MODE ENABLED!` bootstrap, binding goal block, skill survey, mandatory planner for non-trivial work, delegate-by-default, scenario contract, durable notepad, manual QA mandate, reviewer gate, and zero-tolerance completion rules.
 - `omo-review-work`: post-implementation review gate with evidence-based `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` outcomes.
 - `omo-debugging`: hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verification.
 - `omo-refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
@@ -47,6 +47,11 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
 - `omo-git-master`: git workflow for atomic commits, rebase and squash, and history archaeology. Detects commit style and language from existing history instead of assuming a convention.
 - `omo-init-deep`: explicit, content-only generation and maintenance of a hierarchical Claude Code rule set for a Git worktree.
+- `omo-ulw-execute`: runs a written plan wave by wave through sub-agents with an evidence ledger, independently verified done claims, and a final `omo-review-work` gate. The orchestrator never implements. Ported from upstream `ulw-execute`.
+- `omo-mass-ulw`: splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
+- `omo-tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`.
+- `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
+- `omo-lsp-setup`: detects which language servers a project needs, proposes install commands, wires a Claude Code LSP plugin, and verifies the server answers. Never installs without asking. Ported from upstream `lsp-setup`.
 
 ## OMO Init Deep
 
@@ -88,6 +93,29 @@ Before changing files, it previews the mode, depth, generated candidates, confli
 
 This remains a content-only procedure. It does not add scripts, hooks, MCP servers, daemons, watchers, startup refresh, automatic continuation, atomic writes, or automatic Git operations. Generated rules are project guidance, not enforcement. After a run, inspect `/context` or `InstructionsLoaded` when available. Ignored-rule loading is not guaranteed, and child rules are scoped rather than eagerly loaded.
 
+## Ulw Keyword Trigger
+
+Version 1.2.0 ports the upstream `ultrawork` UserPromptSubmit hook and the keyword rules from `docs/guide/keywords.md`. Put a keyword anywhere in a message and the hook injects an `<ultrawork-mode>` block that tells Claude to print `ULTRAWORK MODE ENABLED!`, open a binding `# Goal` block, and load the matching skill before any other work.
+
+| Keyword | Skill loaded |
+| --- | --- |
+| `ulw` or `ultrawork` | `omo-ultrawork` |
+| `ulw plan` | `omo-plan` |
+| `ulw research` | `omo-ultraresearch` |
+| `ulw loop` | `omo-ralph-loop` |
+| `ulw execute` | `omo-ulw-execute` |
+| `mass ulw` (also `ulw mass`, `mulw`) | `omo-mass-ulw`, or both skills when combined with another mode |
+
+Detection rules match upstream: case does not matter; a space, a hyphen, or no gap all count (`ulw-plan`, `ulwplan`); only whole ASCII words count, so `ulwx` does nothing while `ulwで` still triggers; text inside `inline code` or a fenced code block is ignored. If the user is only discussing the keyword, the injected block tells Claude to carry on normally. Keywords combine: `mass ulw research` loads `omo-ultraresearch` together with `omo-mass-ulw`.
+
+The hook is `hooks/hooks.json` plus `hooks/ulw-keyword.mjs`: a dependency-free Node script that reads the hook JSON from stdin, writes `hookSpecificOutput.additionalContext` only on a match, never touches the network or files, and exits 0 on any input. It needs `node` on `PATH`; without it the hook silently does nothing and `/omo-ultrawork` still works manually.
+
+Quick check:
+
+```bash
+printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}' | node omo-orchestrator/hooks/ulw-keyword.mjs
+```
+
 ## Included Agents
 
 - `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Uses `model: opus` because orchestration quality is high leverage.
@@ -125,7 +153,7 @@ This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It 
 
 ### Upstream Snapshot
 
-The portable contracts in version 1.0.0 were refreshed against `oh-my-openagent` commit `0c76f2d9838a664884739877da1692aa754eab1a`. The refresh carries planning intent routing, affected-user ideal-state and gap mapping, plan executability review, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
+The portable contracts in version 1.0.0 were refreshed against `oh-my-openagent` commit `0c76f2d9838a664884739877da1692aa754eab1a`. Version 1.2.0 re-checked `3d8cf52b673fcbf4dd9d34361a273b791a19c2e5` (upstream `dev`, OmO 5.1.4): skill and prompt bodies were unchanged apart from `argument-hint` additions, so the refresh adds the ultrawork directive to `omo-ultrawork`, ports the `ulw` keyword hook, and ports the previously unported upstream skills `ulw-execute`, `mass-ulw`, `tech-debt-audit`, `ast-grep`, and `lsp-setup`. Runtime-bound upstream skills (browser automation, team mode, DAG library, onboarding, publish) remain out of scope. The refresh carries planning intent routing, affected-user ideal-state and gap mapping, plan executability review, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
 
 This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
 
@@ -161,7 +189,7 @@ Examples:
 
 ## What Is Deliberately Not Ported
 
-- No runtime hooks such as SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostCompact, SubagentStop, or Stop.
+- No runtime hooks such as SessionStart, PreToolUse, PostToolUse, PostCompact, SubagentStop, or Stop. The only hook is the UserPromptSubmit `ulw` keyword trigger, which injects a skill pointer and nothing else.
 - No OpenCode-only hooks, `team_*` APIs, Boulder state, workflow DAG APIs, worktree lifecycle promises, injected notifications, or runtime continuation.
 - No bundled MCP servers, no `.mcp.json`, and no automatic provider or tool routing.
 - No bundled helpers, provider-specific model routing, native installers, telemetry, package-local scripts, package manager setup, or executable loop runner.
@@ -243,7 +271,7 @@ OpenCode has legacy metis and momus names in its own adapter. They are not alias
 
 ## Security And Privacy Boundaries
 
-- No scripts are included.
+- The only script is `hooks/ulw-keyword.mjs`, which reads stdin and writes stdout only.
 - No bundled helpers are included.
 - No network access or credentials are configured by this plugin.
 - No session history, private transcripts, or OAuth tokens are copied.
@@ -317,6 +345,14 @@ const required = [
   'Schema-1 manifests from 0.11.0, 0.12.0, and 1.0.0 are accepted',
   '0.11.0 and 0.12.0 manifests upgrade to 1.0.0 only on approved writes',
   '0c76f2d9838a664884739877da1692aa754eab1a',
+  '3d8cf52b673fcbf4dd9d34361a273b791a19c2e5',
+  'ulw-keyword.mjs',
+  'ULTRAWORK MODE ENABLED!',
+  '`omo-ulw-execute`',
+  '`omo-mass-ulw`',
+  '`omo-tech-debt-audit`',
+  '`omo-ast-grep`',
+  '`omo-lsp-setup`',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
   'Research converges',

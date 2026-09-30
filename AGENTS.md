@@ -15,7 +15,7 @@ Claude Code用のカスタムプラグインリポジトリ。
 | episodic | Claude Code セッション・Web・議事録・プライベート日記（diary、ローカル限定）のエピソード記憶 + Wiki（人物・組織 Wiki / 名寄せ）+ cocoindex 検索（Notion URL 取込みフロー対応） |
 | slack | Slack MCP（mcp.slack.com）に公式 MCP Python SDK で OAuth 2.0 PKCE 接続する CLI + skill。ワークスペース単位 token 管理 |
 | llm-wiki | LLM Wiki 手法でリポジトリごとの知識を Obsidian 等の Markdown wiki に育てる（ingest / query / lint skill + SessionStart / SessionEnd hook、パスは ~/.config/llm-wiki/ のローカル設定） |
-| omo-orchestrator | LazyCodex OMO を Claude Code 向けに移植した content-only orchestration / specialized skill / agent 集 |
+| omo-orchestrator | LazyCodex OMO を Claude Code 向けに移植した orchestration / specialized skill / agent 集 + `ulw`（ultrawork）キーワード hook |
 
 詳細は `.claude-plugin/marketplace.json` および各プラグインの `README.md` / `SKILL.md` を参照。
 
