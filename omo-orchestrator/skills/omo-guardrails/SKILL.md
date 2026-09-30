@@ -16,7 +16,7 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 
 - Do not duplicate a search already assigned to a specialist.
 - Do not let the main context take over substantive work that should be delegated to a specialist sub-agent.
-- Stop loops after repeated identical attempts and change strategy.
+- Stop loops after repeated identical attempts and change strategy: 5 identical calls, 3 flat iterations, or delegation deeper than 3 levels.
 - Treat stalled delegated agents as recoverable blockers: wait for one bounded follow-up, then stop retrying, record the gap, and continue with available evidence when safe.
 - Preserve state through a short handoff when context may be lost.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
@@ -25,6 +25,14 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 - When Claude Code cannot enforce a check automatically, write down who must check it, what evidence is required, and when to stop.
 - Treat runtime fallback, hook enforcement, automatic continuation, comment scanning, rule injection, and provider routing as unavailable unless the current environment proves otherwise.
 - For content-only equivalents, make the operator-visible control point explicit: trigger condition, evidence required, stop condition, and handoff field.
+
+## References
+
+Read only the file the situation needs:
+
+- `references/circuit-breaker.md`: tool-loop, delegation-depth, and stuck-iteration thresholds with actions.
+- `references/error-recovery.md`: error class patterns, tool and agent failure recovery, escalation order.
+- `references/context-and-handoff.md`: anti-duplication while waiting, context signals, agent output contract, cross-agent handoff files.
 
 ## Handoff Minimum
 
