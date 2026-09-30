@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only apart from one opt-in keyword hook (see [Ulw Keyword Trigger](#ulw-keyword-trigger)). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
+This plugin is content-only apart from two small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger) and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
 
 ## Install
 
@@ -51,6 +51,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-mass-ulw`: splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
 - `omo-tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`.
 - `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
+- `omo-frontend`: UI and UX work plus the design-system workflow (analyze the existing system, build tokens if missing, implement through `omo-implementer` with a token-level brief, verify with `omo-visual-qa`). Merges the former personal `frontend-ui-ux` and `visual-engineering` skills with portable ideas from upstream `frontend`.
 - `omo-review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and an outer `omo-review-work` gate (plus the optional `review-pr` skill) decides each cycle. Max 5 inner iterations and 3 outer cycles. Rebuilt from the personal `implementation-review-loop` skill.
 - `omo-lsp-setup`: detects which language servers a project needs, proposes install commands, wires a Claude Code LSP plugin, and verifies the server answers. Never installs without asking. Ported from upstream `lsp-setup`.
 
@@ -105,6 +106,8 @@ Version 1.4.0 folds the owner's former personal skills and agents into existing 
 - `omo-handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
 - `omo-get-unpublished-changes`, `omo-pre-publish-review`: baseline detection per ecosystem, report template, and three-layer parallel release review.
 - `omo-remove-ai-slop`, `omo-programming`: comment pattern catalog and modular-code defaults that yield to project conventions.
+
+Version 1.5.0 continues this: `omo-frontend` is new, `omo-plan` gains a single-task task-file format (`references/task-file.md`), `omo-orchestrate` gains discovery of other agents' rule files (`references/project-rules.md`), and `omo-review-loop` checks earlier run artifacts before resuming, so a loop that stopped on a blocker is never resumed silently. A second hook, `hooks/json-error-recovery.mjs` (PostToolUse and PostToolUseFailure), tells Claude to fix malformed JSON tool arguments and retry once instead of repeating the same call.
 
 ## Ulw Keyword Trigger
 
@@ -202,7 +205,7 @@ Examples:
 
 ## What Is Deliberately Not Ported
 
-- No runtime hooks such as SessionStart, PreToolUse, PostToolUse, PostCompact, SubagentStop, or Stop. The only hook is the UserPromptSubmit `ulw` keyword trigger, which injects a skill pointer and nothing else.
+- No runtime hooks such as SessionStart, PreToolUse, PostCompact, SubagentStop, or Stop. The only hooks are the UserPromptSubmit `ulw` keyword trigger and the PostToolUse / PostToolUseFailure JSON argument recovery hint; both only inject guidance text.
 - No OpenCode-only hooks, `team_*` APIs, Boulder state, workflow DAG APIs, worktree lifecycle promises, injected notifications, or runtime continuation.
 - No bundled MCP servers, no `.mcp.json`, and no automatic provider or tool routing.
 - No bundled helpers, provider-specific model routing, native installers, telemetry, package-local scripts, package manager setup, or executable loop runner.
@@ -284,7 +287,7 @@ OpenCode has legacy metis and momus names in its own adapter. They are not alias
 
 ## Security And Privacy Boundaries
 
-- The only script is `hooks/ulw-keyword.mjs`, which reads stdin and writes stdout only.
+- The only scripts are `hooks/ulw-keyword.mjs` and `hooks/json-error-recovery.mjs`, which read stdin and write stdout only.
 - No bundled helpers are included.
 - No network access or credentials are configured by this plugin.
 - No session history, private transcripts, or OAuth tokens are copied.
@@ -367,6 +370,8 @@ const required = [
   '`omo-ast-grep`',
   '`omo-lsp-setup`',
   '`omo-review-loop`',
+  '`omo-frontend`',
+  'json-error-recovery.mjs',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
   'Research converges',
