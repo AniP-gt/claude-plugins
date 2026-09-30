@@ -94,6 +94,18 @@ Before changing files, it previews the mode, depth, generated candidates, confli
 
 This remains a content-only procedure. It does not add scripts, hooks, MCP servers, daemons, watchers, startup refresh, automatic continuation, atomic writes, or automatic Git operations. Generated rules are project guidance, not enforcement. After a run, inspect `/context` or `InstructionsLoaded` when available. Ignored-rule loading is not guaranteed, and child rules are scoped rather than eagerly loaded.
 
+## Consolidated Personal Workflows
+
+Version 1.4.0 folds the owner's former personal skills and agents into existing omo skills, so there is one place for each workflow. Only content the plugin lacked was merged, rewritten to use plugin agents only:
+
+- `omo-guardrails`: circuit-breaker thresholds, error classification and escalation, context and handoff rules (`references/`).
+- `omo-orchestrate` and `omo-coordinator`: intent routing map, ambiguity thresholds, codebase-state table, and the full delegation prompt template (`references/routing.md`, `references/delegation-prompt.md`).
+- `omo-plan`, `omo-planner`, `omo-plan-consultant`, `omo-plan-reviewer`: optional six-lane rigorous plan review, `RISK_LEVEL` table, required F1 to F4 final verification wave, readiness checklist, and approval-biased reviewer framing (`references/rigorous-review.md`).
+- `omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-debugging`: execution and final-report rules, search method, review checklist with severity scale, and multi-signal error analysis.
+- `omo-handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
+- `omo-get-unpublished-changes`, `omo-pre-publish-review`: baseline detection per ecosystem, report template, and three-layer parallel release review.
+- `omo-remove-ai-slop`, `omo-programming`: comment pattern catalog and modular-code defaults that yield to project conventions.
+
 ## Ulw Keyword Trigger
 
 Version 1.2.0 ports the upstream `ultrawork` UserPromptSubmit hook and the keyword rules from `docs/guide/keywords.md`. Put a keyword anywhere in a message and the hook injects an `<ultrawork-mode>` block that tells Claude to print `ULTRAWORK MODE ENABLED!`, open a binding `# Goal` block, and load the matching skill before any other work.
@@ -249,7 +261,7 @@ The handoff is manual. No hook creates it, no process updates it, and no later s
 
 ## Planning Role Migration
 
-Version 1.0.0 adopts the canonical names: `omo-plan-consultant` for pre-planning analysis and `omo-plan-reviewer` for plan executability review. The retired `omo-metis` agent is removed and has no compatibility alias. The standalone `~/.claude/agents/plan/momus.md` remains outside plugin ownership and is not managed by this plugin.
+Version 1.0.0 adopts the canonical names: `omo-plan-consultant` for pre-planning analysis and `omo-plan-reviewer` for plan executability review. The retired `omo-metis` agent is removed and has no compatibility alias.
 
 OpenCode has legacy metis and momus names in its own adapter. They are not aliases in this Claude Code plugin. Use `omo-plan-consultant` and `omo-plan-reviewer` for planning, then use `omo-reviewer` only for implementation or PR-style review.
 
