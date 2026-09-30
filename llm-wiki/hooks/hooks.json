@@ -1,5 +1,5 @@
 {
-  "description": "LLM Wiki: 登録済みリポジトリで wiki の場所をセッションに伝える",
+  "description": "LLM Wiki: 登録済みリポジトリで wiki の場所と目次を伝え、終了時に候補を自動抽出する",
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +7,17 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py\" hook-session-start || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py\" hook-session-end || true",
             "timeout": 10
           }
         ]

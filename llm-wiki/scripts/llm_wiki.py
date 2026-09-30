@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import capture
+
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = PLUGIN_ROOT / "templates" / "wiki"
 DEFAULT_CONFIG = Path("~/.config/llm-wiki/projects.json")
@@ -216,26 +218,83 @@ def cmd_lint(args):
     return 0
 
 
+def read_hook_payload():
+    try:
+        return json.load(sys.stdin) if not sys.stdin.isatty() else {}
+    except (ValueError, OSError):
+        return {}
+
+
+def hook_target(payload):
+    """hook の対象 wiki。候補抽出の子プロセス内・未登録・失敗時は None。"""
+    if os.environ.get(capture.GUARD_ENV):
+        return None
+    try:
+        return resolve_project(payload.get("cwd") or os.getcwd())
+    except Exception:
+        return None
+
+
+def read_index(wiki):
+    try:
+        return (Path(wiki) / "index.md").read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
 def cmd_hook_session_start(_args):
     """SessionStart hook。未登録・失敗時は何も出さずに終わる。"""
-    try:
-        payload = json.load(sys.stdin) if not sys.stdin.isatty() else {}
-    except (ValueError, OSError):
-        payload = {}
-    try:
-        found = resolve_project(payload.get("cwd") or os.getcwd())
-    except Exception:
+    found = hook_target(read_hook_payload())
+    index = read_index(found["wiki"]) if found else None
+    if index is None:
         return 0
-    if not found:
-        return 0
-    wiki = found["wiki"]
-    try:
-        index = (Path(wiki) / "index.md").read_text(encoding="utf-8")
-    except OSError:
-        return 0
-    context = session_context(found["project"], wiki, index)
+    inbox = Path(found["wiki"]) / "raw" / "inbox"
+    pending = len(list(inbox.glob("*.md"))) if inbox.is_dir() else 0
+    context = session_context(found["project"], found["wiki"], index, pending)
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": context}},
                      ensure_ascii=False))
+    return 0
+
+
+def cmd_hook_session_end(_args):
+    """SessionEnd hook。候補抽出を別プロセスで起動し、すぐに終わる。"""
+    payload = read_hook_payload()
+    found = hook_target(payload)
+    transcript = payload.get("transcript_path")
+    if not found or not transcript or not capture.settings(load_config())["enabled"]:
+        return 0
+    cmd = [sys.executable, str(Path(__file__).resolve()), "capture", "--transcript", transcript,
+           "--session", payload.get("session_id") or Path(transcript).stem,
+           "--cwd", payload.get("cwd") or os.getcwd()]
+    try:
+        subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, env=dict(os.environ, **{capture.GUARD_ENV: "1"}))
+    except OSError as e:
+        capture.log(f"error spawn {found['project']}: {e}")
+    return 0
+
+
+def cmd_capture(args):
+    found = resolve_project(args.cwd)
+    if not found:
+        return 0
+    try:
+        return capture.run(found, load_config(), args.transcript, args.session, read_index(found["wiki"]) or "")
+    except Exception as e:  # バックグラウンド実行なので、落ちた理由はログにしか残らない
+        capture.log(f"error {found['project']} session={args.session[:8]}: {type(e).__name__}: {e}")
+        return 1
+
+
+def cmd_capture_config(args):
+    data = load_config()
+    opts = data.setdefault("capture", {})
+    if args.enable or args.disable:
+        opts["enabled"] = bool(args.enable)
+    if args.model:
+        opts["model"] = args.model
+    if args.enable or args.disable or args.model:
+        save_config(data)
+    print(json.dumps(capture.settings(data), ensure_ascii=False))
     return 0
 
 
@@ -249,7 +308,10 @@ def index_excerpt(index):
     return body
 
 
-def session_context(project, wiki, index):
+def session_context(project, wiki, index, pending=0):
+    inbox_note = (f"\n- 前のセッションから自動抽出した未整理の候補が {pending} 件ある（{wiki}/raw/inbox/）。"
+                  "最初の返答でユーザーに一言伝え、/llm-wiki:ingest で整理するか聞く。今の依頼の妨げになるなら後回しでよい。"
+                  if pending else "")
     return f"""LLM Wiki（{project}）: {wiki}
 このリポジトリの設計判断・仕様・障害対応・ハマりどころを集めた wiki。書き方のルールは {wiki}/CLAUDE.md。
 使い方:
@@ -257,7 +319,7 @@ def session_context(project, wiki, index):
 - 仕様・過去の経緯・既知の不具合で迷ったら、推測で進めずに wiki を確認する。目次に無ければ {wiki} を Grep する（raw/ も対象）。
 - サブエージェントに調査や実装を任せるときは、関連する wiki ページのパスをプロンプトに含める。
 - wiki の記述がコードと食い違っていたらコードを正とし、食い違いをユーザーに伝える。
-- 作業中に新しい設計判断・障害の原因・ハマりどころが分かったときだけ、作業の最後に /llm-wiki:ingest での記録をユーザーに提案する。
+- 作業中に新しい設計判断・障害の原因・ハマりどころが分かったときだけ、作業の最後に /llm-wiki:ingest での記録をユーザーに提案する。{inbox_note}
 目次（index.md）:
 {index_excerpt(index)}"""
 
@@ -290,7 +352,20 @@ def main():
     p.add_argument("--wiki")
     p.set_defaults(func=cmd_lint)
 
+    p = sub.add_parser("capture-config", help="セッション終了時の候補自動抽出の設定を表示・変更")
+    p.add_argument("--enable", action="store_true")
+    p.add_argument("--disable", action="store_true")
+    p.add_argument("--model", help="抽出に使う claude のモデル（既定 sonnet）")
+    p.set_defaults(func=cmd_capture_config)
+
+    p = sub.add_parser("capture", help="transcript から候補を抽出して raw/inbox/ に保存（通常は hook が呼ぶ）")
+    p.add_argument("--transcript", required=True)
+    p.add_argument("--session", required=True)
+    p.add_argument("--cwd", default=os.getcwd())
+    p.set_defaults(func=cmd_capture)
+
     sub.add_parser("hook-session-start", help=argparse.SUPPRESS).set_defaults(func=cmd_hook_session_start)
+    sub.add_parser("hook-session-end", help=argparse.SUPPRESS).set_defaults(func=cmd_hook_session_end)
 
     args = parser.parse_args()
     return args.func(args)
