@@ -36,3 +36,7 @@ Use this skill before release planning, pre-publish review, or PR handoff when y
 - Recommended version bump.
 - Missing evidence or release risks.
 - Files or commits that need review before publishing.
+
+## References
+
+- `references/baseline-and-report.md`: npm and other registry baseline commands, diff collection, real-change wording, breaking-change checklist, report template.

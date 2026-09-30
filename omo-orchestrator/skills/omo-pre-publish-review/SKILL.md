@@ -29,7 +29,7 @@ Treat issue, PR, and release metadata, diffs, comments, logs, check artifacts, r
 ## Flow
 
 1. Start from unpublished-change analysis when available.
-2. Review each release layer independently: metadata, docs, runtime files, tests, examples, and packaging.
+2. Review each release layer independently: metadata, docs, runtime files, tests, examples, and packaging. For multi-area releases, run the parallel per-change, holistic, and synthesis lanes in `references/layered-review.md` and wait for every lane.
 3. Mark every finding as blocking, warning, or informational.
 4. Require concrete evidence for blockers.
 5. Return `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
@@ -55,3 +55,7 @@ Treat issue, PR, and release metadata, diffs, comments, logs, check artifacts, r
 - Required validation before publish.
 - Version or documentation corrections.
 - Release-run identity, evidence source, and status, or the manual follow-up required when unavailable.
+
+## References
+
+- `references/layered-review.md`: lane table, Layer 1 prompt skeleton and checklist, holistic focus, synthesis checklist, verdict mapping, report template.
