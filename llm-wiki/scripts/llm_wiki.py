@@ -21,6 +21,7 @@ DEFAULT_CONFIG = Path("~/.config/llm-wiki/projects.json")
 LINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 CODE_RE = re.compile(r"```.*?```|`[^`\n]*`", re.S)
 SKIP_DIRS = {"raw", ".obsidian", ".git"}
+INDEX_MAX_CHARS = 6000
 
 
 def config_path():
@@ -225,17 +226,40 @@ def cmd_hook_session_start(_args):
         found = resolve_project(payload.get("cwd") or os.getcwd())
     except Exception:
         return 0
-    if not found or not (Path(found["wiki"]) / "index.md").is_file():
+    if not found:
         return 0
     wiki = found["wiki"]
-    context = (
-        f"LLM Wiki: このリポジトリ（{found['project']}）の知識 wiki は {wiki} にある。"
-        f"過去の設計判断・仕様・障害対応を聞かれたら、先に {wiki}/index.md から関連ページを読む。"
-        f"wiki のルールは {wiki}/CLAUDE.md。取り込み・点検は /llm-wiki:ingest, /llm-wiki:query, /llm-wiki:lint。"
-    )
+    try:
+        index = (Path(wiki) / "index.md").read_text(encoding="utf-8")
+    except OSError:
+        return 0
+    context = session_context(found["project"], wiki, index)
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": context}},
                      ensure_ascii=False))
     return 0
+
+
+def index_excerpt(index):
+    """frontmatter を除いた index.md。長すぎる場合は先頭だけ渡し、残りは読みに行かせる。"""
+    fm = frontmatter(index)
+    body = index[index.find("\n---", 4) + 4:] if fm is not None else index
+    body = body.strip()
+    if len(body) > INDEX_MAX_CHARS:
+        body = body[:INDEX_MAX_CHARS].rstrip() + "\n…（以下省略。全体は index.md を読む）"
+    return body
+
+
+def session_context(project, wiki, index):
+    return f"""LLM Wiki（{project}）: {wiki}
+このリポジトリの設計判断・仕様・障害対応・ハマりどころを集めた wiki。書き方のルールは {wiki}/CLAUDE.md。
+使い方:
+- 調査・実装・レビューを始める前に、下の目次から関連ページを探して読む。`[[名前]]` は {wiki}/wiki/ 以下の `名前.md`。
+- 仕様・過去の経緯・既知の不具合で迷ったら、推測で進めずに wiki を確認する。目次に無ければ {wiki} を Grep する（raw/ も対象）。
+- サブエージェントに調査や実装を任せるときは、関連する wiki ページのパスをプロンプトに含める。
+- wiki の記述がコードと食い違っていたらコードを正とし、食い違いをユーザーに伝える。
+- 作業中に新しい設計判断・障害の原因・ハマりどころが分かったときだけ、作業の最後に /llm-wiki:ingest での記録をユーザーに提案する。
+目次（index.md）:
+{index_excerpt(index)}"""
 
 
 def main():

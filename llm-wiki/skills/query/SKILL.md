@@ -1,6 +1,6 @@
 ---
 name: query
-description: LLM Wiki を根拠に質問へ答える。過去の設計判断、仕様、障害対応、用語を聞かれたときに使う。wiki に無ければ MemPalace などを検索し、良い答えは wiki に書き戻すよう提案する。「wiki で調べて」「前にどう決めた？」で使う。
+description: LLM Wiki を根拠に質問へ答える。過去の設計判断、仕様、障害対応、用語を聞かれたとき、または作業中に仕様や経緯で迷ったときに使う。wiki に無ければ MemPalace などを検索し、良い答えは wiki に書き戻すよう提案する。「wiki で調べて」「前にどう決めた？」で使う。
 ---
 
 # LLM Wiki: Query
