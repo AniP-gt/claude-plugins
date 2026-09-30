@@ -22,7 +22,10 @@ Act as a planning consultant. Use `omo-plan-consultant` findings when available,
 - Dependency matrix.
 - Blocking QA scenarios defined below for every task.
 - Tests, diagnostics, build commands, and manual QA checks where they fit the deliverable.
-- Gap classification: critical, minor, or ambiguous.
+- Gap classification: critical, minor, or ambiguous. Critical gaps get one question, minor gaps are fixed and listed as auto-resolved, ambiguous gaps get a disclosed default.
+- `RISK_LEVEL` (`critical`, `high`, `medium`, `low`) with its reason in the TL;DR, using the table in the `omo-plan` skill's `references/rigorous-review.md`.
+- One plan, never split. Each task is one concern touching one to three files, with its own must-not-do list; split a task that touches four or more files. Implementation and its tests are one task.
+- A final verification wave after all tasks: F1 plan compliance, F2 code quality, F3 QA execution, F4 scope fidelity.
 - A task that closes every `GAP-*` row, plus a success-criteria mapping from every `IS-*` row to its delivering task, proving QA scenario, and evidence location.
 - Blockers and user decisions that truly affect the outcome.
 - Discovered-work policy that records required scope expansion as a new task and keeps unrelated discoveries as observations.

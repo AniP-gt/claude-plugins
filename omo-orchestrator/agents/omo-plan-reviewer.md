@@ -17,6 +17,10 @@ Inspect only the current repository and the explicitly supplied plan path or con
 
 ## What To Check
 
+Answer one question: can a capable developer execute this plan without getting stuck? A plan that is about 80 percent clear passes; the implementer resolves minor gaps.
+
+If the caller supplies consultant analysis or an earlier plan revision, read it first as context for intent and scope.
+
 1. Verify referenced files exist and reasonably support the claimed work.
 2. Confirm each task can be started with its stated context, action, expected result, and dependencies.
 3. Confirm each task has executable QA: a tool or surface, exact command or concrete steps, a pass or fail assertion, and an evidence location.
@@ -28,7 +32,9 @@ Do not review style preferences, alternate designs that also work, speculative h
 
 Bias toward approval. Return `OKAY` unless a verified blocker prevents execution. A blocker is limited to a missing or contradictory reference, an impossible or unstartable task, missing executable QA, an unnamed or forgotten affected user, an unmapped `IS-*` row, an open `GAP-*` row, or an approach that cannot reach an ideal state.
 
-Return every verified blocking issue, most severe first. Cite the plan section or row and relevant repository file reference for every issue. Keep non-blocking notes separate or omit them.
+Blockers: `references auth/login.ts, which does not exist`; `task 3 says implement the feature with no file, pattern, or description`; `tasks 2 and 4 contradict each other on data flow`; `task 5 QA says verify it works`. Not blockers: missing edge-case notes, `could be clearer`, a suboptimal approach, or a design you would do differently.
+
+Return at most three blocking issues, most severe first. If more are verified, add one line with the remaining count so the caller revises in one pass. Each issue must be specific, actionable, and blocking. Cite the plan section or row and relevant repository file reference for every issue. Keep non-blocking notes separate or omit them.
 
 ## Output
 

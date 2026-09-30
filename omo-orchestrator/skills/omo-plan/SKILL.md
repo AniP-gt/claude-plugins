@@ -31,6 +31,9 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 4. For every candidate question, first ask whether repository or external evidence can answer it. Then ask whether the stated goal supports a reversible default. Ask the user only when an owner decision remains.
 5. Explore each open question only until the decision is supported. Stop when new searches repeat known evidence or cannot change the plan.
 6. Record material discovered work in the draft. Add it to the proposed plan only if it is required for the requested outcome. Otherwise record it as an explicit observation or deferral with a reason.
+7. For build or refactor work, inspect the test framework, config, and nearby tests. When the touched area has no test convention, test strategy (TDD, tests after, none) is an owner decision.
+8. When the plan adds, upgrades, or changes usage of a library, fetch version-applicable docs (Context7 when available, otherwise `omo-librarian`) and cite them in task references.
+9. Before the approval brief, confirm clearance: objective defined, scope IN and OUT set, no critical ambiguity, approach decided, test strategy known, no blocking question outstanding. If any item fails, ask that one question. End every interview turn with a question or the brief, never a passive summary or `let me know`.
 
 ## Draft And Approval Gate
 
@@ -51,7 +54,10 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 - Include an evidence target for every task, such as changed files, test output, diagnostics, command output, review result, screenshot path, or inspected content.
 - Map every `IS-*` row to at least one delivering task, proving QA scenario, and evidence location. Close every `GAP-*` row with a task. Do not leave an ideal state unproven or a gap open.
 - Define how newly discovered work is recorded, assessed, scoped before dispatch when required, or explicitly deferred.
-- Classify gaps as critical, minor, or ambiguous. Give each true blocker one precise question.
+- Classify gaps as critical, minor, or ambiguous. Give each true blocker one precise question. Fix minor gaps and list them as auto-resolved; apply a default to ambiguous gaps and list it as a default the user can override.
+- Record `RISK_LEVEL` and its reason in the TL;DR, plus the applicable risk notes, per `references/rigorous-review.md`.
+- Keep one plan; never split it. One task is one concern touching one to three files; split a task that touches four or more. Implementation and its tests are one task.
+- End with the F1 to F4 final verification wave from `references/rigorous-review.md`.
 - Include a verification strategy, review gate, and final handoff checkpoint.
 
 ## Dependency-Aware Waves
@@ -83,9 +89,10 @@ Use TDD-oriented sequencing when the codebase supports it: identify the failing 
 
 1. Review the draft with `omo-plan-reviewer` when available. It checks references, task startability, executable QA, affected-user coverage, `IS-*` task and QA mapping, `GAP-*` closure, and whether the approach reaches the ideal state.
 2. Escalate hard, high-risk, ambiguous, security-sensitive, release-facing, or cross-system work to `omo-hyperplan` before the approval brief.
-3. Use one independent read-only critique when `omo-plan-reviewer` is unavailable. Keep plan review bounded to one initial pass and at most two materially different revisions. `omo-plan-reviewer` returns `OKAY` or `REJECT`; reserve `omo-reviewer` and its `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` lifecycle for implementation and PR-style review.
-4. A review finding needs evidence from a file, symbol, contract, test, command, or documented assumption. Keep verified non-issues separate from findings.
-5. If a critical blocker survives the review budget, record the evidence and one exact question or next action. Do not claim the plan is ready.
+3. Use one independent read-only critique when `omo-plan-reviewer` is unavailable. Keep plan review bounded to one initial pass and at most two materially different revisions. `omo-plan-reviewer` returns `OKAY` or `REJECT`; reserve `omo-reviewer` and its `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` lifecycle for implementation and PR-style review. The rigorous review lanes are the one exception, and they return lane findings instead of a lifecycle verdict.
+4. For `RISK_LEVEL` `critical` or `high`, or when the user asks for a thorough review, replace step 1 with the six-lane rigorous review in `references/rigorous-review.md`. It keeps the same budget and adds convergence rules and a loop history table to the approval brief.
+5. A review finding needs evidence from a file, symbol, contract, test, command, or documented assumption. Keep verified non-issues separate from findings.
+6. If a critical blocker survives the review budget, record the evidence and one exact question or next action. Do not claim the plan is ready.
 
 ## Cross-Context Handoff
 
@@ -117,8 +124,9 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
    - Parallel execution waves.
    - Dependency matrix.
    - Affected users, `IS-*` ideal states, `GAP-*` rows, task closure, and per-task acceptance criteria and QA scenarios.
-   - Verification strategy.
-   - Gap classification and one-question-per-blocker list.
+   - `RISK_LEVEL`, risk notes, verification strategy, and the F1 to F4 final verification wave.
+   - Gap classification with auto-resolved gaps, applied defaults, and one question per blocker.
+   - Plan review result: iterations, verdict, and remaining issues.
    - Escalation decision: normal plan, hyperplan, security research, or release review.
    - Cross-context handoff checkpoint when applicable.
-6. Explicit stop statement that implementation remains a separate, user-directed workflow.
+6. Explicit stop statement that implementation remains a separate, user-directed workflow. Name the options the user may start: `omo-ulw-execute <plan-path>` to run the waves, or `omo-review-loop <plan-path>` for implementation with a review-fix loop (recommended when unsure). Both read a plan file, so offer to write one when none was requested.

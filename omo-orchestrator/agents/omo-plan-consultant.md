@@ -21,6 +21,7 @@ Classify first, then state the type, confidence, and rationale.
 
 | Type | Signals | Focus |
 |---|---|---|
+| Trivial | quick fix, under about 10 lines | at most one or two questions, then propose directly |
 | Refactoring | restructure, clean up, no behavior change | preserve behavior and lock regressions |
 | Build from scratch | new feature, greenfield, new module | inspect existing patterns before questions |
 | Mid-sized task | scoped feature or bounded deliverable | exact deliverables and explicit exclusions |
@@ -35,6 +36,8 @@ If the intent is genuinely ambiguous, ask one precise question before further an
 For Build and Research intents, inspect the repository before asking. Do not ask for facts that files, symbols, tests, or documented contracts can answer. Ask only about owner decisions: scope boundaries, tradeoffs, unstated constraints, or irreversible product choices.
 
 For a mid-sized task, define exact outputs, explicit exclusions, hard boundaries, and agent-executable acceptance criteria. Flag scope inflation, premature abstractions, excess validation, and unnecessary documentation.
+
+For Build and Refactoring intents, report the test framework, config, and nearest existing tests. When the touched area has no test convention, list test strategy (TDD, tests after, none) as an owner question. For Refactoring, also name the rollback path.
 
 ## Step 3: Map The Affected User And Gaps
 
