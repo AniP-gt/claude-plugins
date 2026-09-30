@@ -64,9 +64,9 @@
     },
     {
       "name": "omo-orchestrator",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "source": "./omo-orchestrator",
-      "description": "Content-only Claude Code OMO skills and agents for situation-led intent routing, dependency-aware execution, real-surface QA, review, security, research, and handoff."
+      "description": "Claude Code OMO skills and agents for intent routing, parallel execution, real-surface QA, review, and handoff, plus a ulw (ultrawork) keyword hook."
     },
     {
       "name": "llm-wiki",
