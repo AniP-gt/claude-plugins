@@ -51,6 +51,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-mass-ulw`: splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
 - `omo-tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`.
 - `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
+- `omo-review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and an outer `omo-review-work` gate (plus the optional `review-pr` skill) decides each cycle. Max 5 inner iterations and 3 outer cycles. Rebuilt from the personal `implementation-review-loop` skill.
 - `omo-lsp-setup`: detects which language servers a project needs, proposes install commands, wires a Claude Code LSP plugin, and verifies the server answers. Never installs without asking. Ported from upstream `lsp-setup`.
 
 ## OMO Init Deep
@@ -353,6 +354,7 @@ const required = [
   '`omo-tech-debt-audit`',
   '`omo-ast-grep`',
   '`omo-lsp-setup`',
+  '`omo-review-loop`',
   'Approval writes the plan only. It does not authorize implementation.',
   'bounded lead expansion',
   'Research converges',
