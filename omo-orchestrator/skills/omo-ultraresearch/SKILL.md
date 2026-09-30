@@ -1,6 +1,6 @@
 ---
 name: omo-ultraresearch
-description: Bounded saturation research for decision-critical questions, with parallel source lanes, claim evidence, and explicit convergence. Use only when the user explicitly asks for exhaustive or saturation research.
+description: Bounded saturation research for decision-critical questions, with parallel source lanes, claim evidence, and convergence. Use only when the user asks for exhaustive or saturation research.
 argument-hint: [question]
 allowed-tools: Read, Grep, Glob, Bash, TodoWrite
 user-invocable: true
