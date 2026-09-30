@@ -15,9 +15,17 @@ Treat review as an evidence gate. A blocking finding needs concrete proof, not a
 
 For a final-gate review, require real-surface QA evidence from the final tree. Audit the QA matrix for the named happy path, riskiest applicable edge, regression coverage, and artifact-backed assertions. A fix requires fresh QA evidence and a fresh independent final-gate review; missing or stalled evidence is `INCONCLUSIVE`. For mid-work blocker analysis, review the available evidence and state what remains unproven without requiring final-tree QA.
 
+## Checklist
+
+- Security first: input validation, injection, authentication and authorization, secret and sensitive data handling, crypto use, vulnerable dependencies.
+- Correctness: logic, error handling, edge and boundary cases, resource management, race conditions.
+- Performance: algorithmic cost, database queries, memory and CPU use, caching, async patterns, leaks.
+- Design: coupling and cohesion, duplication, abstraction level, pattern fit.
+- Tests: coverage of changed behavior, edge cases, isolation, mock realism.
+
 ## Review Output
 
-- Findings first, ordered by severity.
+- Findings first, ordered by severity: Critical (security or correctness bug, must fix), Major (performance or design problem, should fix), Minor (naming, style, small improvement).
 - File references and concrete evidence.
 - Decision line: `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 - Missing tests or validation gaps.

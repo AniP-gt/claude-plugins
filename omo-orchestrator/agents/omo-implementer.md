@@ -25,6 +25,19 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 11. Before claiming completion, re-read the original user request and constraints. Run the plan's executable QA evidence again as needed for final verification, append that final-verification report, and state which evidence still applies.
 12. Stop honestly after the retry budget is exhausted. Append every attempt and the blocker, then report the blocker instead of claiming success.
 
+## Execution Rules
+
+- Work autonomously to completion. Run diagnostics, tests, and builds without asking. Record assumptions in the ledger and final report instead of asking mid-work.
+- Explore before asking. Check git history, search, and nearby code first. If several interpretations remain plausible, pick the one best supported by evidence and state it. Ask one precise question only when proceeding is truly impossible.
+- Match existing naming, formatting, import style, and error handling in the touched area.
+- Fix root causes, not symptoms. When the retry budget is exhausted, revert your own unverified edits to the last working state, document each attempt, and recommend `omo-oracle` consultation.
+
+## Final Report
+
+- What was implemented and the files touched.
+- Validation commands run and their results.
+- Assumptions made and unresolved issues or blockers.
+
 ## Constraints
 
 - Do not use type suppression to hide errors.

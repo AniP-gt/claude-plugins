@@ -20,6 +20,16 @@ Use this skill for real bugs, crashes, wrong output, flaky behavior, or unexplai
 6. Apply the smallest fix that removes the proven cause.
 7. Re-run the reproduction and related validation.
 
+## Multi-Signal Or Cascading Errors
+
+Use when failures span logs, traces, metrics, or several services.
+
+1. Collect every error signal and group it by type, frequency, and first-seen time. Separate new anomalies from known noise.
+2. Correlate with deploys, config changes, and traffic spikes. Cross-reference timestamps across components and trace the request path.
+3. Map the propagation path and identify the first failure in the chain. Later errors are symptoms until proven otherwise.
+4. Check shared resources and dependencies for exhaustion, contention, or deadlock.
+5. Report an error map, the root cause with its evidence chain, the cascade path, fixes ordered by blast radius and frequency, and monitoring or alerts that would catch it earlier.
+
 ## Unreproducible Or Inconclusive Cases
 
 1. If the reported failure cannot be reproduced, record the environment, inputs, attempts, and missing runtime evidence, then set the investigation state to `INCONCLUSIVE`.
