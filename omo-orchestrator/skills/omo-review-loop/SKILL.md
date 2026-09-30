@@ -1,6 +1,6 @@
 ---
 name: omo-review-loop
-description: "Implement-review-fix loop: omo-implementer builds, parallel omo-reviewer lanes review by dimension, a synthesis judge picks AUTO_FIX or ASK_USER, then omo-review-work gates. Use for implement+review."
+description: "Implement-review-fix loop: omo-implementer builds, parallel omo-reviewer lanes review, a synthesis judge picks AUTO_FIX or ASK_USER, omo-review-work gates. Use for implement+review."
 argument-hint: [task-or-issue]
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Agent, Skill, TodoWrite
 user-invocable: true
@@ -64,6 +64,22 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 - `TASK_ID`: issue number when known, else the existing `docs/issues/<name>/` directory name, else a kebab-case slug of the task. Derive it; do not stall to ask.
 - The user may override `WORK_DIR` or `OUTER_DIR` in the invocation. All paths resolve from `REPO_ROOT`, never the shell's current directory.
 - `N` counts monotonically across outer cycles and Phase 5 rounds, so an iteration directory is never overwritten.
+
+## Resume and Stop-Continuation
+
+Run this check before Phase -1 resumes anything, whenever the skill is invoked or the user says continue or resume and a previous run left artifacts for this `TASK_ID`: any `ITER_DIR` (`docs/issues/{TASK_ID}/reviews/iter{N}/` or `.claude/omo/reviews/{TASK_ID}/iter{N}/`), `CYCLE_LOG`, or `LEDGER`. Decide from artifact state, not from keywords in the conversation.
+
+1. Read the latest `synthesis.md` (highest `N`), the latest `CYCLE_LOG` entry, and the `LEDGER` in full.
+2. The previous run ended blocked when any of these holds:
+   - `ASK_USER` items with no recorded answer in the ledger (`Overall: NEEDS_USER_INPUT`)
+   - inner limit reached: iteration 5 of the cycle ended with blocking items
+   - outer limit reached: cycle 3 without `APPROVE`, or `MAX_CYCLES_REACHED`
+   - stuck: a 3f or 6e oracle consult, or an escalation row, with no recorded resolution, or an `omo-guardrails` circuit breaker tripped
+   - the evidence gate returned `INCONCLUSIVE` needing access or a decision the loop lacks
+   - a required lane or tool recorded as failed after its bounded follow-up
+3. Blocked: present one summary in a single turn with the blocking condition, the pending `ASK_USER` items, the open `AUTO_FIX` items, the current iteration and cycle, and the proposed next action. Wait for the user to confirm or answer. Never resume a blocked loop silently.
+4. Before continuing, append the user's answers to each `ASK_USER` item and the confirmed plan to the ledger (`omo-handoff`). Answered items become directives for the next fix pass. A limit that was reached does not reset unless the user explicitly grants a new budget, and that grant is recorded too.
+5. Not blocked (for example, the run was interrupted mid-iteration): resume from the ledger's latest next exact action and state which phase and iteration it resumes.
 
 ## Overview
 

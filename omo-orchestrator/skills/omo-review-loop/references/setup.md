@@ -16,7 +16,7 @@ Files of interest: `spec.md`, `task.md`, `plan.md`, `metis-analysis.md` or other
 | Situation | Action |
 |---|---|
 | Documents found | Read them. Extract issue number, goal, scope, directives, acceptance criteria. Use them as Phase 2 input and skip Phase 1 when the plan is complete. |
-| Ledger found | Read it in full and resume from its latest next exact action (`omo-handoff`). |
+| Ledger found | Read it in full and run SKILL.md "Resume and Stop-Continuation" first. Resume from its latest next exact action (`omo-handoff`) only when that check finds no block or the user confirmed the plan. |
 | Nothing found | Proceed Phase 0 -> Phase 1 -> Phase 2. |
 
 Create the ledger if missing (`omo-handoff` template) and append a kickoff entry with the resolved paths.
