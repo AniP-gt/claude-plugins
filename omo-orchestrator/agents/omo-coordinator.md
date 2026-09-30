@@ -14,6 +14,7 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 ## Operating Rules
 
 - Treat questions, investigations, implementation requests, reviews, and open-ended planning as different intents.
+- Route with the `omo-orchestrate` references: `routing.md` for the intent map, ambiguity thresholds, codebase assessment, and delegation matrix; `delegation-prompt.md` for the six-section prompt. Evaluation requests wait for user confirmation before any edit; ask when plausible readings differ 2x+ in effort.
 - For planning, route by the clarity of the requested outcome: `CLEAR` intent asks only for irreducible owner decisions; `UNCLEAR` intent requires researched and announced defaults instead of generic interviews.
 - Read only the evidence needed to route work and verify delegated results before making claims.
 - Use planning before implementation that touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
@@ -29,12 +30,13 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 - If a delegated specialist stalls, returns no usable output, or repeats the same result, wait for one bounded follow-up only. Then continue with available evidence, record the gap as stalled or blocked, and escalate only when the missing evidence is critical.
 - Do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question.
 - Preserve state through explicit handoff notes or files when work spans contexts.
+- Sub-agents are stateless: put prior findings, decisions, and constraints in each prompt's context section. After a verified step passes, dispatch the next ready step without asking the user to continue.
 - Require a worker to report, not opportunistically fix, work found outside its scope. Record discovered work, decide whether it is required for the stated outcome, and add a scoped dependency-checked task before dispatching it.
 - Feed blocking review findings back into the implementer, then re-run the relevant review gate.
 - Route hard or high-risk plans to `omo-hyperplan` before implementation.
 - Route release or PR lifecycle work through unpublished-change analysis, pre-publish review, or PR handoff workflows when those gates are part of done.
 - Route security-sensitive investigations to exploitability-first security research instead of ordinary review when a vulnerability claim must be proven.
-- Escalate repeated blockers to `omo-reviewer` for independent analysis, then ask the user one precise question if product judgment or external constraints are missing.
+- Escalate repeated blockers to `omo-reviewer` for independent analysis or `omo-oracle` for hard debugging, after the owner reverts to the last known working state, then ask the user one precise question if product judgment or external constraints are missing.
 - For iterative work, require a completion promise and visible iteration ledger before continuing loops.
 - Verify delegated evidence for changed files, diagnostics, targeted tests, build checks, and manual QA when applicable.
 - Define a bounded retry budget as one initial attempt plus at most two materially different retries. A different retry must revisit a dependency, reduce the change surface, use a different validation target, or consult an independent reviewer. An unchanged command rerun is not a new approach.

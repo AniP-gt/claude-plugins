@@ -18,7 +18,7 @@ Delegation boundary: use `Task` only when a suitable sub-agent and required tool
 
 ## Flow
 
-1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup. For planning, classify the desired outcome as `CLEAR` or `UNCLEAR` and route to `omo-plan-consultant` and `omo-planner` before implementation; use `omo-plan` only when the user explicitly asks for a plan.
+1. Classify the current request as question, investigation, implementation, review, planning, or open-ended cleanup. For planning, classify the desired outcome as `CLEAR` or `UNCLEAR` and route to `omo-plan-consultant` and `omo-planner` before implementation; use `omo-plan` only when the user explicitly asks for a plan. Use [Routing](references/routing.md) for the intent map, ambiguity thresholds (ask when readings differ 2x+ in effort), codebase assessment, and delegation matrix.
 2. Read only the project rules and evidence needed to route work and verify delegated results before making claims.
 3. Create a file-level plan before editing when the work touches 2+ files, depends on caller/callee order or shared state, changes user-visible/API/CLI behavior, or needs 2+ validation checks.
 4. Delegate implementation, investigation, review, validation commands, and fix work to sub-agents. Do not perform those work phases directly in the main context.
@@ -34,7 +34,7 @@ Delegation boundary: use `Task` only when a suitable sub-agent and required tool
 13. Use a PR-style final gate when the change is intended to be merged or shared: only `APPROVE` permits completion. `REQUEST_CHANGES` feeds the next fix pass, and `INCONCLUSIVE` blocks completion until its evidence gap or decision is resolved.
 14. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.
 15. Verify delegated diagnostics, tests, build checks, and manual QA evidence where applicable.
-16. Before accepting completion, require a re-read of the original user request and constraints, then finalize with changed files, review decision, validation performed, and residual risks.
+16. Before accepting completion, require a re-read of the original user request and constraints, then finalize with changed files, review decision, validation performed, and residual risks. Report pre-existing failures unrelated to the change separately instead of fixing them unasked.
 
 ## Discovered Work
 
@@ -49,7 +49,7 @@ Delegation boundary: use `Task` only when a suitable sub-agent and required tool
 - Evidence gate: a claim without a path, symbol, test, diagnostic, command result, or quoted code is not a review-grade finding.
 - Retry budget: allow one initial attempt plus at most two materially different retries. A different retry revisits a dependency, reduces the change surface, uses a different validation target, or consults an independent reviewer. Re-running an unchanged command does not count as a new approach.
 - Evidence preservation: retain failed attempts in the ledger. Invalidate validation evidence only when an edit changes the prerequisite on which that evidence depends, and record the invalidated dependency.
-- Stuck condition: after the retry budget is exhausted, append every attempt and the blocker, stop honestly, and do not claim success. Delegate to `omo-reviewer` only when available and able to answer the blocker. If no suitable delegation is available, record that boundary. If the blocker depends on product judgment or external constraints, ask the user one precise question.
+- Stuck condition: after the retry budget is exhausted, stop further edits, have the owner revert to the last known working state, append every attempt and the blocker, stop honestly, and do not claim success. Never leave code broken or delete failing tests to pass. Consult `omo-oracle` with the full failure context for hard debugging. Delegate to `omo-reviewer` only when available and able to answer the blocker. If no suitable delegation is available, record that boundary. If the blocker depends on product judgment or external constraints, ask the user one precise question.
 - Stalled delegation: do not spawn additional background agents while an existing wave is unresolved unless the new agent answers a distinct critical question. Mark missing results as stalled or blocked in the handoff and proceed with partial findings when safe.
 - Do not treat a review pass as complete until blocking findings are resolved, disproven with evidence, or explicitly deferred by the user. Only `APPROVE` permits completion. `REQUEST_CHANGES` and `INCONCLUSIVE` block it.
 
@@ -73,9 +73,13 @@ Every delegated task should include:
 - Must not do.
 - Context.
 
+Use the full template, state-passing rule, and auto-continue policy in [Delegation prompt](references/delegation-prompt.md). After a verified step passes, dispatch the next ready step without asking the user to continue.
+
 Ask for output that another operator can verify quickly: changed files, evidence, blockers, and next exact action.
 
 ## References
 
+- [Routing](references/routing.md)
+- [Delegation prompt](references/delegation-prompt.md)
 - [Workflow](references/workflow.md)
 - [Handoff template](references/handoff-template.md)
