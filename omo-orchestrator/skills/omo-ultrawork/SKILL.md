@@ -44,6 +44,8 @@ The main context orchestrates. It does not implement unless the change is trivia
 | PDFs, images, diagrams | `omo-media-reader` |
 | Review gate | `omo-reviewer` |
 
+Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), and a binary `Done when`. Without `Done when` the executor has no exit.
+
 Parallelize independent agent calls in one message. Read before change, never in parallel with it. Serialize same-file writes, shared mutable state, shared contracts, and named predecessors. Size the work as `LIGHT` or `HEAVY` once and only ratchet toward `HEAVY` when risk grows.
 
 ## Execution Rules

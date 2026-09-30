@@ -21,6 +21,18 @@ This is a manual, content-only workflow. It provides no hook, automatic creation
 5. Never replace, delete, reorder, or summarize away an earlier entry. Correct an error with a later entry that names the entry being corrected.
 6. Read the whole ledger before resuming work. Follow the latest next exact action unless a later user instruction changes it.
 
+## Resume Summary
+
+When the user asks to resume or "where was I", list `.claude/omo/handoffs/`, read the matching ledger in full, and present before acting:
+
+- Goal, source plan, and last entry timestamp.
+- Progress: count top-level checkboxes in the source plan (`- [x] N.` done, `- [ ] N.` pending, including final-wave `F<N>.` items). Ignore nested acceptance-criteria checkboxes.
+- Completed, in progress, and remaining tasks by title.
+- Open blockers, recorded decisions, and scope boundaries.
+- The latest next exact action, then confirm it with the user before continuing.
+
+If no ledger exists, say so and offer to start one. Do not guess prior state from memory.
+
 ## Required Phase Entry
 
 Every entry must include:
