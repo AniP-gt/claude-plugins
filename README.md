@@ -115,7 +115,8 @@ LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・�
 - `/llm-wiki:query`: wiki を根拠に答え、良い答えは wiki に書き戻す
 - `/llm-wiki:lint`: リンク切れ・孤立ページ・index 漏れを機械的に検出し、矛盾や古い記述を点検する
 - SessionStart hook: 登録済みリポジトリでは wiki の場所と目次（index.md、長い場合は先頭 6000 字）をセッションに渡し、調査・実装・レビューの前や迷ったときに wiki を読むこと、サブエージェントへ関連ページを渡すこと、新しい知見が出たら ingest を提案することを指示する。未登録なら何もしない
+- SessionEnd hook（任意、既定は無効）: 登録済みリポジトリのセッションが終わると、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補（設計判断・障害の原因・ハマりどころ）を `raw/inbox/` に保存する。ページは更新せず、次のセッションで未整理の件数を伝え、`/llm-wiki:ingest` で整理する。有効化は `/llm-wiki:setup` か `llm_wiki.py capture-config --enable`。トークンを消費する。ログは `~/.config/llm-wiki/capture.log`
 
 パスはプラグインに含めず、各ユーザーのローカル設定 `~/.config/llm-wiki/projects.json`（環境変数 `LLM_WIKI_CONFIG` で変更可）に保存する。ひな形は `llm-wiki/templates/projects.example.json`。git worktree 内でも本体リポジトリの登録に一致する。複数リポジトリで 1 つの wiki を共有できる。
 
-前提条件: Python 3.9 以上（標準ライブラリのみ）。
+前提条件: Python 3.9 以上（標準ライブラリのみ）。候補の自動抽出を使う場合は `claude` CLI が PATH にあること。
