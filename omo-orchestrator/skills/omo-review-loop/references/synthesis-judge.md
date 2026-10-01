@@ -75,9 +75,11 @@ Skip any lane listed as SKIPPED or NOT_EXECUTED in Lane status.
 - Record Warnings in the summary counts; list Nits only as a count.
 
 ### Degraded lanes
-- A SKIPPED or NOT_EXECUTED lane is reduced coverage. It is not PASS output, it does
-  not block, and nothing may be written on its behalf. State the reduced coverage in
-  the Summary.
+- A skipped optional Copilot lane is reduced coverage, never PASS output. Nothing
+  may be written on its behalf. State reduced coverage in the Summary.
+- A required lane that is NOT_EXECUTED blocks PASS. Record the missing report as an
+  evidence gap; after the bounded missing-output follow-up fails, return ASK_USER
+  and pause through Ralph. Never treat an empty set of reports as approval.
 
 ### PASS
 - No AUTO_FIX and no ASK_USER items, every lane that ran returned usable PASS output,
@@ -135,6 +137,6 @@ Skip any lane listed as SKIPPED or NOT_EXECUTED in Lane status.
 
 ## After synthesis
 
-1. `AUTO_FIX` items -> dispatch `omo-orchestrator:omo-implementer` with `synthesis.md` (Phase 3c).
+1. `AUTO_FIX` items -> return `synthesis.md` to Ralph; Phase 3c may dispatch only in its next reserved iteration.
 2. `ASK_USER` items -> pause and present all of them in one turn.
-3. `Overall: PASS` -> exit the inner loop to Phase 3.5.
+3. `Overall: PASS` -> continue the current Ralph iteration to Phase 3.5.

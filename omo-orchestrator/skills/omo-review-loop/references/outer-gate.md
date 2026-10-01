@@ -1,6 +1,6 @@
 # Phase 6: Outer Gate
 
-Phase 6 runs existing review skills on this cycle's local diff and uses their saved reports as the gate. It does not run its own reviewer agents and does not re-implement review logic.
+Phase 6 runs existing review skills on the task-wide local diff and uses their saved reports as the gate. It does not run its own reviewer agents and does not re-implement review logic.
 
 | Gate | Skill | Required | Report |
 |---|---|---|---|
@@ -9,21 +9,21 @@ Phase 6 runs existing review skills on this cycle's local diff and uses their sa
 
 ## Timestamp
 
-Generate once per cycle and reuse: `TIMESTAMP=$(date +%Y%m%d%H%M)`.
+Generate once per gate invocation and reuse: `TIMESTAMP=$(date +%Y%m%d%H%M)`.
 
 ## 6a: LOCAL DIFF CONTEXT
 
 ```bash
-# CYCLE_START_SHA was recorded right before this cycle's Phase 2
+# CYCLE_START_SHA is the persistent review base recorded before the first work pass
 CYCLE_DIFF=$(git diff ${CYCLE_START_SHA})              # committed + uncommitted work
 CYCLE_FILES=$(git diff --name-only ${CYCLE_START_SHA})
 NEW_FILES=$(git ls-files --others --exclude-standard)  # untracked files git diff omits
 REPORT_REPO_ROOT=$(git rev-parse --show-toplevel)
 ```
 
-- If `CYCLE_START_SHA` is missing, use `git diff HEAD`.
-- If `CYCLE_DIFF` and `NEW_FILES` are both empty, record `Phase 6: SKIPPED - empty diff` in `CYCLE_LOG` and treat the cycle as APPROVE.
-- On `OUTER_CYCLE++`, record a fresh `CYCLE_START_SHA` so each gate sees only its cycle's changes.
+- If `CYCLE_START_SHA` is missing, reconcile it from the task ledger before review; do not silently substitute HEAD and hide earlier commits.
+- If the diff is empty, record that fact and still run `omo-review-work` against the original goal and current evidence. Empty diff is never approval.
+- `OUTER_CYCLE` aliases the global Ralph iteration `N` only for legacy-compatible filenames. Preserve the review base across every pass. Append an attempt suffix when rerunning a gate within the same iteration so reports are never overwritten.
 
 | Field | Source |
 |---|---|
@@ -107,7 +107,7 @@ Invoked from omo-review-loop Phase 6b2 as the outer gate.
 {the same GOAL / CONSTRAINTS / BACKGROUND / evidence / files / diff block as 6b}
 ```
 
-The coordinator saves the report to the stated path. If `omo-review-work` cannot run, record `omo-review-work: NOT_EXECUTED - <reason>`. With `review-pr` also skipped or failed, no gate ran: the cycle is `INCONCLUSIVE`, stop, and report the blocker. Never substitute a self-written review.
+The coordinator saves the report to the stated path. If `omo-review-work` cannot run, record `omo-review-work: NOT_EXECUTED - <reason>`. A missing mandatory `omo-review-work` is always `INCONCLUSIVE`: stop and report the blocker even if optional `review-pr` approved. Never substitute a self-written review.
 
 ## 6c: Read the saved reports
 
@@ -124,83 +124,38 @@ Every gate that ran must clear; the stricter decides.
 | Approve (0 Critical) or SKIPPED | `APPROVE` | APPROVE |
 | Needs Attention (0 Critical) | `APPROVE` | APPROVE; carry the items into Phase 7 as follow-ups |
 | Approve / Needs Attention / SKIPPED | `REQUEST_CHANGES` | REQUEST_CHANGES; omo findings become fix directives |
-| Approve / Needs Attention / SKIPPED | `INCONCLUSIVE` | REQUEST_CHANGES; the directive is to produce the missing evidence, which may close with no code change |
+| Approve / Needs Attention / SKIPPED | `INCONCLUSIVE` | INCONCLUSIVE; produce accessible missing evidence in the next Ralph iteration, or pause for unavailable evidence |
+| any | `NOT_EXECUTED` | INCONCLUSIVE; required final gate unavailable |
+| NOT_EXECUTED | any | INCONCLUSIVE; an attempted optional gate failed and has no usable verdict |
 | Request Changes (1+ Critical) | any | REQUEST_CHANGES; merge both gates' blocking findings, deduplicated by file and defect mechanism |
 
-- An `INCONCLUSIVE` whose evidence is genuinely unavailable to the loop (production access, a business decision, a third-party response) is an `ASK_USER` escalation that does not consume a cycle. Present the exact missing evidence and pause.
+- An `INCONCLUSIVE` whose evidence is genuinely unavailable to the loop (production access, a business decision, a third-party response) is an `ASK_USER` escalation that does not reserve another iteration; already dispatched work remains counted. Present the exact missing evidence and pause.
 - Nits and `[Suggestion]` findings never affect the decision.
 
 ```
 APPROVE
-  -> append CYCLE_LOG entry -> Phase 7
-
-REQUEST_CHANGES
-  -> append CYCLE_LOG entry with the blocking findings
-  -> if OUTER_CYCLE < 3:
-       STUCK CHECK (before OUTER_CYCLE++ and before the next fix pass):
-         compare the union of this cycle's blocking findings and unresolved evidence
-         gaps (from every gate that ran) with the previous cycle's union, reading the
-         previous reports at the paths in CYCLE_LOG. Match on file and defect
-         mechanism, not line number or wording; two findings are the same when one
-         fix would resolve both. No-op on cycle 1.
-         Any recurrence -> 6e oracle consult; its action table decides what happens.
-       OUTER_CYCLE++
-       record a fresh CYCLE_START_SHA and TIMESTAMP
-       feed the blocking findings and oracle directives into Phase 2 as fix directives
-       re-run from Phase 2 (Phase -1 may be skipped)
-  -> if OUTER_CYCLE == 3:
-       Phase 7 with MAX_CYCLES_REACHED
+  -> append gate paths/outcomes to CYCLE_LOG and LEDGER -> Ralph completes -> Phase 7
+REQUEST_CHANGES or recoverable INCONCLUSIVE
+  -> append blocking findings or missing evidence
+  -> return to Ralph; check shared cap and stuck history before reserving next N
+  -> next pass applies minimal directives, validates, runs all review lanes and QA,
+     then runs the final gate again against the same task-wide review base
+Unavailable evidence or missing required gate
+  -> append exact blocker and next action -> pause without completion
 ```
 
-- Additional-fix instruction: the next cycle's implementer makes additional fixes on top of the previous implementation. No rewrite from scratch.
-- Inner loop on re-entry: the next cycle runs the full Phase 3 inner loop (max 5 iterations) before Phase 6 again. Phase 6 findings are added to Phase 2 input, not substituted for the inner review.
+## 6e: Oracle consult
 
-## 6e: Oracle consult (outer-loop stuck detection)
-
-Scope: Phase 3f handles an issue surviving 2+ iterations within one cycle. Phase 6e handles a blocking finding surviving a whole cycle (inner loop plus gates).
-
-Trigger: a blocking finding from any gate at the end of cycle N is also present at the end of cycle N+1. This includes `review-pr` Critical findings, `omo-review-work` blocking findings, and an `INCONCLUSIVE` whose missing evidence was not produced. When the recurrence is omo-only (0 Criticals in both cycles), pass the two omo reports and say so; do not skip the consult.
-
-```
-Agent(
-  subagent_type="omo-orchestrator:omo-oracle",
-  description="Phase 6e outer-loop stuck consult",
-  prompt="""
-  The blocking finding(s) below from the Phase 6 gates persisted across two
-  consecutive outer cycles (Cycle {N} and Cycle {N+1}). The implementer ran a full
-  inner-loop fix pass in Cycle {N+1} but the gate still flags the same problem.
-  {If the recurrence is an unresolved INCONCLUSIVE: the gate is blocked on missing
-   evidence the cycle did not produce, not on a code defect.}
-
-  ## Recurring blocking finding(s)
-  {verbatim from both cycles, each labeled: review-pr Critical / omo-review-work
-   blocking / omo-review-work INCONCLUSIVE - missing evidence}
-
-  ## Cycle {N} gate report excerpts
-  {blocking findings / missing evidence}
-
-  ## Cycle {N+1} gate report excerpts
-  {blocking findings / missing evidence}
-
-  ## Cycle {N+1} diff
-  {git diff {CYCLE_START_SHA}}
-
-  Explain why the fix did not resolve the concern, and give an alternative approach or
-  a clarification directive for the next cycle.
-  """
-)
-```
+Use Ralph's same blocker history across synthesis, QA, and final gates. Compare findings by file and defect mechanism, including missing evidence, not line number or wording. After two consecutive iterations with the same blocker, consult `omo-oracle` with the exact findings, saved report paths, approaches tried, current diff, and remaining shared budget. The same blocker in three consecutive iterations stops the run.
 
 | Oracle response | Action |
 |---|---|
-| Concrete alternative approach | Append the plan to the next cycle's Phase 2 input as a high-priority directive; OUTER_CYCLE++ and re-run from Phase 2 |
-| Reviewer expectation ambiguous or needs business judgment | `ASK_USER` with the analysis; pause the outer loop |
-| Implementation already correct, reviewer too strict | Record `ORACLE_OVERRIDE` in `CYCLE_LOG`, treat as resolved, go to Phase 7 |
-| Systemic design problem, not incrementally fixable | Escalate to the user with the analysis; do not consume another cycle |
+| Concrete alternative approach | Append as directives for the next Ralph iteration, if permitted by its cap and stop rules |
+| Reviewer expectation ambiguous or business judgment needed | `ASK_USER`; pause and record the decision needed |
+| Implementation already correct, reviewer too strict | Save reasoning as disputed-finding evidence for a fresh independent review; never substitute oracle approval |
+| Systemic design problem | Escalate with analysis and stop |
 
-- Only the first row increments `OUTER_CYCLE`. The escalation rows pause and resume at Phase 2 with the user's decision; the paused cycle is not consumed. The override row skips remaining cycles and carries the oracle's reasoning into Phase 7.
-- A consult never buys an extra cycle. A row-1 consult at the end of cycle 2 leaves cycle 3 as the last attempt; say so in the `CYCLE_LOG` entry.
-- Append the oracle response to `CYCLE_LOG` verbatim the moment it is produced.
+Append oracle responses verbatim to `CYCLE_LOG` and reference them in `LEDGER`. An oracle consult never grants iterations, clears unanswered decisions, or bypasses a required gate.
 
 ## Phase 7
 

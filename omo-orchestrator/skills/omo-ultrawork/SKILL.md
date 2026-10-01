@@ -10,6 +10,8 @@ user-invocable: true
 
 Claude Code adaptation of the oh-my-openagent ultrawork directive (`packages/prompts-core/prompts/ultrawork/default.md`). The `ulw` / `ultrawork` keyword hook in this plugin points here. Every rule below binds for the whole task.
 
+Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
+
 ## Bootstrap
 
 1. The first user-visible line is exactly `ULTRAWORK MODE ENABLED!`.
@@ -127,9 +129,9 @@ Trigger when any apply: the user asked for rigor ("strictly", "rigorously", "厳
 
 1. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path.
 2. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes.
-3. Fix every criterion-cited blocker, re-run only the affected scenario QA, and update the notepad.
-4. Re-submit to the same reviewer at most twice with only the delta. Approval with notes only counts as approval.
-5. If criterion-cited blockers remain after two re-reviews, stop and surface them to the user.
+3. Return criterion-cited blockers to Ralph and reserve the next shared iteration before dispatching any fix. In that pass, fix the blockers, re-run the affected scenario QA, and update the notepad.
+4. In that same iteration, submit the updated task-wide diff and current QA evidence to a fresh independent reviewer. Approval with non-blocking notes counts as approval.
+5. Return every repair/re-review pass to the active `omo-ralph-loop` ledger and shared remaining budget. Ralph alone decides cap exhaustion and stuck stops; do not grant a separate final-gate retry budget.
 
 ## Zero Tolerance
 

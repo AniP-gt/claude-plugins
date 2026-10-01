@@ -16,7 +16,7 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 
 - Do not duplicate a search already assigned to a specialist.
 - Do not let the main context take over substantive work that should be delegated to a specialist sub-agent.
-- Stop loops after repeated identical attempts and change strategy: 5 identical calls, 3 flat iterations, or delegation deeper than 3 levels.
+- Stop local tool/delegation loops after 5 identical calls or delegation deeper than 3 levels. Implementation/review stall decisions and iteration budgets belong exclusively to `omo-ralph-loop`; use its shared blocker history rather than a separate flat-metric counter.
 - Treat stalled delegated agents as recoverable blockers: wait for one bounded follow-up, then stop retrying, record the gap, and continue with available evidence when safe.
 - Preserve state through a short handoff when context may be lost.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.

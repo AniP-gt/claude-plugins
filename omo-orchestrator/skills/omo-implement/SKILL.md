@@ -1,14 +1,14 @@
 ---
 name: omo-implement
-description: Execute a planned change with exploration first, minimal edits, review-fix iteration, TDD-oriented validation, and no speculative compatibility paths.
+description: Execute a planned change with exploration first, minimal edits, one-pass implementation, TDD-oriented validation, and no speculative compatibility paths.
 argument-hint: [task]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Implement
 
-Use this skill for implementation after scope is concrete.
+Use this skill for one scoped implementation or fix pass after scope is concrete. When delegated, return the result to the caller's active Ralph controller; do not start another controller or review loop. When invoked standalone, initialize or reuse `omo-ralph-loop` for this task and return any review findings to that controller for the next pass.
 
 ## Steps
 
@@ -20,10 +20,9 @@ Use this skill for implementation after scope is concrete.
 6. Run diagnostics on changed files.
 7. Run targeted tests, then broader checks if warranted. Run manual QA against the real deliverable surface: a live HTTP request for an API, a real CLI/TUI session, a real browser interaction, an import-and-use driver for a library, or the resulting artifact for data-shaped work.
 8. When a required diagnostic, test, or real-surface check is unavailable, report the exact unverified area and why it is unavailable. Do not claim completion or approval until equivalent evidence is obtained or the blocker is explicitly handed off.
-9. Route qualifying changes through `/omo-review` when they touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs.
-10. Verify each review finding against current code, tests, or a stated contract. Record unconfirmed findings as unconfirmed and do not fix them as facts. Fix confirmed blocking findings with minimal follow-up edits.
-11. After a fix, rerun the affected validation and `/omo-review` once. If the same confirmed blocker remains, stop with the exact blocker, its evidence, and the next manual decision or action.
-12. Report changed files, review result, validation results, and any unverified area.
+9. Return changed files, validation results, evidence, and any unverified area to the controller. The controller routes qualifying changes through `/omo-review` (2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs), or through its active `omo-review-loop` lanes without duplicating review.
+10. Verify supplied findings against current code, tests, or a stated contract. Record unconfirmed findings as unconfirmed. A fix pass applies the confirmed scoped directives, validates them, and returns; it never dispatches another fix pass.
+11. Further repair and re-review require the next iteration of the same Ralph ledger and budget. Report blocking findings and evidence to the controller; do not claim task completion before its independent final `APPROVE`.
 
 ## Hard Rules
 

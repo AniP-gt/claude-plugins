@@ -26,16 +26,7 @@ After 3 distinct approaches fail, consult `omo-oracle` or ask the user.
 
 ## Stuck Iterations (ralph loop, review loop)
 
-Track a comparable progress metric per iteration (error count, failing tests, open review findings).
-
-| Situation | Action |
-|---|---|
-| Same metric for 3 iterations | STOP, report the stuck items |
-| Metric increasing | STOP, revert the last change, report |
-| Different errors each time (churn) | WARN, switch strategy |
-| Over 30 minutes on one task | WARN, confirm progress is real |
-
-Partial progress counts: if the metric dropped and then stalled, report what was fixed and stop only on the remainder.
+Use `omo-ralph-loop` and its `references/iteration-guards.md` as the sole implementation/review iteration policy. Track blocker identity and validated progress in the same ledger; do not create another counter or reset its budget. Equal error counts can hide different errors, so a flat metric alone does not prove the same blocker recurred. Local tool and delegation recovery limits above remain in force and may stop sooner.
 
 ## Self-Check Before Each Call
 

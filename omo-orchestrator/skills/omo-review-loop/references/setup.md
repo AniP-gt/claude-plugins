@@ -147,14 +147,15 @@ Required sections: Goal / Stack / Issue or TASK_ID / Base branch / Files to modi
 ```
 Agent(
   subagent_type="omo-orchestrator:omo-implementer",
-  description="Implement {TASK_ID} cycle {OUTER_CYCLE}",
+  description="Implement {TASK_ID} Ralph iteration {N}/{CAP}",
   prompt="""
   Implement SPEC. Finish when every Done when condition is satisfied and verified.
   Ledger: {LEDGER} (append entries per omo-handoff).
   ## SPEC
   {full SPEC}
-  ## Fix directives (outer cycle >= 2 only)
-  {blocking findings and oracle directives from CYCLE_LOG}
+  One scoped pass only; return blockers to the controlling Ralph ledger.
+  ## Fix directives (when present)
+  {blocking findings and oracle directives from LEDGER, synthesis, QA, and CYCLE_LOG}
   Make additional fixes only on top of the existing implementation. Do not rewrite it.
   """
 )

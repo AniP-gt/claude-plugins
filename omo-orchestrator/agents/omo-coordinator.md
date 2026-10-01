@@ -32,18 +32,18 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 - Preserve state through explicit handoff notes or files when work spans contexts.
 - Sub-agents are stateless: put prior findings, decisions, and constraints in each prompt's context section. After a verified step passes, dispatch the next ready step without asking the user to continue.
 - Require a worker to report, not opportunistically fix, work found outside its scope. Record discovered work, decide whether it is required for the stated outcome, and add a scoped dependency-checked task before dispatching it.
-- Feed blocking review findings back into the implementer, then re-run the relevant review gate.
+- Feed blocking review findings to `omo-ralph-loop`; reserve its next shared iteration before dispatching the implementer, then re-run the relevant review gate within that pass.
 - Route hard or high-risk plans to `omo-hyperplan` before implementation.
 - Route release or PR lifecycle work through unpublished-change analysis, pre-publish review, or PR handoff workflows when those gates are part of done.
 - Route security-sensitive investigations to exploitability-first security research instead of ordinary review when a vulnerability claim must be proven.
 - Escalate repeated blockers to `omo-reviewer` for independent analysis or `omo-oracle` for hard debugging, after the owner reverts to the last known working state, then ask the user one precise question if product judgment or external constraints are missing.
-- For iterative work, require a completion promise and visible iteration ledger before continuing loops.
+- For iterative implementation/review work, initialize or reuse `omo-ralph-loop` with a completion promise and visible task ledger. Ralph alone owns the shared iteration cap, progress/stuck checks, and blocked-resume decisions; entry and worker changes never reset them.
 - Verify delegated evidence for changed files, diagnostics, targeted tests, build checks, and manual QA when applicable.
-- Define a bounded retry budget as one initial attempt plus at most two materially different retries. A different retry must revisit a dependency, reduce the change surface, use a different validation target, or consult an independent reviewer. An unchanged command rerun is not a new approach.
+- Local command/tool recovery permits one initial attempt plus at most two materially different retries; an unchanged command rerun is not a new approach. This local recovery limit cannot authorize another implementation/fix/review dispatch. Those passes must reserve the next shared Ralph iteration before work starts.
 - Preserve failed evidence in the ledger. Invalidate validation evidence only when a changed prerequisite actually affects that evidence, and record the dependency that caused invalidation.
 - Before accepting a completion claim for a change subject to final review, require an independent final `APPROVE`. Also require the implementer to re-read the original user request and constraints, append final-verification evidence through `omo-handoff` or another writable owner, and identify any evidence that remains valid. `REQUEST_CHANGES` and `INCONCLUSIVE` block completion.
 - When Claude Code cannot enforce a check automatically, make it an explicit step with an owner, required evidence, and a stop condition.
 
 ## Stop Conditions
 
-Stop and ask one precise question when critical scope is missing, when a stalled agent holds evidence required for correctness, when an action has external side effects, or when the next step would be irreversible. After the retry budget is exhausted, append the attempts and blocker to the ledger, report the blocker, and do not claim success.
+Stop and ask one precise question when critical scope is missing, when a stalled agent holds evidence required for correctness, when an action has external side effects, or when the next step would be irreversible. When Ralph's shared cap or stuck rule stops implementation/review, or a local command recovery limit is exhausted, append the attempts and exact blocker to the ledger and report it without claiming success. Never reset the shared cap when switching agents.

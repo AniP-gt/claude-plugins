@@ -17,12 +17,12 @@ Also run the SPEC Done when commands (including the coverage command when tests 
 
 A failing check becomes an `AUTO_FIX` item for the next iteration. An unavailable check is recorded as unverified, never as passed.
 
-## Phase 3f: Oracle consult (inner-loop stuck detection)
+## Phase 3f: Oracle consult (Ralph stuck detection)
 
 Trigger (either):
 
 - The same issue (same file and defect mechanism, or the same missing evidence) appears in synthesis across 2+ consecutive iterations.
-- `iteration_count >= 5` with blocking items remaining.
+- Ralph requests diagnosis before stopping at its recorded cap. Consultation cannot authorize another pass.
 
 ```
 Agent(
@@ -30,7 +30,7 @@ Agent(
   description="Phase 3f inner-loop stuck consult",
   prompt="""
   The following issue has been flagged in 2 or more consecutive review iterations
-  (or the 5-iteration budget ran out with it open). Explain the root cause and
+  (or the shared Ralph budget ran out with it open). Explain the root cause and
   recommend an alternative approach.
 
   ## Recurring issue
@@ -47,9 +47,9 @@ Agent(
 
 | Oracle response | Action |
 |---|---|
-| Concrete alternative approach | Update SPEC, append the directive to the ledger, restart Phase 2 with a fresh `omo-implementer` |
+| Concrete alternative approach | Append the directive to the ledger; return to Ralph for the next scoped pass under its remaining budget and stop rules |
 | Business logic decision needed | `ASK_USER` with the oracle's analysis |
-| Already correct, review is wrong | Record `ORACLE_OVERRIDE` in synthesis and the ledger, proceed to Phase 3.5 |
+| Already correct, review is wrong | Record disputed-finding evidence for the next independent review; do not mark PASS or APPROVE on oracle authority |
 
 ## Phase 3.5: Verify in Action
 
@@ -107,7 +107,7 @@ When `IS_FRONTEND=true`, also run the `omo-visual-qa` skill on the affected page
 | Result | Next action |
 |---|---|
 | PASS | Phase 4 |
-| FAIL | `omo-implementer` fixes the blocking issues, then back to Phase 3 (max 3 returns) |
+| FAIL | Return blocking issues to Ralph for the next scoped fix/validation/review pass; no separate QA retry budget |
 | SKIP | Record the reason in the Phase 4 report and continue; Phase 6 `omo-review-work` will treat uncovered rows as missing evidence |
 
-Save the verbatim result to `{WORK_DIR}/verify_in_action_cycle{OUTER_CYCLE}.md`; Phase 6 passes it to `omo-review-work`.
+Save the verbatim result to `{WORK_DIR}/verify_in_action_cycle{OUTER_CYCLE}.md` where `OUTER_CYCLE` aliases global `N`; append a phase-attempt suffix on a resumed rerun. Record the exact path in the ledger and pass that report to Phase 6.

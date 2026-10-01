@@ -10,13 +10,13 @@ Plugin port of the personal `implementation-review-loop` skill, rebuilt on omo-o
 
 # OMO Review Loop
 
-Automated cycle: `omo-implementer` implements, parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, `omo-implementer` fixes, repeat. An outer gate (`omo-review-work`, plus the optional `review-pr` skill) decides whether the cycle is done.
+Ralph-managed review workflow: `omo-implementer` implements, parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, the controller schedules fixes. The final gate (`omo-review-work`, plus the optional `review-pr` skill) returns its verdict to `omo-ralph-loop`, the sole loop controller.
 
 Triggers: "implement and review", "review loop", "auto-review", "quality loop", "implement with review".
 
 ## Coordinator Boundary
 
-The main context is coordinator-only (see `omo-guardrails`). It routes, records state, saves lane reports verbatim, and decides loop transitions. Implementation, review, QA, and validation commands go to sub-agents. Safety, retry, and stall rules come from `omo-guardrails`; implementation rules from `omo-implement` and `omo-programming`; final-gate semantics from `omo-review-work`. They are not restated here.
+The main context is coordinator-only (see `omo-guardrails`). It routes, records state, saves lane reports verbatim, and applies `omo-ralph-loop` transitions. Load that skill before dispatch and reuse an active TASK_ID/ledger; never recursively invoke a second controller. Implementation, review, QA, and validation commands go to sub-agents. Local tool/worker recovery rules come from `omo-guardrails`; all implementation/review iteration budgets and stall decisions come from `omo-ralph-loop`; implementation rules from `omo-implement` and `omo-programming`; final-gate semantics from `omo-review-work`. They are not restated here.
 
 ## Hard Boundaries
 
@@ -63,46 +63,38 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 - `TASK_ID`: issue number when known, else the existing `docs/issues/<name>/` directory name, else a kebab-case slug of the task. Derive it; do not stall to ask.
 - The user may override `WORK_DIR` or `OUTER_DIR` in the invocation. All paths resolve from `REPO_ROOT`, never the shell's current directory.
-- `N` counts monotonically across outer cycles and Phase 5 rounds, so an iteration directory is never overwritten.
+- `N` is the global Ralph iteration, reserved before its work pass. It never resets for feedback, QA, or final-gate findings, and an iteration directory is never overwritten.
+- `OUTER_CYCLE` is a legacy artifact-name alias for `N`, not a counter or budget. `CYCLE_LOG` remains an append-only gate-report index; the Ralph `LEDGER` owns control state. `CYCLE_START_SHA` is the persistent task-wide review base, recorded once before the first implementation and never refreshed per pass.
 
 ## Resume and Stop-Continuation
 
 Run this check before Phase -1 resumes anything, whenever the skill is invoked or the user says continue or resume and a previous run left artifacts for this `TASK_ID`: any `ITER_DIR` (`docs/issues/{TASK_ID}/reviews/iter{N}/` or `.claude/omo/reviews/{TASK_ID}/iter{N}/`), `CYCLE_LOG`, or `LEDGER`. Decide from artifact state, not from keywords in the conversation.
 
-1. Read the latest `synthesis.md` (highest `N`), the latest `CYCLE_LOG` entry, and the `LEDGER` in full.
-2. The previous run ended blocked when any of these holds:
-   - `ASK_USER` items with no recorded answer in the ledger (`Overall: NEEDS_USER_INPUT`)
-   - inner limit reached: iteration 5 of the cycle ended with blocking items
-   - outer limit reached: cycle 3 without `APPROVE`, or `MAX_CYCLES_REACHED`
-   - stuck: a 3f or 6e oracle consult, or an escalation row, with no recorded resolution, or an `omo-guardrails` circuit breaker tripped
-   - the evidence gate returned `INCONCLUSIVE` needing access or a decision the loop lacks
-   - a required lane or tool recorded as failed after its bounded follow-up
-3. Blocked: present one summary in a single turn with the blocking condition, the pending `ASK_USER` items, the open `AUTO_FIX` items, the current iteration and cycle, and the proposed next action. Wait for the user to confirm or answer. Never resume a blocked loop silently.
-4. Before continuing, append the user's answers to each `ASK_USER` item and the confirmed plan to the ledger (`omo-handoff`). Answered items become directives for the next fix pass. A limit that was reached does not reset unless the user explicitly grants a new budget, and that grant is recorded too.
-5. Not blocked (for example, the run was interrupted mid-iteration): resume from the ledger's latest next exact action and state which phase and iteration it resumes.
+1. Read the latest `synthesis.md` (highest `N`), the `CYCLE_LOG`, and the `LEDGER` in full, including referenced QA and final-gate reports.
+2. A previous run is blocked by unanswered `ASK_USER`, an exhausted recorded budget, unresolved oracle escalation/stuck state, an `INCONCLUSIVE` requiring unavailable access or decisions, or a required lane/tool failure after its bounded follow-up. Historical inner/outer limits, `MAX_CYCLES_REACHED`, and QA retry exhaustion remain blocked states, even if a new default cap would be larger.
+3. For a blocked run, present the blocking condition, pending `ASK_USER`, open `AUTO_FIX`, consumed iterations, recorded cap, and proposed next action. Wait for a user answer or explicit confirmation. Append answers and the confirmed plan before continuing. Confirmation alone does not extend an exhausted budget.
+4. For legacy state without Ralph fields, append a migration entry preserving all artifacts, decisions, and report paths. Reconcile consumed work passes from the full ledger, iteration directories, feedback, QA returns, and gate history; record how they map to the global count and the earliest task review base. If consumption or the base cannot be reconstructed, pause for reconciliation instead of guessing or resetting. Never reduce a known consumed count. Carry forward an explicitly recorded total cap; otherwise record the default 20 only after reconciliation. A historical exhausted limit requires an explicit new budget grant before migration can continue.
+5. A legacy `ORACLE_OVERRIDE` or empty-diff approval is not independent approval. Preserve it as history and require a fresh final gate before completion. Keep unresolved disputes as reviewer input.
+6. On an interrupted non-blocked run, reconcile actual state and resume the recorded phase of the same reserved iteration. Announce that phase and number; do not spend another iteration or overwrite existing reports. Append phase-attempt suffixes if a report must be regenerated.
 
 ## Overview
 
+Departure from the old nested loops: one task-wide Ralph budget (default 20) covers every pass.
+
 ```
-[OUTER LOOP: max 3 cycles]
-Phase -1 LOAD DOCS      existing plan/spec/task docs, paths, ledger
-Phase 0  DETECT         stack, risk, frontend/CI flags, library contract
-Phase 1  PLAN           skipped when a written plan/spec exists; else omo-planner
-Phase 2  IMPLEMENT      omo-implementer (record CYCLE_START_SHA first)
-Phase 3  REVIEW LOOP    up to 5 iterations:
-  3a Review             parallel lanes in one message
-  3b Synthesize         synthesis judge -> AUTO_FIX / ASK_USER / PASS
-  3c Fix                omo-implementer applies AUTO_FIX only
-  3d Verify             lint / typecheck / tests
-  3e Loop?              blocking remains -> 3a
-  3f Stuck?             omo-oracle consult
-Phase 3.5 VERIFY IN ACTION   fresh QA lane runs real scenarios
-Phase 4  REPORT         loop summary
-Phase 5  USER FEEDBACK  feedback -> back to Phase 3 (fresh 5-iteration budget)
-Phase 6  OUTER GATE     omo-review-work (+ review-pr if available) on this cycle's diff
-  6d                    both clear -> Phase 7 | any blocks -> next cycle
-  6e                    same blocker across cycles -> omo-oracle consult
-Phase 7  FINAL REPORT   APPROVE / MAX_CYCLES_REACHED
+SETUP                  Phase -1 docs, 0 detection, 1 plan as needed
+RALPH reserves N       check shared cap, blockers, progress, and ownership
+Phase 2/3c WORK         one implementation/fix/evidence pass
+Phase 3d VERIFY        lint / typecheck / tests
+Phase 3a REVIEW        independent parallel lanes
+Phase 3b SYNTHESIZE    AUTO_FIX / ASK_USER / PASS
+  fixes needed         return findings to Ralph for next N
+  ASK_USER             pause; preserve N and cap
+Phase 3.5 QA           real scenarios; failure returns to Ralph
+Phase 4-5 REPORT       feedback returns to Ralph; no new budget
+Phase 6 FINAL GATE     omo-review-work (+ optional review-pr)
+  changes/evidence     return findings to Ralph for next N
+  APPROVE              Ralph completes -> Phase 7 final report
 ```
 
 ## Phase -1, 0, 1, 2
@@ -112,7 +104,7 @@ Follow `references/setup.md`. Key points:
 - Phase -1 reads existing docs. A written plan, task, or spec skips Phase 1.
 - Phase 0 sets `DETECTED_STACK`, `RISK_LEVEL`, `RISK_REASON`, `IS_FRONTEND`, `IS_CI_CHANGE`, GOAL/CONSTRAINTS/BACKGROUND, and the External Library Contract evidence block.
 - The library evidence block is passed unchanged to the implementer, every lane, the judge, the Phase 3.5 verifier, and the Phase 6 gates. A stage must not PASS when an applicable check is missing or its version applicability is unresolved.
-- Record `CYCLE_START_SHA=$(git rev-parse HEAD)` immediately before each cycle's Phase 2.
+- Record `CYCLE_START_SHA=$(git rev-parse HEAD)` once before the first Phase 2, or reuse the task's recorded review base. Preserve it across commits and iterations so final review covers the whole task.
 
 ## Phase 3: Review Loop
 
@@ -134,7 +126,7 @@ Each dimension prompt is assembled as: lane prompt + Lane Context block + `refer
 Lane Context block (identical for every lane):
 
 ```
-TASK_ID: {TASK_ID}    Iteration: {N}/5    Outer cycle: {OUTER_CYCLE}/3
+TASK_ID: {TASK_ID}    Ralph iteration: {N}/{CAP}    Ledger: {LEDGER}
 Stack: {DETECTED_STACK}    IS_CI_CHANGE: {true|false}
 Risk: {RISK_LEVEL} - {RISK_REASON}
 Diff under review: run `git diff {CYCLE_START_SHA}` and `git diff --name-only {CYCLE_START_SHA}`
@@ -156,11 +148,11 @@ After every lane returns, spawn one judge per `references/synthesis-judge.md`. I
 3. One lane flags something that needs a business-logic or requirement-interpretation decision, or lanes contradict each other -> `ASK_USER`.
 4. Evidence-gate `INCONCLUSIVE` -> never PASS. `AUTO_FIX` when the implementer can produce the evidence, else `ASK_USER`. Producing evidence with no code change is a valid resolution.
 5. Nothing flagged by any lane that ran -> `PASS`.
-6. Skipped or `NOT_EXECUTED` lanes are recorded as reduced coverage, never counted as PASS output and never filled in by another model.
+6. A skipped optional lane is reduced coverage, never PASS output. A required `NOT_EXECUTED` lane blocks PASS and pauses after its bounded follow-up fails. Never fill in another lane's output.
 
 ### 3c. Fix
 
-Dispatch `omo-orchestrator:omo-implementer` with `synthesis.md`, `SPEC`, the ledger path, and the library evidence. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
+A synthesis finding ends the current pass. Return it to Ralph; only after the controller reserves the next iteration may the fix dispatch run. Dispatch `omo-orchestrator:omo-implementer` with `synthesis.md`, `SPEC`, the ledger path, and the library evidence. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
 
 ### 3d. Verify
 
@@ -169,44 +161,42 @@ Dispatch the stack verify commands in `references/verify-and-oracle.md` to a sub
 ### 3e. Loop decision
 
 ```
-ASK_USER pending                        -> pause, present all ASK_USER items in one turn, resume after answer
-synthesis PASS and verify pass          -> exit to Phase 3.5
-iteration_count >= 5 with blocking left -> 3f oracle consult, then report to user
-else                                    -> iteration_count++ -> 3a with a fresh ITER_DIR
+ASK_USER pending               -> pause and record; resume only after answer
+synthesis PASS and verify pass -> Phase 3.5
+blocking findings remain       -> return to Ralph for next iteration or stop at cap
 ```
 
 ### 3f. Oracle consult
 
-Trigger: the same issue (same file and defect mechanism, or the same missing evidence) appears in synthesis across 2+ consecutive iterations, or 5 iterations end with blocking items. Consult `omo-orchestrator:omo-oracle` per `references/verify-and-oracle.md`.
+Ralph consults `omo-oracle` for a repeated blocker after two iterations and stops if the same blocker persists for three consecutive iterations. Use `references/verify-and-oracle.md` for the consultation prompt. Advice never resets the budget or substitutes for reviewer approval.
 
 ## Phase 3.5: Verify in Action
 
-After the review loop passes, run the fresh QA lane in `references/verify-and-oracle.md`. PASS -> Phase 4. FAIL -> `omo-implementer` fix and back to Phase 3 (max 3 times). SKIP -> record the reason and continue.
+After synthesis and validation pass, run the fresh QA lane in `references/verify-and-oracle.md`. PASS -> Phase 4. FAIL -> return issues to Ralph for the next scoped fix pass. SKIP -> record missing coverage; the final gate still requires its applicable QA evidence.
 
 ## Phase 4-5: Report and Feedback
 
-Use `references/templates.md`. The Phase 4 report includes the loop summary, iteration breakdown, per-lane table (evidence gate shows its decision line; skipped lanes show `SKIPPED` or `NOT_EXECUTED`), evidence gaps, fixed blocking items, ASK_USER decisions, Phase 3.5 result, and the External Library Contract Checks. User feedback restarts Phase 3 with a fresh 5-iteration budget.
+Use `references/templates.md`. The Phase 4 report includes the loop summary, iteration breakdown, per-lane table (evidence gate shows its decision line; skipped lanes show `SKIPPED` or `NOT_EXECUTED`), evidence gaps, fixed blocking items, ASK_USER decisions, Phase 3.5 result, and the External Library Contract Checks. User feedback becomes scoped directives for the next Ralph iteration under the remaining budget. Do not wait for optional feedback before running the final gate.
 
 ## Phase 6-7: Outer Gate
 
 Follow `references/outer-gate.md`.
 
-1. 6a: build the LOCAL DIFF CONTEXT from `git diff {CYCLE_START_SHA}`. Empty diff -> record `SKIPPED - empty diff` and treat as APPROVE.
-2. 6b: run the `review-pr` skill in LOCAL DIFF MODE only if it is listed as available. Otherwise record `review-pr: SKIPPED (unavailable)`.
-3. 6b2: always run `omo-orchestrator:omo-review-work` on the same context.
-4. 6c: read the saved reports, append one entry to `CYCLE_LOG`. Never write a competing third review report.
-5. 6d: every gate that ran must clear; the stricter decides. Blocking findings from any gate feed the next cycle's Phase 2 as additional-fix directives.
-6. 6e: a blocking finding or unresolved evidence gap recurring across consecutive cycles -> `omo-oracle` consult before the next fix pass.
+1. 6a: build the LOCAL DIFF CONTEXT from the persistent `CYCLE_START_SHA`, including untracked files and current evidence. An empty diff still requires the final independent gate.
+2. 6b: run `review-pr` in LOCAL DIFF MODE only if available; otherwise record its skip.
+3. 6b2: always run `omo-orchestrator:omo-review-work` on that context.
+4. 6c: save reports and append their paths and outcomes to `CYCLE_LOG` and the controlling `LEDGER`.
+5. 6d: every executed gate must clear, and `omo-review-work` must explicitly return `APPROVE`. Findings go to Ralph for the next iteration; unavailable evidence pauses.
+6. 6e: recurring findings use the same Ralph blocker history and oracle consultation, not another loop.
 
-Outer loop max 3 cycles. Without approval, Phase 7 reports `MAX_CYCLES_REACHED`. Phase 7 is presented in the response, not saved as a new review file.
+Phase 7 reports `APPROVE`, `MAX_ITERATIONS_REACHED`, or the exact blocked/stuck state. Approval requires fresh independent evidence for the final tree.
 
 ## Stop Conditions
 
-- Inner loop: 5 iterations per cycle (fresh budget after Phase 5 feedback).
-- Outer loop: 3 cycles. An oracle consult never buys an extra cycle.
-- Phase 3.5 FAIL: 3 fix returns.
-- Pause for the user: any `ASK_USER`, an `INCONCLUSIVE` needing access or a decision the loop lacks, an oracle escalation row, or a required tool failing after one bounded follow-up. A pause does not consume a cycle.
-- Only an `APPROVE` Phase 6 decision (or an `ORACLE_OVERRIDE` recorded in `CYCLE_LOG`) completes the loop.
+- Ralph owns the single default 20-iteration cap and same-blocker three-iteration stop. Feedback, QA, oracle, and gate failures never reset it.
+- Pause for any `ASK_USER`, unavailable required evidence, oracle escalation, or required tool/lane failure after its bounded follow-up.
+- A pause does not reserve another iteration. Already dispatched work remains counted.
+- Only the final independent `APPROVE` completes the loop. Oracle advice, empty diffs, passing checks, and budget exhaustion cannot approve.
 
 ## Anti-Patterns
 
@@ -217,6 +207,6 @@ Outer loop max 3 cycles. Without approval, Phase 7 reports `MAX_CYCLES_REACHED`.
 | Filling a skipped lane with another model's output | CRITICAL |
 | SPEC has no Done when (implementer has no stop condition) | HIGH |
 | Fixing unrelated code during a fix pass | HIGH |
-| Exceeding 5 iterations or 3 cycles without reporting | HIGH |
+| Exceeding the recorded Ralph cap | HIGH |
 | Not running verification after fixes | HIGH |
-| Rewriting the implementation from scratch on an outer-cycle fix pass | HIGH |
+| Rewriting the implementation from scratch on a fix pass | HIGH |

@@ -4,11 +4,12 @@
 
 - Default cap: 20 iterations unless the user sets another number. Record the cap in the completion promise entry.
 - Never exceed the cap silently. On reaching it, append the remaining issues and the blocker, then stop without claiming completion.
-- The cap bounds the loop. The per-fix retry budget (one attempt plus two materially different retries) still applies to each individual blocker inside it.
+- All implementation, feedback, evidence, QA-repair, and final-gate re-review passes share this cap. No phase or entry skill grants extra iterations. A local tool/worker recovery limit may stop sooner, but never starts another implementation/review pass outside Ralph accounting.
+- Before a next pass, require `iteration < cap`, increment and append the reserved number, then dispatch. If the current pass approves at the cap, completion is allowed; otherwise record `MAX_ITERATIONS_REACHED` and stop. Only an explicit user grant may extend the cap.
 
 ## Stuck Detection
 
-Track each blocking error by `file:line` or exact message across iterations.
+Track each blocker by stable file and defect mechanism, or by the missing evidence requirement, across iterations and review stages. Lines and exact messages are evidence locators; changing their wording or location does not reset the streak. Findings that one fix would resolve share an identity.
 
 | Signal | Action |
 |---|---|

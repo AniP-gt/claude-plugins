@@ -15,7 +15,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | `omo-implementer` | Minimal verified implementation |
 | `omo-researcher` | Read-only codebase investigation |
 | `omo-librarian` | Read-only external library, upstream source, and dependency-history research with permalinks |
-| `omo-implement` + `omo-review` | Implement, consume planned QA, review, fix, re-review, and final-verify within the bounded retry budget |
+| `omo-ralph-loop` + `omo-implement` + `omo-review` | Ralph controls the shared budget; one implementation/fix pass consumes planned QA and returns evidence for independent review and final verification |
 | `omo-review` | PR-style evidence-first review gate with `APPROVE` / `REQUEST_CHANGES` / `INCONCLUSIVE` |
 | `omo-get-unpublished-changes` + `omo-pre-publish-review` | Diff-based release impact analysis and publish-readiness gate |
 | `omo-work-with-pr` | Issue understanding, implementation, review response, validation, and handoff |
@@ -37,7 +37,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 - Avoid duplicate work once a specialist owns a search area.
 - Keep state explicit and portable.
 - Prefer small verified changes over broad rewrites.
-- Route blocking review findings back into implementation, then re-review within the bounded retry budget.
+- Route blocking review findings to the active `omo-ralph-loop`; reserve the next shared iteration before implementation repair and re-review. Reuse its task ledger, cap, blocker history, and resume state across entry skills.
 - Use final approval gates for mergeable or user-visible changes.
 - Treat release, PR, and security work as separate gates with stronger evidence requirements than ordinary implementation summaries.
 - Make continuation visible through a ledger or handoff; hidden memory is not a valid state store.
@@ -46,8 +46,8 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 - Consume executable QA scenarios from the approved plan during implementation and final verification. Preserve the tool, steps, assertion, and evidence location for each executed scenario.
 - Use `omo-plan-reviewer` for bounded plan executability review. It approves with `OKAY` unless verified blockers require `REJECT`; it does not replace `omo-reviewer` or its implementation-review lifecycle.
 - Keep failed evidence. Invalidate validation evidence only when a changed prerequisite actually affects it.
-- Use one initial attempt plus at most two materially different retries. Valid changes include revisiting a dependency, reducing the change surface, using a different validation target, or consulting an independent reviewer. An unchanged command rerun is not a new approach.
-- Before claiming completion, re-read the original user request and constraints. After the retry budget is exhausted, record attempts and the blocker, then stop without claiming success.
+- Limit local command/tool recovery to one initial attempt plus at most two materially different retries. An unchanged command rerun is not a new approach. Recovery cannot dispatch another implementation/review pass outside Ralph accounting.
+- Before claiming completion, re-read the original user request and constraints. Ralph alone determines implementation/review cap exhaustion and stuck stops; record attempts and the blocker without claiming success. A local tool recovery stop may happen sooner and never resets Ralph's budget.
 
 ## Claude Code Translation Notes
 

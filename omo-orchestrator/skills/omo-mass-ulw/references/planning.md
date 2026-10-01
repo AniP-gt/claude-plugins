@@ -90,7 +90,7 @@ Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task
 - **Start-time storms.** If many tasks in one wave fail within seconds without doing work, the environment or tool is failing, not the prompts. Stop dispatching, fix the cause, then retry the failed set.
 - **Verify a completion claim before trusting it.** A task that returns a report saying it was blocked has not completed. Retry it.
 - **Abandon only when the goal is abandoned.** Record the reason in the ledger.
-- Retry budget: one initial attempt plus at most two materially different retries per task, then stop and surface the blocker.
+- For implementation/review tasks, every repair redispatch above first returns to `omo-ralph-loop` to reserve the next shared iteration; there is no separate task retry cap. Local command recovery and one missing-output follow-up stay within the current pass and never authorize an additional work pass. Research-only task retries follow the research workflow's convergence rules.
 
 ## Mass Research
 

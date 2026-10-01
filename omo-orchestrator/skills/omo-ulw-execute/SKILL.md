@@ -43,14 +43,14 @@ Do all of this before the first dispatch.
 
 1. **Goal.** Record a detailed objective: plan path, concrete end state, wave and task counts, delivery mode (local changes only unless the user asked for more), and how completion is verified.
 2. **Todos.** Mirror the plan into TodoWrite: one item per top-level task (column-zero checkbox or task row), plus the final verification wave. Register every item up front. Use the format `path: <action> for <task-id> - verify by <check>`.
-3. **Ledger.** Create or reconcile `.claude/omo/handoffs/<task-slug>.md` per `omo-handoff`. Append a kickoff entry with the goal, plan path, waves, owners, dependencies, evidence targets, risks, and first exact action. If the ledger exists, read it fully and resume from its latest next exact action.
+3. **Ledger.** Initialize or reuse `omo-ralph-loop` as the sole iteration controller for this TASK_ID (default total cap 20). Preserve its count, cap, blocker history, and review base across every wave, repair, and final gate. Apply its blocked/legacy resume checks before dispatch. Create or reconcile `.claude/omo/handoffs/<task-slug>.md` per `omo-handoff`. Append a kickoff entry with the goal, plan path, waves, owners, dependencies, evidence targets, risks, and first exact action. If the ledger exists, read it fully and resume from its latest next exact action.
 4. **Keep them in sync.** Mark a todo `in_progress` when its work dispatches and `completed` only after verification passes. Never batch-complete. TodoWrite, plan checkboxes, and the latest ledger entry must tell the same story at every boundary (dispatch, verify, review, stop).
 5. **Discovered work.** A pre-existing bug, failing test, stale doc, or wrong guidance found mid-run is recorded in the ledger, assessed against the plan scope, and either added as a plan task and todo before it runs, or explicitly deferred with a reason. Workers report out-of-scope defects; only the orchestrator adds and dispatches them.
 
 ## Phase 3: Execute The Next Wave
 
 1. Re-read the full plan. Find the first wave with unfinished tasks. Ignore nested checkboxes under acceptance criteria, evidence, or definition-of-done sections.
-2. Record the wave goal (its tasks and their acceptance criteria) as a ledger entry before its first dispatch.
+2. Have Ralph reserve the next iteration before the wave's work pass, or resume its already-reserved interrupted phase. Record the wave goal, iteration/cap, tasks, and acceptance criteria in the ledger. All independent tasks in that pass share its iteration; any repair after verification starts the next iteration.
 3. Classify each task `LIGHT` (narrow change inside existing layers) or `HEAVY` (new module or abstraction, auth or security, external integration, schema or migration, concurrency, cross-domain refactor, or the plan asks for care). When unsure, take `HEAVY`. Upgrade the moment a `HEAVY` fact surfaces; never downgrade.
 4. Decompose each task into atomic sub-tasks sized for one worker in one run. A sub-task that would need mid-flight steering is two sub-tasks.
 5. Dispatch every independent sub-task in the wave in one message with multiple `Task` calls. Dependent sub-tasks wait for their predecessor's verified result.
@@ -133,7 +133,7 @@ repro: <exact command or steps>
 - `confirmed` is the only pass. Every other verdict blocks the task.
 - The verifier must be independent of the executor. You may verify yourself only if you neither implemented nor materially rewrote that task, and only by reading and rerunning, never by editing.
 - The verifier probes the applicable adversarial classes, always including stale state, dirty worktree, and misleading success output when their triggers hold.
-- On a non-confirmed verdict: append the feedback to the ledger, reset the todo to `in_progress`, and re-dispatch the executor with the exact failure. Use `omo-oracle` after two failed attempts on the same task.
+- On a non-confirmed verdict: append the feedback to the ledger, reset the todo to `in_progress`, and return the exact failure to Ralph for the next scoped repair iteration. Use its shared blocker history and oracle/stuck rules; do not create a task-local review loop.
 
 Each task passes five gates before it closes: plan reread against acceptance criteria, automated verification, manual QA artifact, adversarial probes, and cleanup receipts.
 
@@ -153,8 +153,8 @@ When every task and the final verification wave are done:
 1. Dispatch a worker to run the plan's final verification commands and the full scenario list against the final tree.
 2. Run `omo-review-work` on the full diff with the goal, plan, QA matrix, and ledger. It launches one fresh independent reviewer and returns exactly one outcome:
    - `APPROVE`: the sole completion state.
-   - `REQUEST_CHANGES`: append the findings to the ledger, add each as a bounded fix task and todo, execute and verify it through Phases 3 to 5, then re-run this gate with a fresh reviewer. At most two re-review rounds.
-   - `INCONCLUSIVE`: append the missing evidence and why it is unavailable. Obtain it and re-run, or stop with the blocker recorded.
+   - `REQUEST_CHANGES`: append the findings to the ledger, add each as a bounded fix task and todo, execute and verify it through Phases 3 to 5, then re-run this gate with a fresh reviewer. Each fix/re-review pass is the next iteration of the same Ralph state and remaining cap; no separate gate retry budget.
+   - `INCONCLUSIVE`: append the missing evidence and why it is unavailable. Return accessible evidence work to Ralph for the next iteration, or stop with the unavailable evidence blocker recorded.
 3. On `APPROVE`, append the final ledger entry and print:
 
 ```text
@@ -179,8 +179,7 @@ Stop, append a ledger entry with the blocker and one exact next action, and surf
 
 - A blocker needs an owner decision, credentials, or external approval.
 - A required dependency or tool stays unavailable after one bounded follow-up.
-- The same confirmed blocker survives two fix attempts and an `omo-oracle` consult.
-- `REQUEST_CHANGES` findings remain after two re-review rounds.
+- Ralph stops for the same blocker in three consecutive iterations or exhaustion of its shared cap. Oracle consultation and final-gate retries never reset either count.
 - The plan is wrong or contradicted by the code in a way that changes scope; return to `omo-plan` instead of improvising.
 
 Everything else is not a stop: keep executing.

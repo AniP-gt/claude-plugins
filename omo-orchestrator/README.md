@@ -17,12 +17,12 @@ Restart Claude Code after installation.
 
 - `omo-orchestrate`: main workflow for complex multi-step work.
 - `omo-plan`: file-level planning with an approval brief before the executable plan, dependency matrix, QA scenarios, blockers, and verification commands. Approval writes the plan only. It does not authorize implementation.
-- `omo-implement`: planned implementation with exploration, minimal edits, review-fix iteration, real-surface QA, and validation.
+- `omo-implement`: one scoped implementation/fix pass with exploration, minimal edits, real-surface QA, and validation; further passes belong to Ralph.
 - `omo-research`: read-only local/codebase research workflow.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
 - `omo-hyperplan`: adversarial planning for hard, risky, or ambiguous work.
-- `omo-ralph-loop`: manual continuation loop for iterative fix, review, validation, and handoff.
+- `omo-ralph-loop`: sole manual continuation controller for implementation, repair, review, validation, and handoff; one shared default budget of 20 iterations.
 - `omo-handoff`: manual durable handoff workflow for a task-linked append-only phase ledger.
 
 ## Specialized Skills
@@ -52,7 +52,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`.
 - `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
 - `omo-frontend`: UI and UX work plus the design-system workflow (analyze the existing system, build tokens if missing, implement through `omo-implementer` with a token-level brief, verify with `omo-visual-qa`). Merges the former personal `frontend-ui-ux` and `visual-engineering` skills with portable ideas from upstream `frontend`.
-- `omo-review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and an outer `omo-review-work` gate (plus the optional `review-pr` skill) decides each cycle. Max 5 inner iterations and 3 outer cycles. Rebuilt from the personal `implementation-review-loop` skill.
+- `omo-review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and the final `omo-review-work` gate (plus the optional `review-pr` skill) returns a verdict to Ralph. All implementation, feedback, QA repair, and gate retries share Ralph's default 20-iteration budget; only independent final APPROVE completes the task. Rebuilt from the personal `implementation-review-loop` skill.
 - `omo-lsp-setup`: detects which language servers a project needs, proposes install commands, wires a Claude Code LSP plugin, and verifies the server answers. Never installs without asking. Ported from upstream `lsp-setup`.
 
 ## OMO Init Deep
@@ -106,6 +106,8 @@ Version 1.4.0 folds the owner's former personal skills and agents into existing 
 - `omo-handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
 - `omo-get-unpublished-changes`, `omo-pre-publish-review`: baseline detection per ecosystem, report template, and three-layer parallel release review.
 - `omo-remove-ai-slop`, `omo-programming`: comment pattern catalog and modular-code defaults that yield to project conventions.
+
+Version 1.6.0 unifies implementation/review continuation under `omo-ralph-loop`: one global iteration count, preserved resume state, and mandatory independent approval even for empty diffs or oracle disputes. Existing review artifact names remain readable; exhausted legacy runs require an explicit budget grant before continuing.
 
 Version 1.5.0 continues this: `omo-frontend` is new, `omo-plan` gains a single-task task-file format (`references/task-file.md`), `omo-orchestrate` gains discovery of other agents' rule files (`references/project-rules.md`), and `omo-review-loop` checks earlier run artifacts before resuming, so a loop that stopped on a blocker is never resumed silently. A second hook, `hooks/json-error-recovery.mjs` (PostToolUse and PostToolUseFailure), tells Claude to fix malformed JSON tool arguments and retry once instead of repeating the same call.
 
@@ -230,7 +232,7 @@ Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI be
 
 Background agents are advisory, not blocking. Wait for one bounded follow-up when a delegated agent stalls, returns no usable output, or repeats the same result. If it still does not produce usable evidence, continue with available findings, record the agent as stalled or blocked, and escalate only when the missing evidence is critical.
 
-For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. The mandatory final gate returns `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Only `APPROVE` permits completion. `REQUEST_CHANGES` feeds a bounded fix and re-review; `INCONCLUSIVE` blocks completion until the missing evidence or decision is recorded and resolved.
+For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. Initialize or reuse `/omo-ralph-loop` as the sole implementation/review controller; every repair pass reserves the next shared iteration before editing. The mandatory final gate returns `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Only `APPROVE` permits completion. `REQUEST_CHANGES` returns to the same Ralph budget for a fix and re-review; `INCONCLUSIVE` blocks completion until the missing evidence or decision is recorded and resolved. Bounded local tool recovery never grants another implementation/review budget.
 
 For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publish-review`, then use `/omo-work-with-pr` to prepare a local handoff or reviewer-response artifact. GitHub changes and every publish, push, merge, or remote comment are outside these content-only skills and require an external operator with explicit permission for the specific action.
 

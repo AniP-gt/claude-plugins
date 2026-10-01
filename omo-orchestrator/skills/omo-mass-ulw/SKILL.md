@@ -12,6 +12,8 @@ Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw`. 
 
 Use it when real dependencies exist: task C needs A and B finished first. For fully independent work, plain parallel agent calls under `omo-ultrawork` are simpler. A graph with two tasks and no edge between them is not a graph.
 
+Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
+
 ## Planning First
 
 Before defining any task, read [planning.md](references/planning.md) in full. It holds the decomposition doctrine, owner routing, write-scope rules, the task prompt contract, the verification wave, and the failure playbook. A graph built without it is unplanned work.
@@ -70,7 +72,7 @@ A failed task blocks only its dependents. Completed and verified tasks are never
 | Many tasks in a wave fail at start within seconds | Environment or tool failure, not the prompts. Stop dispatching, fix the cause, retry the failed set. |
 | Retry budget spent | Record every attempt in the ledger, stop, and surface the blocker. |
 
-Retry budget per task: one initial attempt plus at most two materially different retries (changed prompt, reduced scope, different validation target, or `omo-oracle` consult). Re-sending an unchanged prompt is not a retry. Elapsed time alone never justifies abandoning a running task.
+Every implementation repair or renewed review dispatch must reserve the next iteration in the same Ralph ledger before work starts. There is no separate per-task implementation retry cap. Bounded local tool recovery and one missing-output follow-up remain available within the current pass; neither authorizes another work pass or resets the shared budget. Elapsed time alone never justifies abandoning a running task.
 
 ## Verification Wave
 
@@ -83,10 +85,10 @@ Then run the `omo-ultrawork` manual QA table on the real surface and re-read the
 Spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, and ledger path. Outcomes:
 
 - `APPROVE`: the only state that permits reporting done.
-- `REQUEST_CHANGES`: each criterion-cited blocker becomes a new graph task with its own dependencies and success check. Run it, re-verify affected tasks, and re-submit only the delta to the same reviewer (at most twice).
+- `REQUEST_CHANGES`: each criterion-cited blocker becomes a new graph task with its own dependencies and success check. Return it to Ralph for the next repair iteration, re-verify affected tasks, and submit the task-wide diff and current evidence to a fresh independent reviewer.
 - `INCONCLUSIVE`: name the missing evidence, add the task that produces it, and block completion until it exists.
 
-If blockers remain after two re-reviews, stop and surface them to the user.
+Return every repair/re-review pass to the active `omo-ralph-loop` ledger and shared remaining budget. Ralph alone decides cap exhaustion and stuck stops; no separate final-gate retry budget.
 
 ## Report
 
