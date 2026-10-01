@@ -13,15 +13,18 @@ Before reporting a finding, understand each changed file's role and verify uncer
 
 Treat review as an evidence gate. A blocking finding needs concrete proof, not a vibe.
 
-For a final-gate review, require real-surface QA evidence from the final tree. Audit the QA matrix for the named happy path, riskiest applicable edge, regression coverage, and artifact-backed assertions. A fix requires fresh QA evidence and a fresh independent final-gate review; missing or stalled evidence is `INCONCLUSIVE`. For mid-work blocker analysis, review the available evidence and state what remains unproven without requiring final-tree QA.
+For a final-gate review, require real-surface QA evidence from the final tree. Audit the QA matrix for the named happy path, riskiest applicable edge, regression coverage, and artifact-backed assertions. A fix requires fresh QA evidence and a fresh independent final-gate review; missing or stalled evidence is `INCONCLUSIVE` when no blocking finding is confirmed and the gap could hide one. When confirmed blocking findings coexist with evidence gaps, the decision is `REQUEST_CHANGES`; list the gaps under missing validation. For mid-work blocker analysis, review the available evidence and state what remains unproven without requiring final-tree QA. A review of someone else's PR or patch without access to the final tree counts as mid-work analysis; list the QA you could not see under missing validation.
 
 ## Checklist
 
 - Security first: input validation, injection, authentication and authorization, secret and sensitive data handling, crypto use, vulnerable dependencies.
 - Correctness: logic, error handling, edge and boundary cases, resource management, race conditions.
+- Blast radius: moving a rule into a shared component also changes callers outside the diff, so list every caller and confirm surprising ones from history; a changed error type or detection scope (what is caught, reported, or grouped) is a user-visible behavior change that the change description must disclose.
 - Performance: algorithmic cost, database queries, memory and CPU use, caching, async patterns, leaks.
 - Design: coupling and cohesion, duplication, abstraction level, pattern fit.
+- Invariant ownership: a rule that a class depends on is enforced at that class's entry point (fail fast), not handed to callers as a mixin, an overridable hook, or a second call they must remember to pair with the first; each caller may still choose how to react to a violation.
 - Tests: coverage of changed behavior, edge cases, isolation, mock realism.
+- Test-double realism: stubbing a contract method to always fail hides whether the code actually calls it and in what order; at least one case uses the real collaborator and stubs only external boundaries.
 
 ## Review Output
 

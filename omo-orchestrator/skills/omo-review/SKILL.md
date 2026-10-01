@@ -16,12 +16,15 @@ Use this skill before handing off changes that touch 2+ files, public/API/CLI be
 - Security and privacy risk.
 - Robustness and edge cases.
 - Code quality and maintainability.
+- Invariant ownership: a class's own rule is enforced at its entry point, not distributed to callers as a mixin, override hook, or paired call; callers may differ only in how they react to a violation.
 - Test and validation coverage.
+- Test-double realism: a contract method stubbed to always fail leaves the call wiring and order unverified; require one case with the real collaborator and only external boundaries stubbed.
 - Scope creep and unrelated changes.
 - Domain scope filtering: ignore incidental AI harness, bot, generated-analysis, or review-tool noise unless the task explicitly changes that tooling.
 - File understanding: identify each changed file's role and local change before judging it.
 - Pre-finding verification: check existing patterns, contracts, callers, or tests before flagging uncertain issues.
-- Behavior parity: when replacing behavior, verify whether differences are intentional and safe.
+- Behavior parity: when replacing behavior, verify whether differences are intentional and safe. A changed error type, error grouping, or detection scope is a behavior difference to disclose.
+- Blast radius: when a rule moves into a shared component, list every caller, including those outside the diff, and check history before calling an odd one a scope expansion.
 - Lifecycle checks: for jobs, schedulers, retries, recovery, admin data, imports, exports, and manual correction flows, model repeated execution cycles.
 - Release checks: when the change is publish-facing, verify version metadata, package contents, docs, migration notes, and unpublished-change impact.
 - Security checks: distinguish confirmed vulnerabilities from hardening notes by proving source, sink, attacker control, preconditions, and impact.
@@ -41,7 +44,7 @@ Before recording a blocking finding, follow this sequence:
 1. State the suspected behavior or contract and the changed code that could affect it.
 2. Check the relevant implementation, callers or callees, existing tests, and applicable project contract.
 3. Determine whether the concern is confirmed, disproved, or still missing evidence.
-4. Record confirmed findings with the proof; record disproved concerns as verified non-issues; record missing proof as an evidence gap, not a blocking finding.
+4. Record confirmed findings with the proof; record disproved concerns as verified non-issues; record missing proof as an evidence gap, not a blocking finding. A contract stated only in documentation counts as a contract break when a caller visible in the evidence violates it.
 
 ## Report Contract
 
@@ -57,6 +60,8 @@ Before recording a blocking finding, follow this sequence:
 
 Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 
+Severity mapping with `omo-reviewer`: Critical is blocking; Major is blocking only when it meets the line above, otherwise a warning; Minor is a warning. Label each finding with the reviewer scale; the blocking/warning split follows from it.
+
 Do not convert every checklist item into a finding. A finding must be actionable, applicable, and proportional to the risk.
 
 ## Final Outcome Rules
@@ -65,6 +70,8 @@ Do not convert every checklist item into a finding. A finding must be actionable
 - `REQUEST_CHANGES` requires confirmed findings. Append the outcome and evidence to the handoff ledger, then route only the affected area through a bounded targeted fix, affected validation, and re-review.
 - `INCONCLUSIVE` means required evidence is missing, unavailable, or untrustworthy. It blocks completion. Append the exact evidence gap, blocker, owner, and next action to the handoff ledger before obtaining the evidence or handing the blocker off.
 
-Append either non-approval outcome to the handoff ledger before retrying or stopping.
+Append either non-approval outcome to the handoff ledger before retrying or stopping. If no ledger exists and the caller forbids creating files, put the same entry in the reply instead.
+
+When confirmed blocking findings and evidence gaps coexist, the decision is `REQUEST_CHANGES`; list the gaps under Missing validation. `INCONCLUSIVE` is for the case where no blocking finding is confirmed and a gap could hide one.
 
 Do not approve because a review found no issue by inspection alone. Cite the validation, QA, dependency, retry, and scope evidence that supports approval.
