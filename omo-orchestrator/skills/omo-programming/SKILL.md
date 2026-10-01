@@ -20,6 +20,8 @@ Use this skill when writing or editing production code.
 - Run real diagnostics and real tests when the project supports them.
 - Record evidence for each claim: changed files, diagnostics, tests, builds, or manual QA.
 - Use reference checks before deleting code, exports, commands, plugin metadata, or public docs.
+- Invariant ownership: enforce a rule at the entry point of the class that owns it (fail fast). Do not hand callers a mixin, an override hook, or a follow-up call they must remember; how to react to a violation (fail or report and skip) stays each caller's policy.
+- When a change tightens a precondition (for example, making an identifier required), find every direct and synchronous invocation path and every test helper that reaches the code, and check that no broad error handler swallows the new failure and leaves a test passing without exercising anything.
 - State the requested boundary explicitly: what was requested, which files or behaviors changed to satisfy it, and which adjacent work remained out of scope.
 
 ## Hard Rules

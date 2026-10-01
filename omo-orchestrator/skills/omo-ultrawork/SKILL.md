@@ -107,6 +107,7 @@ Build exit 0, full suite green, and clean diagnostics are supporting evidence, n
 | Changes UI or a TUI layout | Use `omo-visual-qa` on the rendered surface |
 | Adds a tool, hook, or feature | Exercise it end-to-end in a real scenario |
 | Modifies config handling | Load the config and verify it parses |
+| Touches a path with an external side effect (upload, outbound send, payment, write to a third party) | Do not trigger the real effect: replace the boundary in-process, drive the path with fixed fake data, and report the range that could not be verified |
 
 Name the exact tool and invocation with concrete inputs for every scenario. "This should work", "the types check out", and "tests pass" are not QA. Cleanup is part of QA: every spawned process, port, tmux session, browser context, container, or temp dir gets a teardown TODO that is executed before done.
 

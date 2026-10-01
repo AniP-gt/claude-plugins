@@ -15,7 +15,7 @@ Use this skill when the goal is structure, readability, or maintainability witho
 1. Define the refactor boundary and non-goals.
 2. Capture the baseline: relevant behavior, validation results, and pre-existing changes that must remain untouched.
 3. Lock behavior first with existing tests or added regression coverage.
-4. Inventory callers, callees, inputs, outputs, and side effects.
+4. Inventory callers, callees, inputs, outputs, and side effects. Include callers outside the requested scope that a moved rule will also reach, and check git history or commit messages before treating a caller whose behavior looks inverted as a scope expansion.
 5. Refactor in small reversible steps. For each meaningful step, record its exact file-level delta, intended behavior-preserving transformation, validation target, undo method, and last safe state so its delta can be undone without touching pre-existing changes.
 6. Re-run targeted validation after each meaningful step.
 7. If targeted validation fails, undo only the recorded current-step delta, preserve pre-existing changes, and record the failed check and last safe state. Retry at most once with a materially different approach only when the behavior lock, scope, and public contract remain sound. A materially different retry changes the transformation or its causal hypothesis, not merely naming, ordering, formatting, or the same edit applied again. If that retry fails or those conditions are not sound, abort.
@@ -26,6 +26,7 @@ Use this skill when the goal is structure, readability, or maintainability witho
 - Do not rename or reshape public contracts without a proven need.
 - Do not batch unrelated cleanups into the same change.
 - Do not remove coverage that protects current behavior.
+- Do not consolidate a class's own rule into a distributed mixin that callers must include. Extract a module or shared concern only when it neither depends on the host's state nor expects hook overrides, and it has more than one real user; otherwise enforce the rule in the owning class.
 - Abort before editing when the behavior lock or scope is unclear, or when the change would break a public contract.
 - Do not use broad destructive reset, checkout, or restore commands. Undo only the exact recorded current-step delta.
 
