@@ -37,7 +37,7 @@ Every planned task must include executable QA scenarios. Each scenario must stat
 - QA surface and tool, chosen for the deliverable: tests, manifest validation, direct content inspection, browser interaction, or command execution.
 - The exact command or concrete numbered steps to run.
 - Deterministic input, fixture, precondition, or target content when relevant.
-- The exact assertion that determines pass or fail.
+- The exact assertion that determines pass or fail. For prose, documentation, or prompts, assess semantic meaning and intended reader or agent behavior, not exact phrases, wording, or counts.
 - The evidence location, such as command output, test result, screenshot path, inspected file and section, or generated artifact.
 
 Include at least one happy-path scenario and one edge or failure-path scenario when applicable. Use TDD-oriented sequencing: before editing, identify the failing behavioral check or validation target; after implementation, capture passing evidence at the stated location.

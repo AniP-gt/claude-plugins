@@ -21,9 +21,9 @@ For a final-gate review, require real-surface QA evidence from the final tree. A
 - Correctness: logic, error handling, edge and boundary cases, resource management, race conditions.
 - Blast radius: moving a rule into a shared component also changes callers outside the diff, so list every caller and confirm surprising ones from history; a changed error type or detection scope (what is caught, reported, or grouped) is a user-visible behavior change that the change description must disclose.
 - Performance: algorithmic cost, database queries, memory and CPU use, caching, async patterns, leaks.
-- Design: coupling and cohesion, duplication, abstraction level, pattern fit.
+- Design: coupling and cohesion, duplication, abstraction level, pattern fit. Flag unnecessary production parsing or abstractions that do not serve the current contract.
 - Invariant ownership: a rule that a class depends on is enforced at that class's entry point (fail fast), not handed to callers as a mixin, an overridable hook, or a second call they must remember to pair with the first; each caller may still choose how to react to a violation.
-- Tests: coverage of changed behavior, edge cases, isolation, mock realism.
+- Tests: coverage of changed behavior, edge cases, isolation, mock realism. Check for deletion-only tests, tautological tests, and tests that mirror the implementation rather than proving the promised behavior.
 - Test-double realism: stubbing a contract method to always fail hides whether the code actually calls it and in what order; at least one case uses the real collaborator and stubs only external boundaries.
 
 ## Review Output
@@ -36,5 +36,6 @@ For a final-gate review, require real-surface QA evidence from the final tree. A
 - Scope creep or unrelated changes.
 - Residual risks if no findings are found.
 - Stalled or unavailable evidence, clearly separated from confirmed findings.
+- Requested review skills that were unavailable, clearly disclosed without claiming they ran.
 
 Do not rewrite code during review. Recommend minimal fixes for confirmed issues. Only `APPROVE` permits completion. `REQUEST_CHANGES` and `INCONCLUSIVE` block it. If the same review blocker repeats without new evidence, stop and report the repeated blocker instead of asking for another review loop.

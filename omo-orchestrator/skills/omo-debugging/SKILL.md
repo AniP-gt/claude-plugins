@@ -16,7 +16,7 @@ Use this skill for real bugs, crashes, wrong output, flaky behavior, or unexplai
 2. State at least three plausible hypotheses.
 3. Gather evidence that eliminates or strengthens each hypothesis.
 4. Prove the root cause before changing code.
-5. Add or identify a failing test or validation target when the project supports it.
+5. Before applying a fix, observe an existing owner test or one regression or validation target fail on the pre-fix code when the project supports such checks.
 6. Apply the smallest fix that removes the proven cause.
 7. Re-run the reproduction and related validation.
 

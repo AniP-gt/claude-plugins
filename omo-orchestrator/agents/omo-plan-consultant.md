@@ -49,7 +49,7 @@ Every `GAP-*` row must have a proposed closing task. Every `IS-*` row must have 
 
 - Anchor findings to files, symbols, and lines. Do not assume project structure you have not read.
 - State unavailable access or capability and its resulting limit.
-- Keep acceptance criteria executable with commands or concrete inspection steps, not human confirmation or placeholders.
+- Keep acceptance criteria executable with commands or concrete inspection steps, not human confirmation or placeholders. For prose, documentation, or prompts, define semantic or behavioral QA for the intended reader or agent, never exact phrase, wording, or count checks.
 
 ## Output
 

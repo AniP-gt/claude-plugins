@@ -78,7 +78,7 @@ For an expressive brief, sketch 2 to 3 genuinely different directions and pick t
 
 1. **Token audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing).
 2. **Consistency checklist.** Every color is a token. Every spacing value is on the scale. Every component follows the existing composition pattern. Every interactive element has hover, active, focus-visible, and disabled states. Zero magic numbers for visual properties. Any NO means not done.
-3. **Rendered QA.** Run `omo-visual-qa` on the real rendered surface at 375, 768, and 1280 px (or the project's breakpoints), with interaction states, motion, reduced motion, and content stress driven. Use reference-fidelity comparison when a reference exists.
+3. **Rendered QA handoff.** Give `omo-visual-qa` the complete route, state, reference, project-requirement, and content-stress list. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison when a reference exists.
 4. **Flatness check.** A bug-free render that reads generic next to the direction is still a failure. Raise the design (material, color ramp, type moment, the signature) and re-run QA on fresh evidence.
 
 Report done only when `omo-visual-qa` returns `APPROVE` on evidence captured after the final edit. `INCONCLUSIVE` is not done; report the missing surface or tool and the next action.
