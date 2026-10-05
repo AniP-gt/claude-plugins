@@ -29,12 +29,22 @@ function responseText(toolResponse) {
   }
 }
 
+// A successful call's response often echoes file contents, prompts, or transcripts that merely quote these
+// error strings (an Edit of this README, a sub-agent launch). On PostToolUse, scan only responses shaped
+// like an error; PostToolUseFailure is always a failure.
+function isErrorShaped(toolResponse) {
+  if (typeof toolResponse === "string") return true;
+  if (typeof toolResponse !== "object" || toolResponse === null) return false;
+  return toolResponse.is_error === true || toolResponse.isError === true || typeof toolResponse.error === "string";
+}
+
 export function run(input) {
   if (typeof input !== "object" || input === null) return "";
   const event = input.hook_event_name ?? "PostToolUse";
   if (event !== "PostToolUse" && event !== "PostToolUseFailure") return "";
   const toolName = typeof input.tool_name === "string" ? input.tool_name.toLowerCase() : "";
   if (SKIP_TOOLS.has(toolName)) return "";
+  if (event === "PostToolUse" && !isErrorShaped(input.tool_response) && input.error === undefined) return "";
   const text = `${responseText(input.tool_response)}\n${responseText(input.error)}`.slice(0, MAX_SCAN_CHARS).trim();
   if (text.length === 0 || text.includes(MARKER) || !ERROR_PATTERN.test(text)) return "";
   const output = {
