@@ -21,6 +21,18 @@ Use this skill to prepare PR artifacts: reviewable changes, a summary or respons
 7. Feed confirmed blockers into a fix pass and re-run affected checks.
 8. Prepare the PR summary or reviewer response with what changed, why, validation, residual risks, and any unavailable check evidence.
 
+## Follow-Up Changes on an Existing PR
+
+Review responses, conflict resolution, and refactors added after the PR was opened usually bypass the implement-review loop. Before calling such a change done, run these on the cumulative branch diff (`git diff <base>...HEAD` plus uncommitted work), not only on the latest fix:
+
+1. Re-run the PR-style review from step 6, even for a one-line fix.
+2. Compare the current PR body with the cumulative diff and draft an updated body when any of these hold:
+   - A changed file or behavior is not explained. When files outside the component named in the title changed, say why they had to change.
+   - A statement became stale after the follow-up (method names, notification destinations, conditions, limits).
+   - An out-of-scope item or known limitation is listed without saying whether the user-visible behavior the PR protects (an alert, a report, an API response) still works. Write it so a reader cannot conclude the PR silently drops that behavior.
+3. Re-check docs that describe the changed behavior.
+4. Add a real-surface check (a local run of the job, endpoint, or flow) when the follow-up changed runtime behavior; tests alone do not cover it.
+
 ## Hard Rules
 
 - Do not mix unrelated fixes into a PR lifecycle task.
@@ -29,6 +41,7 @@ Use this skill to prepare PR artifacts: reviewable changes, a summary or respons
 - Treat remote check status as unverified unless its artifact is available in the current session. Record the source and time of any observed status.
 - If a required remote check is unreadable, return `INCONCLUSIVE` and keep the PR not-ready. Name the exact missing check artifact and operator handoff needed to obtain it.
 - Do not answer review feedback without checking the code or diff that triggered it.
+- Reply and write artifacts in the user's conversation language, even when the skill text, the delegated request, PR data, or tool output is in another language.
 
 ## Untrusted Data Boundary
 
