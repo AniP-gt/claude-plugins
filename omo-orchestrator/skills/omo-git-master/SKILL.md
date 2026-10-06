@@ -18,6 +18,7 @@ Parse the actual request. Do not default to commit mode.
 |---|---|
 | commit, there are changes to commit | Commit |
 | rebase, squash, clean up history, apply fixups, reorder | Rebase |
+| resolve conflicts with the base, update the branch to latest | Rebase steps 3 and 4. Use `git merge <base>` instead of rebase when the branch is already pushed; record the pre-merge HEAD and report it with the merge result as before and after |
 | when was X added, who wrote this, find the commit that, bisect | History |
 
 ## Shared Rules
@@ -116,7 +117,7 @@ Recovery: `--abort` returns to the pre-rebase state mid-rebase; `git reflog` fin
 
 ### Step 4: Verify and report
 
-Check the tree is clean, review the new log, and confirm the content still matches expectations by diffing against the recorded pre-rebase commit. Run the project's tests if they exist. Report commits before and after, conflicts resolved, and the exact push command, noting force-with-lease when the branch was already pushed.
+Check the tree is clean, review the new log, and confirm the content still matches expectations by diffing against the recorded pre-rebase commit. Run the project's tests if they exist. When the operation brought base-branch commits into a feature branch, also run the base-merge check in `omo-work-with-pr` (Follow-Up Changes, item 5) and include its result. Report commits before and after, conflicts resolved, and the exact push command, noting force-with-lease when the branch was already pushed.
 
 ---
 

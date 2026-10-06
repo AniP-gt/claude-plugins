@@ -115,6 +115,13 @@ Special lines: `- **Diff**: empty; mandatory independent final gate still requir
 ```markdown
 ## Final Review Gate Summary
 
+### What Was Done and Why
+Write this section first, in the user's language, so the user does not have to ask for it.
+- Purpose: the problem that was happening and who it affected.
+- Intent: the main design choices, each with the alternative that was rejected and why.
+- Outcome: verified facts only, with numbers where they exist (real-surface runs, query counts, timings, tests added, coverage). Leave out anything not verified.
+- Remaining: what this change does not do, and the effect of leaving it.
+
 ### Ralph Gate History
 | Artifact alias | Ralph iteration | review-pr | omo-review-work | Phase 6 decision | Blocking | Output paths |
 |---|---|---|---|---|---|---|

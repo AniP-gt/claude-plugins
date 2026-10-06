@@ -34,6 +34,7 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 
 ## Final Report
 
+- Purpose, intent, and outcome first: the problem being fixed and who it affected; the main design choices with the rejected alternative for each; verified results with numbers where they exist.
 - What was implemented and the files touched.
 - Validation commands run and their results.
 - Assumptions made and unresolved issues or blockers.

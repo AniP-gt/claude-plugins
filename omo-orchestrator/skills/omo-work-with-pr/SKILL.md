@@ -26,12 +26,16 @@ Use this skill to prepare PR artifacts: reviewable changes, a summary or respons
 Review responses, conflict resolution, and refactors added after the PR was opened usually bypass the implement-review loop. Before calling such a change done, run these on the cumulative branch diff (`git diff <base>...HEAD` plus uncommitted work), not only on the latest fix:
 
 1. Re-run the PR-style review from step 6, even for a one-line fix.
-2. Compare the current PR body with the cumulative diff and draft an updated body when any of these hold:
+2. Compare the current PR body with the cumulative diff and draft an updated body when any of these hold (if the body cannot be read, say so and draft only the additions):
    - A changed file or behavior is not explained. When files outside the component named in the title changed, say why they had to change.
    - A statement became stale after the follow-up (method names, notification destinations, conditions, limits).
    - An out-of-scope item or known limitation is listed without saying whether the user-visible behavior the PR protects (an alert, a report, an API response) still works. Write it so a reader cannot conclude the PR silently drops that behavior.
 3. Re-check docs that describe the changed behavior.
 4. Add a real-surface check (a local run of the job, endpoint, or flow) when the follow-up changed runtime behavior; tests alone do not cover it.
+5. When the follow-up merged or rebased the base branch (a conflict fix or an update to latest), do not stop once the markers are gone. Diff what came in from the base (`git diff <pre-merge HEAD>...<merged base commit>`) and check two things against the branch's own changes:
+   - Shared code the base added or changed (a helper, base class, guard, notifier) that does the same job as code on the branch. Decide whether the branch should move onto it. If it should not, give the concrete reason (a different detection model, a call that would need extra arguments). If it should, say whether to do it in this PR or a follow-up issue, with a recommendation. Recommend only; move the code only when the user asked for that refactor.
+   - Docs and comments from the base that the branch now contradicts. Fix them in this PR.
+   Put the result in the done report as one line each: shared code brought in (name or none), adopt or not and why, docs fixed. Do this before the user asks.
 
 ## Hard Rules
 
