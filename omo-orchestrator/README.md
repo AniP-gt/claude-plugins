@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only apart from two small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger) and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. GitHub changes and every publish, push, merge, or remote comment are outside these skills. The skills prepare local artifacts and handoffs only; an external operator performs any such action with the required explicit permission.
+This plugin is content-only apart from two small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger) and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. Local Git operations are governed by `omo-git-master`. GitHub actions, including publish, push, PR merge, and remote comments, are outside these skills; an external operator performs them only with the required explicit permission. The skills prepare local artifacts and handoffs only.
 
 ## Install
 
@@ -106,6 +106,8 @@ Version 1.4.0 folds the owner's former personal skills and agents into existing 
 - `omo-handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
 - `omo-get-unpublished-changes`, `omo-pre-publish-review`: baseline detection per ecosystem, report template, and three-layer parallel release review.
 - `omo-remove-ai-slop`, `omo-programming`: comment pattern catalog and modular-code defaults that yield to project conventions.
+
+Version 1.10.1 makes base-update routing run the Git safety assessment before local merge and conflict handling, and clarifies that `omo-git-master` owns local Git work while an external operator handles remote GitHub actions.
 
 Version 1.10.0 makes PR follow-ups that bring in the base branch check what came with it. `omo-work-with-pr` diffs the merged base range for shared code that duplicates the branch's own logic (it recommends adopting it or not, with the reason, and does not move code unasked) and for base docs the branch now contradicts (fixed in the PR), and the done report states the result. `omo-git-master` routes conflict fixes and branch updates to its conflict steps and merges instead of rebasing once the branch is pushed. Final reports from `omo-implementer` and the `omo-review-loop` summary now open with the purpose, the design intent with rejected alternatives, and the verified outcome.
 
