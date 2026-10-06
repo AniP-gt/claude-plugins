@@ -57,6 +57,7 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 - Classify gaps as critical, minor, or ambiguous. Give each true blocker one precise question. Fix minor gaps and list them as auto-resolved; apply a default to ambiguous gaps and list it as a default the user can override.
 - Record `RISK_LEVEL` and its reason in the TL;DR, plus the applicable risk notes, per `references/rigorous-review.md`.
 - Spec check: list the cases the request leaves undefined (empty, boundary, duplicate, repeated or concurrent use, partial failure, each permission level, data that already exists) and contradictions between its sources, each with the chosen default or one owner question.
+- Exhaustive check: when the spec involves concurrent or ordered access to shared state, permission rules across roles and resource states, or interacting numeric constraints, add a task that checks every case within stated bounds (model check, exhaustive table test, or solver search) and turns counterexamples into regression tests, per `references/exhaustive-checks.md`. Do not add one for simple parts.
 - For work that modifies existing code, include a risk map: each modified unit with its visible callers, its hidden reach (indirect references, queued or scheduled work, persisted data, consumers outside the repository, environment settings, implicit contracts) marked found, none, or could not verify, the guardrail that covers it, and its business impact. Every row with impact and no guardrail gets a task or QA step; every could-not-verify row is a listed unknown.
 - Keep one plan; never split it. One task is one concern touching one to three files; split a task that touches four or more. Implementation and its tests are one task.
 - End with the F1 to F4 final verification wave from `references/rigorous-review.md`.
@@ -127,7 +128,7 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
    - Parallel execution waves.
    - Dependency matrix.
    - Affected users, `IS-*` ideal states, `GAP-*` rows, task closure, and per-task acceptance criteria and QA scenarios.
-   - `RISK_LEVEL`, risk notes, verification strategy, and the F1 to F4 final verification wave.
+   - `RISK_LEVEL`, risk notes, spec check, exhaustive-check decision (which parts get one and why the rest do not), risk map for modified code, verification strategy, and the F1 to F4 final verification wave.
    - Gap classification with auto-resolved gaps, applied defaults, and one question per blocker.
    - Plan review result: iterations, verdict, and remaining issues.
    - Escalation decision: normal plan, hyperplan, security research, or release review.

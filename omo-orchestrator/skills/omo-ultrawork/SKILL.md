@@ -17,7 +17,7 @@ Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse
 ## Bootstrap
 
 1. The first user-visible line is exactly `ULTRAWORK MODE ENABLED!`.
-2. Open with a binding `# Goal` block, written outcome-first: what will be TRUE when done (an outcome, never an activity), the named deliverable surfaces, the scenario contract as success criteria (binary observables that can fail), explicit scope bounds, and one line `I'll stop right away when <observable state>`. Never invent a budget or deadline the user did not state.
+2. Open with a binding `# Goal` block, written outcome-first: what will be TRUE when done (an outcome, never an activity), the named deliverable surfaces, the scenario contract as success criteria (binary observables that can fail), explicit scope bounds, and one line `I'll stop right away when <observable state>`. Never invent a budget or deadline the user did not state. When the goal is a quantity ("reduce", "faster", "fewer"), a criterion is a metric with command, baseline, and target, set up per `omo-ralph-loop` `references/iteration-guards.md` § Measured Goals.
 3. Survey the skills. Read the description of every skill even loosely relevant, decide which apply, and state the chosen skills and agents with a one-line reason each before acting. A matching skill that goes unused is a defect.
 
 ## Certainty Before Implementation

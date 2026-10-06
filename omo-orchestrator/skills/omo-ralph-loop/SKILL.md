@@ -22,7 +22,7 @@ When `omo-review-loop` is the entry, load this controller once and use that skil
 
 ## Loop Contract
 
-1. Define the completion promise in one sentence.
+1. Define the completion promise in one sentence. When a number can decide done, the promise names the metric command, baseline, and target per [measured goals](references/iteration-guards.md#measured-goals).
 2. Create or continue the visible state record at `.claude/omo/handoffs/<task-slug>.md`: current iteration, goal, blockers, changed files, validation, and next exact action. Initialize it with an append-only first entry only when no record exists.
 3. Before each iteration, confirm there is no unanswered decision or unresolved in-flight work required by or overlapping the next iteration, the owner and scope are clear, the current state was freshly read, and the validation evidence to collect during this iteration is named. From iteration 2 onward, assess material task-state progress as a changed task state, resolved blocker, or new validated evidence. Tool activity alone is not progress. Apply the warning, strategy-change, and stop thresholds in `references/iteration-guards.md` using the same ledger; do not introduce an earlier independent no-progress stop.
 4. Run one iteration: investigate, edit or delegate, validate, review if needed, and update the state record.
@@ -32,7 +32,7 @@ When `omo-review-loop` is the entry, load this controller once and use that skil
 8. If review returns `INCONCLUSIVE`, append the result to the handoff ledger and block completion until the required evidence is obtained or the exact blocker is handed off.
 9. Iteration exhaustion, a satisfied promise, passing checks, or lack of new findings is not completion without final independent `APPROVE`.
 
-Iteration cap (default 20), stuck detection (same error in 3 consecutive iterations stops the loop), the `omo-implementer` iteration brief, and per-task iteration shapes are in [iteration guards](references/iteration-guards.md).
+Iteration cap (default 20), measured goals, stuck detection (same error in 3 consecutive iterations stops the loop, an environment refusal stops it at once) with cause classification, the `omo-implementer` iteration brief, and per-task iteration shapes are in [iteration guards](references/iteration-guards.md).
 
 ## Recovery Contract
 
