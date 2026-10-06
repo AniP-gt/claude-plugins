@@ -82,7 +82,9 @@ Then run the `omo-ultrawork` manual QA table on the real surface and re-read the
 
 ## Final Review Gate
 
-Spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, and ledger path. Outcomes:
+Before this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (which skill runs: the plan's `REVIEW_SKILL`, else `self-review` review-only, else `review-pr` in LOCAL DIFF MODE, else a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
+
+Then spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, external review report path, and ledger path. Outcomes:
 
 - `APPROVE`: the only state that permits reporting done.
 - `REQUEST_CHANGES`: each criterion-cited blocker becomes a new graph task with its own dependencies and success check. Return it to Ralph for the next repair iteration, re-verify affected tasks, and submit the task-wide diff and current evidence to a fresh independent reviewer.

@@ -83,20 +83,23 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
 ```markdown
 ### Ralph iteration {N}/{CAP} (artifact alias: cycle{OUTER_CYCLE})
 
-- **review-pr verdict**: Approve | Needs Attention | Request Changes | SKIPPED (unavailable) | NOT_EXECUTED
+- **External review**: self-review | review-pr | SKIPPED (unavailable) | NOT_EXECUTED
+- **External review verdict**: Approve | Needs Attention | Request Changes | n/a
 - **omo-review-work outcome**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE | NOT_EXECUTED
 - **Phase 6 decision**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE (mandatory final gate must run)
-- **review-pr output**: {absolute path, or n/a}
+- **External review output**: {absolute path, or n/a}
 - **omo-review-work output**: {absolute path}
 - **Diff range**: {CYCLE_START_SHA}..working tree
 - **Timestamp**: {TIMESTAMP}
 - **Changed files**: {N} (+{N} new untracked)
-- **Ralph state**: iteration {N}/{CAP}; phase {phase}; next exact action {action}
+- **Ralph state**: iteration {N}/{CAP}; phase {phase}; paused: ASK_USER / no; next exact action {action}
 - **Blocking findings** (union, deduplicated by file and defect mechanism; carried forward on REQUEST_CHANGES):
   1. {File:Line - description, quoted, gate named}
+- **ASK_USER** (external `ask` items that pause the loop, verbatim; or none):
+  1. {question, gate named}
 - **Unresolved evidence gaps** (from INCONCLUSIVE, verbatim):
   1. {missing evidence}
-- **Needs Attention items** (Phase 7 follow-ups, non-blocking):
+- **Needs Attention items** (Phase 7 follow-ups, non-blocking: nit/fyi and non-pausing `ask` items):
   1. {File:Line - description}
 - **Nits**: {N} (non-blocking)
 - **Recurring from previous cycle**: yes / no -> {omo-oracle consulted / n/a}
@@ -105,10 +108,10 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
   - Directive: {verbatim}
   - Controller action: next iteration / paused / exhausted / stuck
   - Remaining Ralph iterations: {CAP minus N}
-- **CodeRabbit comments**: skipped (local diff mode)
+- **CodeRabbit comments**: skipped (local diff mode) (only when review-pr ran)
 ```
 
-Special lines: `- **Diff**: empty; mandatory independent final gate still required`; `- **review-pr**: SKIPPED (unavailable)`; `- **omo-review-work**: NOT_EXECUTED - <reason>`.
+Special lines: `- **Diff**: empty; mandatory independent final gate still required`; `- **External review**: SKIPPED (unavailable)`; `- **omo-review-work**: NOT_EXECUTED - <reason>`.
 
 ## Phase 7: Final summary (in the response, not saved)
 
@@ -123,7 +126,7 @@ Write this section first, in the user's language, so the user does not have to a
 - Remaining: what this change does not do, and the effect of leaving it.
 
 ### Ralph Gate History
-| Artifact alias | Ralph iteration | review-pr | omo-review-work | Phase 6 decision | Blocking | Output paths |
+| Artifact alias | Ralph iteration | External review (skill: verdict) | omo-review-work | Phase 6 decision | Blocking | Output paths |
 |---|---|---|---|---|---|---|
 | Cycle 1 | {N}/{CAP} | {verdict or SKIPPED} | {outcome} | {decision} | {N} | {paths} |
 
@@ -132,11 +135,11 @@ One row per gate invocation; preserve earlier report paths. No empty template ro
 ### Blocking Findings Fed Back
 | Cycle found | Gate | Finding (File:Line - description, or missing evidence) | Resolved in | Status |
 |---|---|---|---|---|
-| 1 | review-pr / omo-review-work | {...} | 2 | resolved / evidence produced / recurring / disputed (review pending) |
+| 1 | external review / omo-review-work | {...} | 2 | resolved / evidence produced / recurring / disputed (review pending) |
 
 ### Lane and Gate Coverage
 - Copilot lane: ran / SKIPPED (not installed) / NOT_EXECUTED
-- review-pr gate: ran / SKIPPED (unavailable) / NOT_EXECUTED
+- External review gate: self-review / review-pr / SKIPPED (unavailable) / NOT_EXECUTED
 - Other lanes with NOT_EXECUTED: {list or none}
 
 ### External Library Contract Checks
@@ -146,7 +149,7 @@ One row per gate invocation; preserve earlier report paths. No empty template ro
 **{APPROVE / MAX_ITERATIONS_REACHED / BLOCKED / STUCK}**
 
 {If APPROVE}
-- Cycle {N}: review-pr 0 Critical (or skipped) and omo-review-work APPROVE
+- Cycle {N}: external review 0 `must` and 0 `should` directives (or skipped) and omo-review-work APPROVE
 - Needs Attention follow-ups (non-blocking):
   1. {item}
 
@@ -154,7 +157,7 @@ One row per gate invocation; preserve earlier report paths. No empty template ro
 - Blocking findings or evidence gaps remain; report the recorded Ralph iteration/cap and stop reason
 - Items requiring manual action:
   1. {finding, with the gate that raised it}
-- Final review-pr output: {absolute path or n/a}
+- Final external review output: {absolute path or n/a}
 - Final omo-review-work output: {absolute path}
 - Oracle analysis (if consulted): {summary}
 

@@ -2,9 +2,22 @@
 
 Phase 6 runs existing review skills on the task-wide local diff and uses their saved reports as the gate. It does not run its own reviewer agents and does not re-implement review logic.
 
+## Use from other entry skills
+
+Other entry skills (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, and direct `omo-ralph-loop` implementation tasks) run the same 6b external review before their own final gate and merge it with 6d. Differences from `omo-review-loop`:
+
+- `OUTER_DIR` is `<repo root>/docs/reviews/{TASK_ID}/` unless the user or plan names another directory.
+- They run 6b, then their own built-in gate (`omo-reviewer` or `omo-review-work`, as their skill says). They do not add 6b2 on top of it. An agent gate such as `omo-reviewer` returns its result in the reply; quote its decision and blocking findings in the ledger entry instead of saving a separate file.
+- External `must` and `should` fix directives become fix work the same way their own gate's blockers do (a graph task, a plan fix task, or a todo). Add that work right away as pending; dispatch it in the next Ralph pass, and when a pausing `ASK_USER` exists, only after the answer arrives.
+- Both gates run after the skill's final verification run and are independent, so they may run in parallel. When the built-in gate is `omo-review-work`, fill its `Phase 3.5 result` slot with that final verification output.
+- In the contract headers, replace `omo-review-loop Phase 6` / `Phase 6b2` with the calling skill and step (for example `omo-ulw-execute Phase 6`).
+- "Ledger" and `CYCLE_LOG` both mean the task's handoff ledger `.claude/omo/handoffs/<task-slug>.md` when the skill keeps no `CYCLE_LOG`. "Phase 7 follow-ups" means a `Follow-ups` list in the skill's final report.
+
+They pass their own review base as `CYCLE_START_SHA` and their goal, constraints, and background from the plan, notepad, or ledger. When no `RISK_LEVEL` was recorded, classify the changed areas with the risk table in the `omo-plan` skill's `references/rigorous-review.md`. In 6d their own built-in gate (`omo-reviewer` or `omo-review-work`) takes the `omo-review-work` column, and they record the 6c entry in their Ralph ledger when they keep no `CYCLE_LOG`.
+
 | Gate | Skill | Required | Report |
 |---|---|---|---|
-| primary PR-style review | `review-pr` (LOCAL DIFF MODE) | optional, only if listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
+| external review | one installed review skill, picked in 6b: `self-review` (review only), else `review-pr` (LOCAL DIFF MODE) | optional, only if one is listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review-work` | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
 
 ## Timestamp
@@ -35,9 +48,44 @@ REPORT_REPO_ROOT=$(git rev-parse --show-toplevel)
 | Oracle directives | `CYCLE_LOG` |
 | Phase 3.5 result | `{WORK_DIR}/verify_in_action_cycle{OUTER_CYCLE}.md` |
 
-## 6b: review-pr in LOCAL DIFF MODE (optional)
+## 6b: External review skill (optional)
 
-Run only when `review-pr` appears in the available skills list. Otherwise record `review-pr: SKIPPED (unavailable)` in `CYCLE_LOG` and go to 6b2.
+This plugin does not ship the external reviewer; it uses one the user or project installed. Run at most one, picked in this order:
+
+1. `REVIEW_SKILL` from `SPEC`, `task.md`, or the plan: a skill name to run, or `none` to skip 6b.
+2. `self-review`, when it appears in the available skills list. Use the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate.
+3. `review-pr`, when it appears in the available skills list, in LOCAL DIFF MODE (contract below).
+4. Neither is available: record `external review: SKIPPED (unavailable)` in `CYCLE_LOG` and go to 6b2.
+
+Do not run both `self-review` and `review-pr`: `self-review`'s review stage is the same pipeline, so the second report adds cost without a new view. Record which skill ran as `external review: <skill>` in `CYCLE_LOG`.
+
+### self-review (review only)
+
+Invoke `Skill(skill: "self-review", args: <contract>)`. It builds the diff itself from the working tree (committed, uncommitted, and untracked changes since the base), so do not paste the diff:
+
+```
+--dry-run    (skips the fix stage only; the report is still saved)
+CALLER: omo-review-loop Phase 6 external review gate (non-interactive)
+BASE_REF: {CYCLE_START_SHA}
+REPORT_PATH: {OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md (absolute path)
+RISK_LEVEL: {RISK_LEVEL}
+
+- Review and report only. Do not apply fixes, commit, stash, switch branches, or
+  post anything. Do not ask the user questions; record each one as an `ask` finding.
+- Save exactly one report at REPORT_PATH and state that absolute path in your final
+  response.
+
+## GOAL
+{GOAL}
+## CONSTRAINTS
+{CONSTRAINTS}
+## BACKGROUND
+{BACKGROUND}
+## External Library Contract Evidence
+{evidence block, unchanged}
+```
+
+### review-pr (LOCAL DIFF MODE)
 
 `review-pr` defaults to GitHub PRs, so every override must be stated or it will try to resolve a PR number. Invoke `Skill(skill: "review-pr", args: <contract>)`:
 
@@ -81,11 +129,11 @@ RISK_LEVEL: {RISK_LEVEL}
 {contents of each new untracked file}
 ```
 
-If `review-pr` reports completion but no file exists at the stated path, re-invoke once. If it fails again, record `review-pr: NOT_EXECUTED - no report` and continue with 6b2. Never infer a verdict from the chat response.
+If the external review skill saved the report at a different path than the one requested (for example with a `_2` suffix), record the path it reports and use that file; do not move it. If it reports completion but no file exists at any path it states, re-invoke once. If it fails again, record `external review: NOT_EXECUTED - no report` and continue with 6b2. Never infer a verdict from the chat response.
 
 ## 6b2: omo-review-work (always)
 
-Run it even when `review-pr` returned Request Changes; the findings are merged in 6d and skipping it loses the evidence-gap signal. Invoke `Skill(skill: "omo-orchestrator:omo-review-work", args: <contract>)`:
+Run it even when the external review returned Request Changes; the findings are merged in 6d and skipping it loses the evidence-gap signal. Invoke `Skill(skill: "omo-orchestrator:omo-review-work", args: <contract>)`:
 
 ```
 Invoked from omo-review-loop Phase 6b2 as the outer gate.
@@ -104,14 +152,14 @@ Invoked from omo-review-loop Phase 6b2 as the outer gate.
 ## Phase 3.5 result
 {verbatim, or "SKIPPED - <reason>"}
 
-{the same GOAL / CONSTRAINTS / BACKGROUND / evidence / files / diff block as 6b}
+{the GOAL / CONSTRAINTS / BACKGROUND / evidence / Changed Files / Diff Under Review block from the review-pr contract above. Paste it in full even when `self-review` ran in 6b, since that contract carries no diff}
 ```
 
-The coordinator saves the report to the stated path. If `omo-review-work` cannot run, record `omo-review-work: NOT_EXECUTED - <reason>`. A missing mandatory `omo-review-work` is always `INCONCLUSIVE`: stop and report the blocker even if optional `review-pr` approved. Never substitute a self-written review.
+The coordinator saves the report to the stated path. If `omo-review-work` cannot run, record `omo-review-work: NOT_EXECUTED - <reason>`. A missing mandatory `omo-review-work` is always `INCONCLUSIVE`: stop and report the blocker even if the optional external review approved. Never substitute a self-written review.
 
 ## 6c: Read the saved reports
 
-- `review-pr` writes in Japanese. Extract the verdict from the `## 判定:` heading (`Approve` / `Request Changes` / `Needs Attention`) and quote the `Findings: Critical` items verbatim (file, line, description).
+- `self-review` and `review-pr` write the same report format, in Japanese. Extract the verdict from the `## 判定:` heading (`Approve` / `Request Changes` / `Needs Attention`) and quote the `Findings: must` items verbatim (file, line, description). Also quote the `Findings: should` items: they are fix directives in the same way, unless the fix changes a public API, schema, applied migration, or external contract, contradicts the GOAL or CONSTRAINTS, or conflicts with another finding; those become `ASK_USER`. An `ask` item whose answer could change a fix directive, the GOAL, or a contract becomes `ASK_USER` and pauses before the next iteration. Any other `ask` the code or evidence does not answer is carried to Phase 7 as a question for the user, and the fix pass proceeds. `nit` and `fyi` items are Phase 7 follow-ups.
 - `omo-review-work`: extract the decision (`APPROVE` / `REQUEST_CHANGES` / `INCONCLUSIVE`), blocking findings, and for `INCONCLUSIVE` the exact missing evidence, verbatim.
 - Do not write a third, competing review report. Append one entry to `CYCLE_LOG` (template in `templates.md`) with both decisions, both absolute report paths, `CYCLE_START_SHA`, `TIMESTAMP`, and the blocking findings carried forward. Never overwrite earlier entries. `CYCLE_LOG` is a real file so the loop can resume after a context reset, and it is the authoritative source for a previous cycle's report paths (never glob for them).
 
@@ -119,18 +167,20 @@ The coordinator saves the report to the stated path. If `omo-review-work` cannot
 
 Every gate that ran must clear; the stricter decides.
 
-| review-pr | omo-review-work | Phase 6 decision |
+| external review | omo-review-work (or the entry skill's built-in gate) | Phase 6 decision |
 |---|---|---|
-| Approve (0 Critical) or SKIPPED | `APPROVE` | APPROVE |
-| Needs Attention (0 Critical) | `APPROVE` | APPROVE; carry the items into Phase 7 as follow-ups |
+| Approve with 0 `must` and 0 `should` directives, or SKIPPED | `APPROVE` | APPROVE |
+| Approve / Needs Attention with 0 `must` and 1+ `should` directive | `APPROVE` | REQUEST_CHANGES; the `should` directives go to the next Ralph pass |
+| Needs Attention (0 `must`, 0 `should` directives) | `APPROVE` | APPROVE; carry the items into Phase 7 as follow-ups |
 | Approve / Needs Attention / SKIPPED | `REQUEST_CHANGES` | REQUEST_CHANGES; omo findings become fix directives |
 | Approve / Needs Attention / SKIPPED | `INCONCLUSIVE` | INCONCLUSIVE; produce accessible missing evidence in the next Ralph iteration, or pause for unavailable evidence |
 | any | `NOT_EXECUTED` | INCONCLUSIVE; required final gate unavailable |
 | NOT_EXECUTED | any | INCONCLUSIVE; an attempted optional gate failed and has no usable verdict |
-| Request Changes (1+ Critical) | any | REQUEST_CHANGES; merge both gates' blocking findings, deduplicated by file and defect mechanism |
+| Request Changes (1+ `must`) | any | REQUEST_CHANGES; merge both gates' blocking findings, deduplicated by file and defect mechanism |
 
 - An `INCONCLUSIVE` whose evidence is genuinely unavailable to the loop (production access, a business decision, a third-party response) is an `ASK_USER` escalation that does not reserve another iteration; already dispatched work remains counted. Present the exact missing evidence and pause.
 - Nits and `[Suggestion]` findings never affect the decision.
+- A pausing `ASK_USER` does not change the decision. Record `REQUEST_CHANGES` (or the decision the table gives) plus `paused: ASK_USER`, and hold every fix directive until the answer, so the next pass carries all of them together.
 
 ```
 APPROVE

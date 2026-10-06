@@ -10,7 +10,7 @@ Plugin port of the personal `implementation-review-loop` skill, rebuilt on omo-o
 
 # OMO Review Loop
 
-Ralph-managed review workflow: `omo-implementer` implements, parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, the controller schedules fixes. The final gate (`omo-review-work`, plus the optional `review-pr` skill) returns its verdict to `omo-ralph-loop`, the sole loop controller.
+Ralph-managed review workflow: `omo-implementer` implements, parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, the controller schedules fixes. The final gate (`omo-review-work`, plus an installed external review skill such as `self-review` or `review-pr` when available) returns its verdict to `omo-ralph-loop`, the sole loop controller.
 
 Triggers: "implement and review", "review loop", "auto-review", "quality loop", "implement with review".
 
@@ -39,7 +39,7 @@ The main context is coordinator-only (see `omo-guardrails`). It routes, records 
 | `references/reviewer-copilot.md` | Optional GitHub Copilot CLI lane |
 | `references/synthesis-judge.md` | Phase 3b judge prompt and rules |
 | `references/verify-and-oracle.md` | Phase 3d verify commands, 3f oracle consult, Phase 3.5 verify in action |
-| `references/outer-gate.md` | Phase 6 outer gate (omo-review-work, optional review-pr), verdict mapping, 6e stuck consult |
+| `references/outer-gate.md` | Phase 6 outer gate (omo-review-work, optional external review skill), verdict mapping, 6e stuck consult |
 | `references/templates.md` | Phase 4 report, Phase 5 feedback, cycle log entry, Phase 7 final report |
 | `references/db-checklist.md` | DB, index, lock, and migration checklist |
 
@@ -92,7 +92,7 @@ Phase 3b SYNTHESIZE    AUTO_FIX / ASK_USER / PASS
   ASK_USER             pause; preserve N and cap
 Phase 3.5 QA           real scenarios; failure returns to Ralph
 Phase 4-5 REPORT       feedback returns to Ralph; no new budget
-Phase 6 FINAL GATE     omo-review-work (+ optional review-pr)
+Phase 6 FINAL GATE     omo-review-work (+ optional self-review or review-pr)
   changes/evidence     return findings to Ralph for next N
   APPROVE              Ralph completes -> Phase 7 final report
 ```
@@ -183,7 +183,7 @@ Use `references/templates.md`. The Phase 4 report includes the loop summary, ite
 Follow `references/outer-gate.md`.
 
 1. 6a: build the LOCAL DIFF CONTEXT from the persistent `CYCLE_START_SHA`, including untracked files and current evidence. An empty diff still requires the final independent gate.
-2. 6b: run `review-pr` in LOCAL DIFF MODE only if available; otherwise record its skip.
+2. 6b: run one installed external review skill (`self-review` review-only, else `review-pr` in LOCAL DIFF MODE, or the plan's `REVIEW_SKILL`); otherwise record its skip.
 3. 6b2: always run `omo-orchestrator:omo-review-work` on that context.
 4. 6c: save reports and append their paths and outcomes to `CYCLE_LOG` and the controlling `LEDGER`.
 5. 6d: every executed gate must clear, and `omo-review-work` must explicitly return `APPROVE`. Findings go to Ralph for the next iteration; unavailable evidence pauses.
