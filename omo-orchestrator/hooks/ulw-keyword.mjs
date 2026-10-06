@@ -36,8 +36,17 @@ export function stripCode(prompt) {
   return prompt.replace(/```[\s\S]*?(?:```|$)/g, " ").replace(/`[^`\n]*`/g, " ");
 }
 
+// Background task results and system reminders reach UserPromptSubmit as prompt text, but they are
+// not the user's words: a sub-agent report that quotes "ultrawork" must not start the mode.
+export function stripInjected(prompt) {
+  return prompt
+    .replace(/<task-notification>[\s\S]*?(?:<\/task-notification>|$)/g, " ")
+    .replace(/<system-reminder>[\s\S]*?(?:<\/system-reminder>|$)/g, " ")
+    .replace(/\[SYSTEM NOTIFICATION - NOT USER INPUT\][^\n]*/g, " ");
+}
+
 export function detectKeyword(prompt) {
-  const text = stripCode(prompt);
+  const text = stripCode(stripInjected(prompt));
   const mass = MASS_PATTERN.test(text);
   for (const [mode, pattern] of MODE_PATTERNS) {
     if (pattern.test(text)) return { mode, mass };
