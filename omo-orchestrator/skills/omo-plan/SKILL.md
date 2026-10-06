@@ -31,7 +31,7 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 4. For every candidate question, first ask whether repository or external evidence can answer it. Then ask whether the stated goal supports a reversible default. Ask the user only when an owner decision remains.
 5. Explore each open question only until the decision is supported. Stop when new searches repeat known evidence or cannot change the plan.
 6. Record material discovered work in the draft. Add it to the proposed plan only if it is required for the requested outcome. Otherwise record it as an explicit observation or deferral with a reason.
-7. For build or refactor work, inspect the test framework, config, and nearby tests. When the touched area has no test convention, test strategy (TDD, tests after, none) is an owner decision.
+7. For build or refactor work, inspect the test framework, config, and nearby tests. Decide each task's test strategy by change scale: test-first for tasks that add or change branching, calculations, state transitions, data writes, parsing or validation, a public contract, or a bug fix; no new tests for wording (including only the text of an existing message), docs, renames, config values, or wiring that adds no branch. Exception: a rename or text change needs a test only when an in-repo consumer matches on the old name or text (a lookup by string, a caller comparing an error message); an outside consumer that could not be verified is reported as unverified, not a reason to add a test. When a task needs tests but the touched area has no test convention, how to test it is an owner decision.
 8. When the plan adds, upgrades, or changes usage of a library, fetch version-applicable docs (Context7 when available, otherwise `omo-librarian`) and cite them in task references.
 9. Before the approval brief, confirm clearance: objective defined, scope IN and OUT set, no critical ambiguity, approach decided, test strategy known, no blocking question outstanding. If any item fails, ask that one question. End every interview turn with a question or the brief, never a passive summary or `let me know`.
 
@@ -56,6 +56,8 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 - Define how newly discovered work is recorded, assessed, scoped before dispatch when required, or explicitly deferred.
 - Classify gaps as critical, minor, or ambiguous. Give each true blocker one precise question. Fix minor gaps and list them as auto-resolved; apply a default to ambiguous gaps and list it as a default the user can override.
 - Record `RISK_LEVEL` and its reason in the TL;DR, plus the applicable risk notes, per `references/rigorous-review.md`.
+- Spec check: list the cases the request leaves undefined (empty, boundary, duplicate, repeated or concurrent use, partial failure, each permission level, data that already exists) and contradictions between its sources, each with the chosen default or one owner question.
+- For work that modifies existing code, include a risk map: each modified unit with its visible callers, its hidden reach (indirect references, queued or scheduled work, persisted data, consumers outside the repository, environment settings, implicit contracts) marked found, none, or could not verify, the guardrail that covers it, and its business impact. Every row with impact and no guardrail gets a task or QA step; every could-not-verify row is a listed unknown.
 - Keep one plan; never split it. One task is one concern touching one to three files; split a task that touches four or more. Implementation and its tests are one task.
 - End with the F1 to F4 final verification wave from `references/rigorous-review.md`.
 - Include a verification strategy, review gate, and final handoff checkpoint.
@@ -83,7 +85,7 @@ Every task must include executable QA. Each task row must state:
 - One failure-path or edge-case assertion when applicable.
 - Evidence location.
 
-Use TDD-oriented sequencing when the codebase supports it: identify the failing behavioral check or validation target before editing, then record the passing result afterward. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
+Sequence by test necessity: a task that needs tests (see Intent And Decision Routing step 7) names the failing test to write first and the passing result to record afterward; a task that does not names the diagnostic or real-surface check instead. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
 
 ## Bounded Plan Review
 

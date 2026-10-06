@@ -12,18 +12,22 @@ Use this skill before handing off changes that touch 2+ files, public/API/CLI be
 
 ## Review Areas
 
+- Spec review: before grading code, check the requirement source (request, issue, design doc, change description) for contradictions, undefined cases (empty, boundary, duplicate, repeated or concurrent use, partial failure, each permission level, data that already exists), unstated non-functional needs, and requirements with no observable result. When a general rule and a more specific one disagree for some case, record both and the reading you used; that is an owner question when the other reading changes a reachable result. When the only source is a commit message or the diff itself, say so and review the inferred spec in a few lines. A spec gap is a question for the owner, not a code defect, unless the implementation's choice is itself a confirmed defect.
 - Goal alignment.
 - Security and privacy risk.
 - Robustness and edge cases.
 - Code quality and maintainability.
 - Invariant ownership: a class's own rule is enforced at its entry point, not distributed to callers as a mixin, override hook, or paired call; callers may differ only in how they react to a violation.
 - Test and validation coverage.
+- Test necessity: tests are required for changes to branching, calculations, state transitions, data writes, parsing or validation, public contracts, and bug fixes (the regression test must fail without the fix); then check for test-first evidence and that expected values come from the spec, not from the code's output. Do not ask for tests or TDD on wording (including only the text of an existing message), docs, renames, config values, or wiring that adds no branch. Exception: a rename or text change needs a test only when an in-repo consumer matches on the old name or text (a lookup by string, a caller comparing an error message); an outside consumer that could not be verified is reported as unverified, not a reason to add a test.
+- Static guardrails: when a contract could be enforced by the type system, a schema or constraint, or an existing lint rule instead of caller discipline, suggest it; it is blocking only when a high-impact risk-map row has no other guardrail.
 - Test-double realism: a contract method stubbed to always fail leaves the call wiring and order unverified; require one case with the real collaborator and only external boundaries stubbed.
 - Scope creep and unrelated changes.
 - Domain scope filtering: ignore incidental AI harness, bot, generated-analysis, or review-tool noise unless the task explicitly changes that tooling.
 - File understanding: identify each changed file's role and local change before judging it.
 - Pre-finding verification: check existing patterns, contracts, callers, or tests before flagging uncertain issues.
 - Behavior parity: when replacing behavior, verify whether differences are intentional and safe. A changed error type, error grouping, or detection scope is a behavior difference to disclose.
+- Risk map for modifications to existing code: for each modified existing unit, list visible callers with the search used, then its hidden reach: indirect references (by string, reflection, dynamic dispatch, framework hooks), deferred execution (queued jobs, schedulers, retries, webhooks), persisted state the old code wrote, consumers outside the repository, environment (flags, environment variables, permissions), and implicit contracts (ordering, idempotency, error shapes). Mark each found, none, or could not verify; name the guardrail (test, type check, lint, constraint, monitoring, or none) and the business impact. A guardrail counts only when it runs and passes on the changed path; a failing test, or one that never reaches the path, is `none`. Rows with impact and no guardrail are priority review targets; could-not-verify rows are reported as unknowns, never dropped.
 - Blast radius: when a rule moves into a shared component, list every caller, including those outside the diff, and check history before calling an odd one a scope expansion.
 - Lifecycle checks: for jobs, schedulers, retries, recovery, admin data, imports, exports, and manual correction flows, model repeated execution cycles.
 - Release checks: when the change is publish-facing, verify version metadata, package contents, docs, migration notes, and unpublished-change impact.
@@ -53,6 +57,8 @@ Before recording a blocking finding, follow this sequence:
 - Blocking findings with file references and evidence.
 - Warnings or non-blocking improvements.
 - Verified non-issues, separate from findings, with evidence that disproves each suspected concern.
+- Spec review result: contradictions, undefined cases with the implementation's current behavior, and owner questions.
+- Risk map for modified existing code, with unknowns and the places a human should understand before merging (at most five).
 - Missing validation.
 - Residual risks.
 - Approval evidence that supports every required final check when the decision is `APPROVE`.

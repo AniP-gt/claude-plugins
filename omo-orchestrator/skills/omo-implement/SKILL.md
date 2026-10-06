@@ -1,6 +1,6 @@
 ---
 name: omo-implement
-description: Execute a planned change with exploration first, minimal edits, one-pass implementation, TDD-oriented validation, and no speculative compatibility paths.
+description: Execute a planned change with exploration first, a risk map for existing code, minimal edits, test-first when the change scale needs tests, and no speculative compatibility paths.
 argument-hint: [task]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
@@ -13,8 +13,8 @@ Use this skill for one scoped implementation or fix pass after scope is concrete
 ## Steps
 
 1. Read the relevant code and nearby patterns.
-2. Confirm the smallest behavior change that satisfies the request.
-3. Add or identify a failing test or validation target when appropriate.
+2. Confirm the smallest behavior change that satisfies the request. When it modifies existing code, build the risk map described in `/omo-review` (Review Areas, risk map) before editing, as a short list with one line per modified unit: visible callers with the search used, hidden reach for each `/omo-review` category (found, none, or could not verify; within that unit's line, the categories marked none may be grouped in one phrase), its guardrail, and business impact. Treat rows with business impact and no guardrail as places that need a test or an explicit check.
+3. Decide test necessity from the change scale. Tests are required when the change adds or changes branching logic, a calculation, a state transition, a data write, parsing or validation, a public contract, or fixes a bug (the regression test must fail without the fix). When tests are required, work test-first: write the test, run it, confirm it fails for the expected reason, then implement until it passes. When tests are not required (wording, including only the text of an existing message, docs, renames, config values, wiring that adds no branch; a rename or text change needs a test only when an in-repo consumer matches on the old name or text (a lookup by string, a caller comparing an error message); an outside consumer that could not be verified is reported as unverified, not a reason to add a test), skip TDD and name the diagnostic or real-surface check that proves the change instead.
 4. Edit only the required files.
 5. Record evidence for the diff: changed files, affected callers, and the validation target that proves the change. For every pre-existing dirty file, record whether it is in scope and the observed status or diff evidence that it was not modified by this work.
 6. Run diagnostics on changed files.

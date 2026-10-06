@@ -37,7 +37,7 @@ For Build and Research intents, inspect the repository before asking. Do not ask
 
 For a mid-sized task, define exact outputs, explicit exclusions, hard boundaries, and agent-executable acceptance criteria. Flag scope inflation, premature abstractions, excess validation, and unnecessary documentation.
 
-For Build and Refactoring intents, report the test framework, config, and nearest existing tests. When the touched area has no test convention, list test strategy (TDD, tests after, none) as an owner question. For Refactoring, also name the rollback path.
+For Build and Refactoring intents, report the test framework, config, and nearest existing tests. Classify the work by test necessity: test-first when it adds or changes branching, calculations, state transitions, data writes, parsing or validation, a public contract, or fixes a bug; no new tests for wording (including only the text of an existing message), docs, renames, config values, or wiring. Exception: a rename or text change needs a test only when an in-repo consumer matches on the old name or text (a lookup by string, a caller comparing an error message); an outside consumer that could not be verified is reported as unverified, not a reason to add a test. When tests are needed but the touched area has no test convention, list how to test it as an owner question. Also report cases the request leaves undefined and contradictions between its sources. For Refactoring, also name the rollback path.
 
 ## Step 3: Map The Affected User And Gaps
 
