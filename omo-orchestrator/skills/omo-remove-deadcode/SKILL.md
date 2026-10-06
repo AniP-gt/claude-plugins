@@ -2,13 +2,15 @@
 name: omo-remove-deadcode
 description: Safely remove dead code with reference checks, behavior locks, dependency analysis, and zero-false-positive deletion discipline.
 argument-hint: [scope]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Remove Deadcode
 
 Use this skill to remove unused code without deleting behavior that is still reachable through dynamic loading, public contracts, generated references, tests, or plugin metadata.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Workflow
 

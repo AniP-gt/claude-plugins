@@ -10,6 +10,8 @@ user-invocable: true
 
 Claude Code adaptation of the oh-my-openagent ultrawork directive (`packages/prompts-core/prompts/ultrawork/default.md`). The `ulw` / `ultrawork` keyword hook in this plugin points here. Every rule below binds for the whole task.
 
+Implementation skills can also enter this mode without the keyword; the decision rules are in `references/auto-escalation.md`.
+
 Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
 
 ## Bootstrap

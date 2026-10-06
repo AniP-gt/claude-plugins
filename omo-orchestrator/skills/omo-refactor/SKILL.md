@@ -2,13 +2,15 @@
 name: omo-refactor
 description: Safe refactoring workflow with behavior lock first, caller and callee inventory, small steps, and verification against drift.
 argument-hint: [refactor-goal]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Refactor
 
 Use this skill when the goal is structure, readability, or maintainability without intended behavior change.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Workflow
 

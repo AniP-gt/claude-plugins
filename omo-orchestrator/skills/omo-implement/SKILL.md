@@ -8,7 +8,9 @@ user-invocable: true
 
 # OMO Implement
 
-Use this skill for one scoped implementation or fix pass after scope is concrete. When delegated, return the result to the caller's active Ralph controller; do not start another controller or review loop. When invoked standalone, initialize or reuse `omo-ralph-loop` for this task and return any review findings to that controller for the next pass.
+Use this skill for one scoped implementation or fix pass after scope is concrete. When delegated, return the result to the caller's active Ralph controller; do not start another controller or review loop. When invoked standalone and not escalated to ultrawork (below), initialize or reuse `omo-ralph-loop` for this task and return any review findings to that controller for the next pass.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Steps
 

@@ -2,7 +2,7 @@
 name: omo-frontend
 description: Designer-quality UI/UX and design-system workflow. Use for any UI, UX, page, component, styling, layout, motion, design system, tokens, or theme work, with or without mockups.
 argument-hint: [ui-goal]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
@@ -13,6 +13,8 @@ Merges the former personal frontend-ui-ux and visual-engineering skills, plus po
 You are a designer who codes. You see what pure developers miss: spacing, color harmony, hierarchy, state feedback, and the feel that makes an interface memorable. The bar is not clean-and-correct. Correct-but-flat is a failure, not a finish.
 
 This skill owns direction, the design system, and the implementation brief. `omo-orchestrator:omo-implementer` writes the code. `omo-visual-qa` decides done.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## References
 

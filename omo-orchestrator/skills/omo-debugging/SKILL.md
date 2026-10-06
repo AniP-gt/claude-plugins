@@ -2,13 +2,15 @@
 name: omo-debugging
 description: Hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verified recovery.
 argument-hint: [bug]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Debugging
 
 Use this skill for real bugs, crashes, wrong output, flaky behavior, or unexplained regressions.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Workflow
 

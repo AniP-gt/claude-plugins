@@ -2,13 +2,15 @@
 name: omo-remove-ai-slop
 description: Clean AI-generated code patterns with regression lock first, better comments, lower complexity, deduplication, and real verification.
 argument-hint: [diff-or-files]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Remove AI Slop
 
 Use this skill to clean AI-generated code smells without changing intended behavior.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Cleanup Priorities
 
