@@ -97,6 +97,8 @@ This remains a content-only procedure. It does not add scripts, hooks, MCP serve
 
 ## Consolidated Personal Workflows
 
+Version 1.15.0 adds source-informed component selection to `omo-frontend`: route by surface and tone, inspect at most two catalogs, check source/dependencies and current reuse terms, then pass the mechanism, token mapping, and missing accessibility or lifecycle behavior to the implementer. Existing local primitives need no external search. Product use and redistribution in a starter or component library are checked separately. Unavailable sources get an explicit local or original fallback, and fetched documentation cannot authorize commands or project-file uploads. The plugin still does not auto-install dependencies.
+
 Version 1.4.0 folds the owner's former personal skills and agents into existing omo skills, so there is one place for each workflow. Only content the plugin lacked was merged, rewritten to use plugin agents only:
 
 - `omo-guardrails`: circuit-breaker thresholds, error classification and escalation, context and handoff rules (`references/`).
@@ -192,6 +194,8 @@ This plugin adapts useful LazyCodex OMO ideas into Claude Code prompts only. It 
 The portable contracts in version 1.0.0 were refreshed against `oh-my-openagent` commit `0c76f2d9838a664884739877da1692aa754eab1a`. Version 1.2.0 re-checked `3d8cf52b673fcbf4dd9d34361a273b791a19c2e5` (upstream `dev`, OmO 5.1.4): skill and prompt bodies were unchanged apart from `argument-hint` additions, so the refresh adds the ultrawork directive to `omo-ultrawork`, ports the `ulw` keyword hook, and ports the previously unported upstream skills `ulw-execute`, `mass-ulw`, `tech-debt-audit`, `ast-grep`, and `lsp-setup`. Runtime-bound upstream skills (browser automation, team mode, DAG library, onboarding, publish) remain out of scope. The refresh carries planning intent routing, affected-user ideal-state and gap mapping, plan executability review, dependency-aware parallel waves, bounded follow-up and research-lead convergence, discovered-work discipline, evidence-led handoffs with manual TodoWrite and ledger equivalence, session transcript and accounting distinctions, real-surface visual QA with fresh evidence, one independent final reviewer, adversarial plan distillation, exploitability-first security research, and release ownership gates.
 
 Version 1.9.0 compares the portable prompt contracts against `oh-my-openagent` commit `b9463e692f93aa49bb10d306c0c6f1ade54f7840`. Runtime-only hooks, task, thread, and gateway changes remain excluded.
+
+Version 1.15.0 re-checks `d55d03485041170e6bcb4cb6ba4365d1a18afbd0` (upstream `dev`, package version 5.1.21). It adapts the new frontend catalog exploration and reuse checks. The model-specific Astra ultrawork/DAG verification directives and task, gateway, memory, and installer changes remain runtime-specific and are not ported. Catalog names are discovery starting points; their current licenses must be inspected at use time. The evaluation protocol and results are in `docs/reports/2026-10-07-omo-upstream-refresh/` in the marketplace repository.
 
 This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
 
