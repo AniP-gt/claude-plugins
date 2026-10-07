@@ -1,7 +1,7 @@
 """セッション終了時に、会話から wiki に残す候補を抜き出して raw/inbox/ に保存する。
 
 SessionEnd hook から別プロセスで起動される（llm_wiki.py capture）。ページは更新しない。
-候補の整理は /llm-wiki:ingest で人と一緒に行う。
+候補は次のセッションの開始時に、/llm-wiki:ingest の手順で確認なしに整理される。
 """
 import datetime
 import json

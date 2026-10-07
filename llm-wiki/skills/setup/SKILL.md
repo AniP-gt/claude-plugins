@@ -22,7 +22,7 @@ description: LLM Wiki の初期設定。今いるリポジトリと wiki フォ�
 3. **登録**: `llm_wiki.py add --name <名前> --repo <repo> --wiki <wiki>`
 4. **雛形**: wiki フォルダに `index.md` が無ければ、作ってよいか確認してから `llm_wiki.py init-wiki --wiki <wiki>` を実行する。既存ファイルは上書きされない。
 5. **候補の自動抽出**: 使うか聞く。使うなら `llm_wiki.py capture-config --enable`（モデルを変えるなら `--model <name>`、既定 sonnet）。
-   - 登録済みリポジトリのセッションが終わるたびに、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補を `<wiki>/raw/inbox/` に保存する。ページは更新しない。
+   - 登録済みリポジトリのセッションが終わるたびに、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補を `<wiki>/raw/inbox/` に保存する。このときページは更新しない。次のセッションの開始時に、候補を確認なしで自動整理してページに反映する。
    - その分のトークンを消費する。会話（ツールの入出力を除く）が 3000 字未満の短いセッションは対象外。
    - 設定はすべてのプロジェクトに共通。止めるときは `--disable`。ログは `~/.config/llm-wiki/capture.log`。
 6. **確認**: `llm_wiki.py resolve`、`llm_wiki.py list`、`llm_wiki.py capture-config` の結果を見せる。

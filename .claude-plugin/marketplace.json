@@ -70,7 +70,7 @@
     },
     {
       "name": "llm-wiki",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "source": "./llm-wiki",
       "description": "LLM Wiki 手法でリポジトリごとの知識を Obsidian の Markdown wiki に育てるプラグイン。ingest / query / lint skill、目次を渡す SessionStart hook、終了時に候補を自動抽出する SessionEnd hook。"
     }
