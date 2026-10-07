@@ -32,6 +32,8 @@ Ultrawork escalation: when invoked standalone, size the task first and decide wh
 - Do not delete or weaken tests to pass.
 - Do not add fallback or legacy paths unless required by an existing external contract.
 - Do not modify unrelated dirty files.
+- When a new small type or helper exists only to satisfy another component's interface (a placeholder passed instead of a record, an adapter), give it a short comment saying why it exists and naming one caller; its own file does not show how to use it.
+- Do not state a lock hold time, run time, or failure-path outcome in comments, docs, or the change description unless a measurement or test backs it; otherwise label it an estimate.
 - Do not treat review as advisory when a finding is confirmed and blocking.
 - Do not claim a check passed unless you ran it in the current session.
 - Report discovered work outside the assigned scope to the coordinator. Do not fix it until it is recorded, scoped, dependency-checked, and dispatched as required work.
