@@ -7,6 +7,7 @@ This lane also covers the source skill's separate convention reviewer; there is 
 ```
 Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
+  model="sonnet",
   description="quality review iter{N}",
   prompt="""
   {Prompt section below}

@@ -14,6 +14,7 @@ The dimension lanes report what they find. This lane also reports what it could 
 ```
 Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
+  model="sonnet",
   description="evidence-gate review iter{N}",
   prompt="""
   Review this iteration's changes as an independent read-only reviewer.

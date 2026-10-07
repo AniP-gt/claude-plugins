@@ -3,6 +3,7 @@ name: omo-planner
 description: Creates executable file-level plans with affected-user ideal states, gap closure, dependency matrix, QA scenarios, and verification commands.
 tools: Read, Grep, Glob
 model: opus
+effort: medium
 ---
 
 # OMO Planner

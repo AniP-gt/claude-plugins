@@ -162,22 +162,29 @@ printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}
 
 ## Included Agents
 
-- `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Uses `model: opus` because orchestration quality is high leverage.
-- `omo-planner`: executable plans, affected-user ideal states, gap closure, blockers, and QA mappings. Uses `model: opus` because planning quality is high leverage.
-- `omo-implementer`: deep executor for minimal verified changes. Uses `model: opus`.
-- `omo-researcher`: the Explore equivalent for read-only codebase investigation, with evidence labels and access limits disclosed. External library, upstream source, and dependency-history questions go to `omo-librarian`. Uses `model: haiku`.
-- `omo-plan-consultant`: read-only pre-planning consultant for intent classification, exploration, affected-user ideal-state gaps, and planning directives. Uses `model: opus`.
-- `omo-plan-reviewer`: read-only plan executability reviewer with an approval-biased `OKAY` or `REJECT` verdict. Uses `model: opus`.
-- `omo-reviewer`: independent implementation and PR-style reviewer for risk, quality, and scope control. Its lifecycle remains `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Uses `model: opus`.
-- `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: fable` because the consultation is the deliverable and reasoning depth is the whole point.
-- `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim. Uses `model: sonnet`.
-- `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file. Uses `model: opus`.
+- `omo-coordinator`: intent routing, delegation, state tracking, and completion checks. Uses `model: opus`, `effort: medium` because orchestration quality is high leverage.
+- `omo-planner`: executable plans, affected-user ideal states, gap closure, blockers, and QA mappings. Uses `model: opus`, `effort: medium` because planning quality is high leverage.
+- `omo-implementer`: deep executor for minimal verified changes. Uses `model: sonnet`, `effort: high`; callers pass `model: opus` for multi-file work with a real integration surface.
+- `omo-researcher`: the Explore equivalent for read-only codebase investigation, with evidence labels and access limits disclosed. External library, upstream source, and dependency-history questions go to `omo-librarian`. Uses `model: haiku`, `effort: low`; callers pass `model: sonnet` when the task needs bug hypotheses rather than location.
+- `omo-plan-consultant`: read-only pre-planning consultant for intent classification, exploration, affected-user ideal-state gaps, and planning directives. Uses `model: sonnet`, `effort: high`.
+- `omo-plan-reviewer`: read-only plan executability reviewer with an approval-biased `OKAY` or `REJECT` verdict. Uses `model: sonnet`, `effort: medium`.
+- `omo-reviewer`: independent implementation and PR-style reviewer for risk, quality, and scope control. Its lifecycle remains `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Uses `model: opus`, `effort: medium`. In `omo-review-loop`, the alignment, quality, and evidence-gate lanes override it to `model: sonnet`; the security and robustness lanes and the final gate stay on Opus.
+- `omo-oracle`: read-only strategic advisor for architecture decisions, debugging that has already failed repeatedly, post-implementation self-review, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: fable`, `effort: high` because the consultation is the deliverable and reasoning depth is the whole point. If Fable refuses (for example on a security topic), the caller re-runs the consult once with `model: opus`.
+- `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim. Uses `model: sonnet`, `effort: medium`.
+- `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file. Uses `model: sonnet`, `effort: medium`; callers pass `model: opus` for dense charts or diagrams.
 
 ## Model Guidance
 
 Agent model hints are enforced through agent frontmatter where Claude Code supports it. Skills are prompt content, so their model guidance is advisory unless a caller chooses the model explicitly.
 
-Haiku is appropriate for low-risk, mechanical work: read-only code investigation, simple git or CLI operations, metadata checks, and narrow documentation lookups. It is not the default for planning, orchestration, implementation, or skeptical review.
+Pick the cheapest tier that can do the job, and escalate with a one-line reason:
+
+- **Haiku**: low-risk, mechanical work. Read-only code location, simple git or CLI operations, metadata checks, and narrow documentation lookups. Not for planning, orchestration, implementation, or skeptical review.
+- **Sonnet**: the default workhorse. Implementation, external research, plan review, media extraction, and the lower-risk review lanes. Cap effort at `xhigh`; at `max` Sonnet can over-delegate and score worse.
+- **Opus** (`effort: medium`): judgment and integration. Orchestration, planning, security and robustness review, the final review gate, and multi-file implementation with a real integration surface.
+- **Fable** (`effort: high`): the high-stakes consult. `omo-oracle` only, for architecture decisions and debugging that has already failed repeatedly. Fall back to Opus on a refusal.
+
+Override the frontmatter per call with the Agent tool's `model` parameter when a task is clearly above or below the agent's default.
 
 Haiku is sufficient for routine use of these prompt-only skills when the task is narrow and evidence-based:
 
@@ -185,11 +192,9 @@ Haiku is sufficient for routine use of these prompt-only skills when the task is
 - `omo-programming`
 - `omo-research`
 - `omo-start-work`
-- `omo-ultraresearch`
 - `omo-coding-agent-sessions`
-- `omo-visual-qa`
 
-Use a stronger model for orchestration, planning, high-risk implementation, skeptical review, hard debugging, broad refactors, or ambiguous product decisions.
+Use Sonnet or stronger for `omo-ultraresearch` (decision-critical research) and `omo-visual-qa` (visual judgment).
 
 ## Claude Code Adaptation Scope
 

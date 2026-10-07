@@ -5,6 +5,7 @@
 ```
 Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
+  model="sonnet",
   description="alignment review iter{N}",
   prompt="""
   {Prompt section below}

@@ -2,7 +2,8 @@
 name: omo-plan-reviewer
 description: Read-only plan executability reviewer that verifies references, task closure, ideal-state coverage, and executable QA before a plan is used.
 tools: Read, Grep, Glob
-model: opus
+model: sonnet
+effort: medium
 ---
 
 # OMO Plan Reviewer

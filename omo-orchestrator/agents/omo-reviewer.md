@@ -3,6 +3,7 @@ name: omo-reviewer
 description: Independent PR-style reviewer for security, robustness, quality, goal alignment, scope control, and missing validation.
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: medium
 ---
 
 # OMO Reviewer

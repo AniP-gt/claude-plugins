@@ -2,7 +2,8 @@
 name: omo-plan-consultant
 description: Read-only pre-planning consultant that classifies intent, explores evidence, maps affected-user ideal-state gaps, and gives concrete planning directives.
 tools: Read, Grep, Glob
-model: opus
+model: sonnet
+effort: high
 ---
 
 # OMO Plan Consultant

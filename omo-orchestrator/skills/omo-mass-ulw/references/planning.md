@@ -32,8 +32,8 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 
 | Upstream category | Claude Code owner | Use when |
 |---|---|---|
-| `quick` (default) | `omo-researcher` for read-only; `omo-implementer` with `model: sonnet` for mechanical edits | Single file, pattern-following, batch scans |
-| `unspecified-low` | `omo-implementer` | A few files, or a judgment call a template cannot make |
+| `quick` (default) | `omo-researcher` (haiku) for read-only; `omo-implementer` (sonnet default) for mechanical edits | Single file, pattern-following, batch scans |
+| `unspecified-low` | `omo-implementer` (sonnet default) | A few files, or a judgment call a template cannot make |
 | `unspecified-high` | `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface |
 | `writing` | `omo-implementer` with a prose-only scope | Docs, README, technical writing |
 | `visual-engineering` | `omo-implementer`, then `omo-visual-qa` | Frontend, UI, styling |

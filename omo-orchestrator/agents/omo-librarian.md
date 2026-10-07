@@ -3,6 +3,7 @@ name: omo-librarian
 description: Read-only external source researcher for unfamiliar libraries, upstream implementations, and dependency history. Returns claims backed by permalinks or versioned documentation URLs.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+effort: medium
 ---
 
 # OMO Librarian

@@ -50,6 +50,7 @@ Agent(
 | Concrete alternative approach | Append the directive to the ledger; return to Ralph for the next scoped pass under its remaining budget and stop rules |
 | Business logic decision needed | `ASK_USER` with the oracle's analysis |
 | Already correct, review is wrong | Record disputed-finding evidence for the next independent review; do not mark PASS or APPROVE on oracle authority |
+| Refusal (`stop_reason: refusal`) or no usable answer | Re-run the same consult once with `model="opus"`; record the fallback in the ledger |
 
 ## Phase 3.5: Verify in Action
 
