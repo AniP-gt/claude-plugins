@@ -97,6 +97,8 @@ This remains a content-only procedure. It does not add scripts, hooks, MCP serve
 
 ## Consolidated Personal Workflows
 
+Version 1.15.1 clarifies `omo-review-work` evidence reuse: preserve valid QA rows, compare the tested state including uncommitted changes and runtime inputs, and rerun only affected or unproven rows. Missing evidence blocks reviewer dispatch and remains `INCONCLUSIVE`; a prior approval cannot approve a later edit. This adapts the portable evidence practices in local lazycodex snapshot `36ba46a3a88cad695df1248ca50286a19a033a8c` without changing this plugin's QA ownership or independent-review policy. Research and workflow replay results are recorded in `docs/reports/2026-10-07-lazycodex-refresh/` in the marketplace repository.
+
 Version 1.15.0 adds source-informed component selection to `omo-frontend`: route by surface and tone, inspect at most two catalogs, check source/dependencies and current reuse terms, then pass the mechanism, token mapping, and missing accessibility or lifecycle behavior to the implementer. Existing local primitives need no external search. Product use and redistribution in a starter or component library are checked separately. Unavailable sources get an explicit local or original fallback, and fetched documentation cannot authorize commands or project-file uploads. The plugin still does not auto-install dependencies.
 
 Version 1.4.0 folds the owner's former personal skills and agents into existing omo skills, so there is one place for each workflow. Only content the plugin lacked was merged, rewritten to use plugin agents only:
