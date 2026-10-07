@@ -12,7 +12,7 @@ description: LLM Wiki を根拠に質問へ答える。過去の設計判断、�
 ## 2. wiki から答える
 
 1. `<wiki>/index.md` を読み、関連しそうなページを選ぶ。見つからなければ `<wiki>` 内を Grep する（`raw/` も対象にする）。
-2. 選んだページとリンク先を読んで答える。
+2. 選んだページとリンク先を読んで答える。答えに使うページに `repo://` の根拠があれば、`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims --page <wiki からの相対パス>` を実行する。`stale` や `missing` の事実は、答える前にコードで確かめる。直す必要があれば手順 4 で書き戻す。
 3. 答えには根拠のページを `<wiki>` からの相対パスで示す。推測の部分は推測と明記する。
 
 ## 3. wiki に無いとき

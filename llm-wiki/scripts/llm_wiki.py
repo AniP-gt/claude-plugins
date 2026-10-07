@@ -170,15 +170,8 @@ def link_matches(link, rel):
 
 
 def cmd_lint(args):
-    wiki = expand(args.wiki) if args.wiki else None
+    wiki = resolve_wiki(args.wiki)
     if wiki is None:
-        found = resolve_project(os.getcwd())
-        if not found:
-            print("wiki を特定できない。--wiki を指定するか /llm-wiki:setup で登録", file=sys.stderr)
-            return 1
-        wiki = Path(found["wiki"])
-    if not (wiki / "index.md").is_file():
-        print(f"index.md が無い: {wiki}", file=sys.stderr)
         return 1
 
     pages = list(wiki_pages(wiki))
@@ -214,6 +207,249 @@ def cmd_lint(args):
         "missing_frontmatter": no_front,
         "missing_updated": no_updated,
     }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    return 0
+
+
+# パスには @ ( ) [ ] も入りうる（Next.js の app/(group)/[id] など）ので、末尾の @<sha> を手がかりに最短一致で切る。
+# sha の直後に英数字が続くものは参照とみなさない（日本語が続くのは許す）。
+CLAIM_RE = re.compile(r"repo://([A-Za-z0-9._-]+)/((?:(?!repo://)[^\s`]){1,512}?)(?:#L(\d+)(?:-L(\d+))?)?@([0-9a-fA-F]{7,40})(?![0-9A-Za-z_])")
+FENCE_RE = re.compile(r"^[ \t]*(```|~~~).*?(?:^[ \t]*\1[^\n]*$|\Z)", re.S | re.M)
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.M)
+GIT_TIMEOUT = 10
+
+
+def git(repo, *args, binary=False):
+    """git を実行する。UTF-8 でない出力でも落ちないよう、binary=False のときは置換文字で復号する。"""
+    proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, timeout=GIT_TIMEOUT)
+    if not binary:
+        proc.stdout = proc.stdout.decode("utf-8", errors="replace")
+        proc.stderr = proc.stderr.decode("utf-8", errors="replace")
+    return proc
+
+
+def count_lines(data):
+    return data.count(b"\n") + (1 if data and not data.endswith(b"\n") else 0)
+
+
+def repo_relpath(repo, path):
+    """repo 内の POSIX 相対パスを返す。repo の外を指す（.. や絶対パス、symlink 経由）なら None。"""
+    p = Path(path)
+    target = (p if p.is_absolute() else repo / p).resolve()
+    try:
+        rel = target.relative_to(repo)
+    except ValueError:
+        return None
+    return rel.as_posix() if rel.parts else None
+
+
+def parse_lines(spec):
+    m = re.fullmatch(r"(\d+)(?:-(\d+))?", spec or "")
+    if not m:
+        return None
+    a = int(m.group(1))
+    b = int(m.group(2)) if m.group(2) else a
+    return (a, b) if 1 <= a <= b else None
+
+
+def cmd_claim_ref(args):
+    found = resolve_project(args.cwd)
+    if not found:
+        print(f"未登録: {expand(args.cwd)}（/llm-wiki:setup で登録）", file=sys.stderr)
+        return 1
+    rng = None
+    if args.lines is not None:
+        rng = parse_lines(args.lines)
+        if rng is None:
+            print(f"行範囲が不正: {args.lines}（A-B または A、1 始まり）", file=sys.stderr)
+            return 1
+    try:
+        # worktree では本体ではなく worktree 自身の HEAD を根拠にする（オブジェクトは本体と共有される）
+        top = git(expand(args.cwd), "rev-parse", "--show-toplevel")
+        if top.returncode != 0:
+            print(f"git リポジトリではない: {expand(args.cwd)}", file=sys.stderr)
+            return 1
+        repo = Path(top.stdout.strip()).resolve()
+        rel = repo_relpath(repo, args.path)
+        if rel is None:
+            print(f"リポジトリの外を指している: {args.path}", file=sys.stderr)
+            return 1
+        if re.search(r"[\s`]", rel):
+            print(f"空白やバッククォートを含むパスは参照にできない: {rel}", file=sys.stderr)
+            return 1
+        head = git(repo, "rev-parse", "--short=12", "HEAD")
+        if head.returncode != 0:
+            print(f"HEAD を取得できない: {head.stderr.strip()}", file=sys.stderr)
+            return 1
+        kind = git(repo, "cat-file", "-t", f"HEAD:{rel}")
+        if kind.returncode != 0 or kind.stdout.strip() != "blob":
+            print(f"HEAD に無いファイル（未コミット・未追跡を含む）: {rel}", file=sys.stderr)
+            return 1
+        if git(repo, "diff", "--quiet", "--no-ext-diff", "--no-textconv", "HEAD", "--", rel).returncode != 0:
+            print(f"未コミットの変更がある: {rel}（コミットしてから参照を作る）", file=sys.stderr)
+            return 1
+        if rng:
+            total = count_lines(git(repo, "cat-file", "-p", f"HEAD:{rel}", binary=True).stdout)
+            if rng[1] > total:
+                print(f"行範囲が不正: {args.lines}（HEAD の {rel} は {total} 行）", file=sys.stderr)
+                return 1
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"git の実行に失敗: {e}", file=sys.stderr)
+        return 1
+    sha = head.stdout.strip()
+    anchor = ""
+    if rng:
+        anchor = f"#L{rng[0]}" if rng[0] == rng[1] else f"#L{rng[0]}-L{rng[1]}"
+    ref = f"repo://{found['project']}/{rel}{anchor}@{sha}"
+    # check-claims と同じ search（最短一致）で読み戻す。fullmatch だと後戻りで一致してしまう
+    m = CLAIM_RE.search(ref)
+    expected = (found["project"], rel, str(rng[0]) if rng else None,
+                str(rng[1]) if rng and rng[1] != rng[0] else None, sha)
+    if not m or m.span() != (0, len(ref)) or m.groups() != expected:
+        print(f"check-claims で読み戻せない参照になるため出力しない: {ref}", file=sys.stderr)
+        return 1
+    print(ref)
+    return 0
+
+
+def renamed_to(repo, sha, path):
+    out = git(repo, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--name-status", "-z", sha, "HEAD")
+    tokens = out.stdout.split("\0")
+    i = 0
+    while i < len(tokens) and tokens[i]:
+        status = tokens[i]
+        if status[:1] in ("R", "C"):
+            old, new = tokens[i + 1:i + 3]
+            if status[0] == "R" and old == path:
+                return new
+            i += 3
+        else:
+            i += 2
+    return None
+
+
+def file_change(repo, sha, path):
+    """sha から HEAD までの path の変化。行範囲に依存しない部分だけを調べる（キャッシュ対象）。"""
+    try:
+        if git(repo, "cat-file", "-e", f"{sha}^{{commit}}").returncode != 0:
+            return {"status": "unknown_commit"}
+        if git(repo, "cat-file", "-e", f"{sha}:{path}").returncode != 0:
+            return {"status": "invalid", "message": "参照したコミットにこのファイルが無い"}
+        if git(repo, "cat-file", "-e", f"HEAD:{path}").returncode != 0:
+            result = {"status": "missing"}
+            new = renamed_to(repo, sha, path)
+            if new:
+                result["renamed_to"] = new
+            return result
+        lines = count_lines(git(repo, "cat-file", "-p", f"{sha}:{path}", binary=True).stdout)
+        diff = git(repo, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "-U0", sha, "HEAD", "--", path)
+        if diff.returncode != 0:
+            return {"status": "error", "message": diff.stderr.strip()}
+    except (OSError, subprocess.SubprocessError) as e:
+        return {"status": "error", "message": str(e)}
+    hunks = [(int(m.group(1)), int(m.group(2) or 1), int(m.group(3)), int(m.group(4) or 1), m.group(0))
+             for m in HUNK_RE.finditer(diff.stdout)]
+    binary = not hunks and "Binary files" in diff.stdout
+    return {"status": "changed" if hunks or binary else "fresh", "hunks": hunks, "binary": binary, "lines": lines}
+
+
+def judge_claim(change, rng):
+    """ファイルの変化と行範囲から status を決める。"""
+    if change["status"] not in ("changed", "fresh"):
+        return dict(change)
+    if rng and rng[1] > change.get("lines", rng[1]):
+        return {"status": "invalid", "message": f"行範囲が参照したコミットのファイル（{change['lines']} 行）を超えている"}
+    hunks = change["hunks"]
+    if change["binary"]:
+        return {"status": "stale", "message": "バイナリファイルが変更された"}
+    if rng is None:
+        if hunks:
+            return {"status": "stale", "hunks": [h[4] for h in hunks]}
+        return {"status": "fresh"}
+    a, b = rng
+    overlap, offset = [], 0
+    for s, c, _s2, c2, header in hunks:
+        if c > 0:
+            if s <= b and s + c - 1 >= a:
+                overlap.append(header)
+            elif s + c - 1 < a:
+                offset += c2 - c
+        else:  # 純粋な挿入。s 行目の直後に入る
+            if a <= s < b:
+                overlap.append(header)
+            elif s < a:
+                offset += c2
+    if overlap:
+        return {"status": "stale", "hunks": overlap}
+    result = {"status": "fresh"}
+    if offset:
+        na, nb = a + offset, b + offset
+        result["current"] = f"#L{na}" if na == nb else f"#L{na}-L{nb}"
+    return result
+
+
+def resolve_wiki(arg):
+    if arg:
+        wiki = expand(arg)
+    else:
+        found = resolve_project(os.getcwd())
+        if not found:
+            print("wiki を特定できない。--wiki を指定するか /llm-wiki:setup で登録", file=sys.stderr)
+            return None
+        wiki = Path(found["wiki"])
+    if not (wiki / "index.md").is_file():
+        print(f"index.md が無い: {wiki}", file=sys.stderr)
+        return None
+    return wiki
+
+
+def check_claim(m, projects, cache):
+    project, path, a, b, sha = m.groups()
+    rng = (int(a), int(b) if b else int(a)) if a else None
+    entry = projects.get(project)
+    if entry is None:
+        return {"status": "unknown_project"}
+    if rng and not 1 <= rng[0] <= rng[1]:
+        return {"status": "invalid", "message": "行範囲が不正"}
+    repo = expand(entry["repo"])
+    relpath = None if Path(path).is_absolute() or ".." in Path(path).parts else repo_relpath(repo, path)
+    if relpath is None:
+        return {"status": "invalid", "message": "リポジトリの外を指している"}
+    key = (str(repo), sha.lower(), relpath)
+    if key not in cache:
+        cache[key] = file_change(repo, sha, relpath)
+    return judge_claim(cache[key], rng)
+
+
+def cmd_check_claims(args):
+    wiki = resolve_wiki(args.wiki)
+    if wiki is None:
+        return 1
+    pages = list(wiki_pages(wiki))
+    if args.page:
+        pages = [(p, rel) for p, rel in pages if rel == Path(args.page)]
+        if not pages:
+            print(f"ページが無い: {args.page}（wiki からの相対パス）", file=sys.stderr)
+            return 1
+    projects = load_config()["projects"]
+    cache = {}
+    total, fresh, issues, shifted = 0, 0, [], []
+    for p, rel in pages:
+        text = FENCE_RE.sub("", p.read_text(encoding="utf-8", errors="replace"))
+        for m in CLAIM_RE.finditer(text):
+            total += 1
+            try:
+                result = check_claim(m, projects, cache)
+            except Exception as e:  # 1 件の失敗で全体を止めない
+                result = {"status": "error", "message": f"{type(e).__name__}: {e}"}
+            status = result.pop("status")
+            if status == "fresh":
+                fresh += 1
+                if "current" in result:
+                    shifted.append({"page": str(rel), "ref": m.group(0), "current": result["current"]})
+            else:
+                issues.append({"page": str(rel), "ref": m.group(0), "status": status, **result})
+    report = {"wiki": str(wiki), "claims": total, "fresh": fresh, "issues": issues, "shifted": shifted}
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
 
@@ -351,6 +587,17 @@ def main():
     p = sub.add_parser("lint", help="リンク切れ・孤立ページ・index 漏れなどを JSON で報告")
     p.add_argument("--wiki")
     p.set_defaults(func=cmd_lint)
+
+    p = sub.add_parser("claim-ref", help="コードの根拠参照 repo://<project>/<path>#L<a>-L<b>@<sha> を出力")
+    p.add_argument("path", help="リポジトリのルートからの相対パス（リポジトリ内の絶対パスも可）")
+    p.add_argument("--lines", help="行範囲 A-B または A")
+    p.add_argument("--cwd", default=os.getcwd())
+    p.set_defaults(func=cmd_claim_ref)
+
+    p = sub.add_parser("check-claims", help="wiki の repo:// 根拠が参照時点から変わっていないかを JSON で報告")
+    p.add_argument("--wiki")
+    p.add_argument("--page", help="点検するページ（wiki からの相対パス）")
+    p.set_defaults(func=cmd_check_claims)
 
     p = sub.add_parser("capture-config", help="セッション終了時の候補自動抽出の設定を表示・変更")
     p.add_argument("--enable", action="store_true")
