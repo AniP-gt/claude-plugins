@@ -43,13 +43,14 @@ PROMPT = """あなたはソフトウェア開発チームの記録係です。�
 出力ルール:
 - 残す候補が無ければ、NONE とだけ出力する。
 - 候補があれば Markdown で、候補ごとに次の形式で書く。前置きや締めの文は書かない。
+- 候補は英語で書く（wiki は英語で書くため）。会話が日本語でも英語に訳す。コード、識別子、パス、コマンド、エラーメッセージ、固有名詞は原文のまま残す。
 
-## <短いタイトル>
-- 種別: decision | problem | gotcha | fact
-- 内容: <1〜5行。事実だけ。推測は「推測:」と書く>
-- 根拠: <会話で確認された根拠。ファイルパス、PR/Issue 番号、コマンド結果など>
-- 確度: 高 | 中 | 低
-- 関連しそうな既存ページ: <[[ページ名]] またはなし>
+## <short title>
+- Type: decision | problem | gotcha | fact
+- Content: <1-5 lines. Facts only. Mark guesses with "Speculation:">
+- Evidence: <evidence confirmed in the conversation: file paths, PR/Issue numbers, command results, etc.>
+- Confidence: high | medium | low
+- Related existing pages: <[[page name]] or none>
 
 <existing_index>
 {index}
@@ -151,9 +152,9 @@ def run(found, config, transcript, session_id, index_text):
     for old in inbox.glob(f"*-{session_id[:8]}.md"):
         old.unlink()
     dest = inbox / f"{now:%Y-%m-%d-%H%M}-{session_id[:8]}.md"
-    header = (f"> 出典: Claude Code セッション `{session_id}`（{found['project']}"
-              f"{', branch ' + branch if branch else ''}）を {now:%Y-%m-%d %H:%M} に自動抽出。"
-              f"未検証の候補。/llm-wiki:ingest で整理する。\n\n")
+    header = (f"> Source: Claude Code session `{session_id}` ({found['project']}"
+              f"{', branch ' + branch if branch else ''}), auto-extracted at {now:%Y-%m-%d %H:%M}. "
+              f"Unverified candidates. Triage them with /llm-wiki:ingest.\n\n")
     dest.write_text(header + output + "\n", encoding="utf-8")
     log(f"saved {label}: {dest}")
     return 0

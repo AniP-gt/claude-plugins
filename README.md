@@ -108,7 +108,7 @@ Use `/omo-orchestrate` for complex multi-step work. Specialized LazyCodex-inspir
 
 ### llm-wiki
 
-LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・障害対応・用語）を Markdown の wiki に育てるプラグイン。wiki は Obsidian Vault 内など任意の場所に置ける。LLM が `raw/` の元資料を読み、`wiki/` のページと `index.md` / `log.md` を更新する。
+LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・障害対応・用語）を Markdown の wiki に育てるプラグイン。wiki は Obsidian Vault 内など任意の場所に置ける。LLM が `raw/` の元資料を読み、`wiki/` のページと `index.md` / `log.md` を更新する。wiki の本文（ページ、`index.md`、`log.md`、用語集）は英語で書く。`raw/` の元資料は原文の言語のまま保存する。ユーザーへの報告はユーザーの言語で行う。
 
 - `/llm-wiki:setup`: リポジトリと wiki フォルダの対応を登録し、必要なら wiki の雛形を作る
 - `/llm-wiki:ingest`: PR・Issue・議事録・URL・MemPalace の検索結果などを取り込む。要点の確認は挟まず、矛盾は判断できる範囲で直す

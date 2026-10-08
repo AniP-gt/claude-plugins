@@ -4,6 +4,6 @@ aliases: []
 tags: []
 ---
 
-# 操作ログ
+# Operation log
 
-新しいものを上に書く。形式: `## YYYY-MM-DD <Ingest|Query|Lint|Setup> <内容>`
+Newest first. Format: `## YYYY-MM-DD <Ingest|Query|Lint|Setup> <summary>`

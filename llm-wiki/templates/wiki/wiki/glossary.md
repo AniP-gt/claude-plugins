@@ -1,11 +1,11 @@
 ---
 id: glossary
 aliases:
-  - 用語集
+  - Glossary
 tags: []
 updated: 
 ---
 
-# 用語集
+# Glossary
 
-形式: `- **用語**: 説明（関連: [[ページ]]）`
+Format: `- **Term**: description (related: [[page]])`

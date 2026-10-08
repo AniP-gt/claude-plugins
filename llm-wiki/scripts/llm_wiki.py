@@ -554,6 +554,7 @@ def session_context(project, wiki, index, pending=0):
     return f"""LLM Wiki（{project}）: {wiki}
 このリポジトリの設計判断・仕様・障害対応・ハマりどころを集めた wiki。書き方のルールは {wiki}/CLAUDE.md。
 使い方:
+- wiki に書く内容（ページ、index.md、log.md、glossary.md）は英語で書く。ユーザーへの報告はユーザーの言語のまま。
 - 調査・実装・レビューを始める前に、下の目次から関連ページを探して読む。`[[名前]]` は {wiki}/wiki/ 以下の `名前.md`。
 - 仕様・過去の経緯・既知の不具合で迷ったら、推測で進めずに wiki を確認する。目次に無ければ {wiki} を Grep する（raw/ も対象）。
 - サブエージェントに調査や実装を任せるときは、関連する wiki ページのパスをプロンプトに含める。

@@ -1,60 +1,67 @@
-# Wiki ルール
+# Wiki Rules
 
-このフォルダは LLM Wiki。LLM が `raw/` の資料を読み、`wiki/` のページを書いて育てる。人間は Obsidian で読む。
-上位フォルダの CLAUDE.md より、このファイルのルールを優先する。プロジェクトに合わせて自由に書き換えてよい。
+This folder is an LLM Wiki. The LLM reads sources in `raw/` and grows the pages in `wiki/`. Humans read it in Obsidian.
+The rules in this file take precedence over any CLAUDE.md in parent folders. Edit them freely to fit the project.
 
-## ディレクトリ
+## Language
 
-| パス | 役割 | LLM の扱い |
+- Write everything in this wiki in English: pages, `index.md`, `log.md`, and `wiki/glossary.md`. Source material saved to `raw/` keeps its original language, but write the header you add to it (source, date, notes) in English.
+- Write in English even when the source material or the conversation is in another language. Translate the facts; do not paste untranslated prose.
+- Keep code, identifiers, file paths, commands, error messages, and product or proper names exactly as they appear. When a non-English business term matters, write the English term and add the original in parentheses once, e.g. `prescription refill (処方箋の再調剤)`, and add the original to `aliases`.
+- Quotes from sources may stay in the original language when the exact wording matters. Add an English translation after them.
+
+## Directories
+
+| Path | Role | How the LLM treats it |
 |---|---|---|
-| `raw/` | 元資料（PR 要約、議事録、チャット抜粋、検索結果） | 読むだけ。編集・削除しない |
-| `wiki/repos/` | リポジトリごとの概要 | 作成・更新 |
-| `wiki/features/` | 機能ごとのページ | 作成・更新 |
-| `wiki/decisions/` | 設計判断（なぜそうしたか） | 作成・更新 |
-| `wiki/problems/` | 障害・ハマりどころと解決策 | 作成・更新 |
-| `wiki/glossary.md` | 業務用語 | 追記 |
-| `index.md` | 全ページの目次 | 毎回更新 |
-| `log.md` | 操作履歴（新しいものを上に） | 毎回追記 |
+| `raw/` | Source material (PR summaries, meeting notes, chat excerpts, search results) | Read only. Never edit or delete |
+| `wiki/repos/` | Overview of each repository | Create and update |
+| `wiki/features/` | One page per feature | Create and update |
+| `wiki/decisions/` | Design decisions (why it was done this way) | Create and update |
+| `wiki/problems/` | Incidents, gotchas, and their fixes | Create and update |
+| `wiki/glossary.md` | Business terms | Append |
+| `index.md` | Table of contents for all pages | Update every time |
+| `log.md` | Operation history (newest first) | Append every time |
 
-## ページの書き方
+## Writing pages
 
-- 1 ページ 1 トピック。ファイル名は日本語でも `kebab-case` でもよいが、wiki 内で統一する。
-- 先頭に frontmatter を付ける。
+- One topic per page. Use English `kebab-case` file names.
+- Start each page with frontmatter.
 
   ```yaml
   ---
-  id: <ファイル名>
+  id: <file name>
   aliases: []
-  tags: [<プロジェクト名>, <repo|feature|decision|problem>]
+  tags: [<project name>, <repo|feature|decision|problem>]
   sources: ["[[raw/xxx]]"]
   updated: YYYY-MM-DD
-  verified: YYYY-MM-DD  # 任意。コードの根拠を確かめた日
+  verified: YYYY-MM-DD  # optional. Date the code evidence was last checked
   ---
   ```
 
-- 本文の先頭に 1〜3 行の要約を置く。
-- 関連ページは `[[ページ名]]` でリンクする。リンク先がまだ無くてもよい（作るべきページの候補になる）。
-- 事実には出典を付ける（`raw/` のファイル、PR 番号、Issue 番号）。推測は「推測:」と明記する。
-- コードを読んで得た事実には、事実の直後に （根拠: `repo://<project>/<path>#L<a>-L<b>@<sha>`） を付ける。参照は `llm_wiki.py claim-ref` で作る。根拠のコードが変わったかは `llm_wiki.py check-claims` で調べられる。
-- 古くなった記述は消さずに `~~取り消し線~~` と日付を付け、新しい記述を下に書く。
-- 秘密情報（トークン、パスワード、個人情報）は書かない。
+- Put a 1-3 line summary at the top of the body.
+- Link related pages with `[[page name]]`. The target may not exist yet (it becomes a candidate page).
+- Cite a source for every fact (a file in `raw/`, a PR number, an Issue number). Mark guesses with "Speculation:".
+- For facts learned by reading code, put (evidence: `repo://<project>/<path>#L<a>-L<b>@<sha>`) right after the fact. Create the reference with `llm_wiki.py claim-ref`. Check whether the code behind it changed with `llm_wiki.py check-claims`.
+- Do not delete outdated statements. Strike them through with `~~strikethrough~~`, add the date, and write the new statement below.
+- Never write secrets (tokens, passwords, personal information).
 
-### decisions のテンプレ
-
-```markdown
-## 背景
-## 決定
-## 検討した代替案
-## 影響・トレードオフ
-```
-
-### problems のテンプレ
+### decisions template
 
 ```markdown
-## 症状
-## 原因
-## 対処
-## 再発防止
+## Context
+## Decision
+## Alternatives considered
+## Consequences and trade-offs
 ```
 
-操作手順（Ingest / Query / Lint）は llm-wiki プラグインの skill に従う。
+### problems template
+
+```markdown
+## Symptoms
+## Cause
+## Fix
+## Prevention
+```
+
+Follow the llm-wiki plugin skills for the procedures (Ingest / Query / Lint).

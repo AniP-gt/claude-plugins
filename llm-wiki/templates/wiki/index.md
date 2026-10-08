@@ -6,16 +6,16 @@ tags: []
 
 # Wiki
 
-ルールは [[CLAUDE]]、履歴は [[log]]。
+Rules: [[CLAUDE]]. History: [[log]].
 
-## リポジトリ
+## Repositories
 
-## 機能
+## Features
 
-## 設計判断
+## Decisions
 
-## 問題・解決策
+## Problems and fixes
 
-## 用語
+## Glossary
 
-- [[glossary|用語集]]
+- [[glossary|Glossary]]
