@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: review-retry-change
+tags: [hidden-impact, review]
+execution:
+  prompt: |
+    直近のコミット (HEAD) の変更をレビューして。修正はせず、指摘だけ返して。
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Bash, Skill, Agent, Task]
+context:
+  scaffold_script: scaffold.sh

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: design-merge-users
+tags: [hidden-impact, design]
+execution:
+  prompt: |
+    メールアドレスが同じユーザーを1つにまとめる関数 mergeDuplicateUsers を src/users.js に追加して。
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, Task]
+context:
+  scaffold_script: scaffold.sh

@@ -200,7 +200,11 @@ Every final gate in the controllers (`omo-review-loop`, `omo-ultrawork`, `omo-ul
 
 ## Evals
 
-`evals/` holds `claude plugin eval` cases that measure whether the plugin finds impact the user did not ask about. `hidden-impact-rename` builds a small service with a scaffold script and asks for a one-line rename of a setting key; the key is also reached through names that `grep` for the key misses (an environment variable derived from it, a snake_case CSV import column), plus stored data and a public API field. LLM graders check each of those.
+`evals/` holds `claude plugin eval` cases that measure whether the plugin finds impact the user did not ask about. Each case builds a small git repository with a scaffold script, and LLM graders check one hidden concern each.
+
+- `hidden-impact-rename` (implementation): a one-line request to rename a setting key. The key is also reached through names that `grep` for the key misses (an environment variable derived from it, a snake_case CSV import column), plus stored data and a public API field.
+- `design-merge-users` (design): add a function that merges users with the same email. Emails differ in case and whitespace, several users have no email, and orders point at user ids.
+- `review-retry-change` (review): review a commit that adds retries to a billing job. The payment client can time out after capturing a charge, and the scheduler only bills `pending` invoices, so marking one `failed` drops it for good.
 
 ```bash
 cd omo-orchestrator
@@ -208,7 +212,7 @@ claude plugin eval . --scaffold --trust-plugin --no-publish --threshold 0 \
   --model claude-sonnet-5-5 --allow-tools Bash Edit Write
 ```
 
-The run compares the plugin against a no-plugin baseline by default. Results go to `evals/results/` (git-ignored).
+The run compares the plugin against a no-plugin baseline by default. Results go to `evals/results/` (git-ignored). To see what one hook contributes, copy the plugin, remove that hook from the copy's `hooks/hooks.json` (or prefix the command with `OMO_PREFLIGHT=off`), and run the copy with `--ablation none`.
 
 ## Included Agents
 
