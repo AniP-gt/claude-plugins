@@ -7,7 +7,7 @@
 // Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
 import { fileURLToPath } from "node:url";
 import { saveSnapshot, takeSnapshot } from "./turn-snapshot.mjs";
-import { detectKeyword, stripCode, stripInjected } from "./ulw-keyword.mjs";
+import { detectKeyword, stripInjected, userText } from "./ulw-keyword.mjs";
 
 const MARKER = "<omo-preflight>";
 const IMPACT_SCRIPT = fileURLToPath(new URL("../scripts/impact.mjs", import.meta.url));
@@ -26,13 +26,13 @@ const REVIEW_PATTERNS = [/レビュー|監査|指摘だけ|指摘して/, new Re
 const NAMED_REVIEWER_PATTERN = /review-pr|code-review|self-review|omo-review|security-review/i;
 
 export function wantsReview(prompt) {
-  const text = stripCode(stripInjected(prompt));
+  const text = userText(prompt);
   if (text.trimStart().startsWith("/") || NAMED_REVIEWER_PATTERN.test(text)) return false;
   return REVIEW_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 export function wantsChange(prompt) {
-  const text = stripCode(stripInjected(prompt));
+  const text = userText(prompt);
   return CHANGE_PATTERNS.some((pattern) => pattern.test(text));
 }
 

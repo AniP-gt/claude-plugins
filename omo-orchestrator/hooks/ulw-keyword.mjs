@@ -45,8 +45,47 @@ export function stripInjected(prompt) {
     .replace(/\[SYSTEM NOTIFICATION - NOT USER INPUT\][^\n]*/g, " ");
 }
 
+// Text the user pasted from elsewhere arrives wrapped in <pasted_content> tags. It is quoted material,
+// not the user's request: a pasted report that says "review" or "ulw" must not route the prompt.
+// It still counts as user input for turn tracking, so stripInjected leaves it alone.
+// A paste ends only at the closing tag with the same id, so a paste that quotes another closing tag
+// stays whole. An opener without its closing tag hides the rest only when it carries the id Claude Code
+// adds; a bare "<pasted_content>" the user typed is kept as their text. Typing an id-bearing opener by
+// hand, even inside backticks, still hides the rest of the prompt from routing. The scan is linear: each
+// closing tag is searched for at most once after it is known to be missing.
+const PASTE_OPEN = /<pasted_content( id="[^"\n]{1,64}")?>/g;
+
+export function stripPasted(prompt) {
+  let out = "";
+  let pos = 0;
+  const missing = new Set();
+  for (;;) {
+    PASTE_OPEN.lastIndex = pos;
+    const open = PASTE_OPEN.exec(prompt);
+    if (open === null) return out + prompt.slice(pos);
+    const id = open[1] ?? "";
+    const close = `</pasted_content${id}>`;
+    const end = missing.has(close) ? -1 : prompt.indexOf(close, PASTE_OPEN.lastIndex);
+    if (end !== -1) {
+      out += `${prompt.slice(pos, open.index)} `;
+      pos = end + close.length;
+      continue;
+    }
+    missing.add(close);
+    if (id !== "") return `${out}${prompt.slice(pos, open.index)} `;
+    out += prompt.slice(pos, PASTE_OPEN.lastIndex);
+    pos = PASTE_OPEN.lastIndex;
+  }
+}
+
+// The user's own words: a paste is stripped first because it is the outer container, so an unclosed
+// <system-reminder> quoted inside it cannot swallow the paste's closing tag and the request after it.
+export function userText(prompt) {
+  return stripCode(stripInjected(stripPasted(prompt)));
+}
+
 export function detectKeyword(prompt) {
-  const text = stripCode(stripInjected(prompt));
+  const text = userText(prompt);
   const mass = MASS_PATTERN.test(text);
   for (const [mode, pattern] of MODE_PATTERNS) {
     if (pattern.test(text)) return { mode, mass };
