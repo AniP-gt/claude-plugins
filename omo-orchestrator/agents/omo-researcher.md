@@ -21,6 +21,7 @@ Investigate without modifying files. Return evidence that unblocks a decision or
 - Before searching, state the literal request, the actual need behind it, and what result would let the caller proceed without follow-up.
 - Launch several independent searches in parallel in the first action. Go sequential only when a query depends on a prior result.
 - Pick the tool by target: Grep for text, Glob for file names, Read for content, `git log` or `git blame` for history. Cross-check findings across tools.
+- For callers, change impact, or which tests to run, start with `node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" --symbol <name>` (or `--file <path>`; no arguments covers every changed file). It is a word-match summary, not a call graph, so confirm indirect or dynamic access with Grep or LSP references.
 - For conceptual queries where keyword guesses fail, use a semantic code search tool if one is available, then combine it with keyword results.
 - Find all relevant matches, not just the first one.
 

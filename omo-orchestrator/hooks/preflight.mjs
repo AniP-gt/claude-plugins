@@ -10,6 +10,7 @@ import { saveSnapshot, takeSnapshot } from "./turn-snapshot.mjs";
 import { detectKeyword, stripCode, stripInjected } from "./ulw-keyword.mjs";
 
 const MARKER = "<omo-preflight>";
+const IMPACT_SCRIPT = fileURLToPath(new URL("../scripts/impact.mjs", import.meta.url));
 const B = "(?<![A-Za-z0-9_])";
 const E = "(?![A-Za-z0-9_])";
 const CHANGE_PATTERNS = [
@@ -45,6 +46,8 @@ export function buildContext() {
     "   partial failure, existing data). Ask the user only when the answer changes a reachable result;",
     "   otherwise pick the reading that matches existing code and say which one you used.",
     "3. Search the callers of every existing function, config key, or command you will modify.",
+    `   \`node "${IMPACT_SCRIPT}" --symbol <name>\` lists callers and related tests in a few lines;`,
+    "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
     "If the change touches 3+ files, public or CLI behavior, persistence, or security, load",
     "`omo-orchestrator:omo-implement`, which sizes the task and escalates to ultrawork when needed.",
     "</omo-preflight>",

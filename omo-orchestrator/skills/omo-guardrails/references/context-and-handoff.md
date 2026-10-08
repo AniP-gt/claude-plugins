@@ -13,6 +13,7 @@ After delegating a search, do not run the same Grep, Glob, or Read yourself, and
 | Long agent result | Summarize before the next step |
 | Conversation being compacted | Move remaining work to sub-agents |
 | 10+ steps remaining | Delegate the remaining batch |
+| Approach changed, 2+ failed attempts in history, or the user will resume after a long break | Offer an `omo-handoff` fresh-session brief instead of `/compact` |
 
 Rules:
 

@@ -1,8 +1,8 @@
 ---
 name: omo-handoff
-description: Manual durable handoff workflow for a task-linked append-only phase ledger with evidence, blockers, and one exact next action.
+description: Manual handoff workflow. Keeps a task-linked append-only phase ledger, or writes a short brief to continue in a fresh session instead of compacting.
 argument-hint: [task-slug]
-allowed-tools: Read, Grep, Glob, Edit, Write
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash(orca:*)
 user-invocable: true
 ---
 
@@ -10,7 +10,46 @@ user-invocable: true
 
 Use this skill when work must survive a context change, an operator change, or a pause between phases. Keep one ledger per task at `.claude/omo/handoffs/<task-slug>.md`.
 
-This is a manual, content-only workflow. It provides no hook, automatic creation, automatic persistence, or automatic continuation. An operator creates the record, appends each entry, and reads it before taking the next action.
+This is a manual workflow. It provides no hook, automatic creation, automatic persistence, or automatic continuation. An operator creates the record, appends each entry, and reads it before taking the next action. The only command it runs is the Orca launch in [Fresh-Session Brief](#fresh-session-brief), and only when the user asks for it in that turn; it never starts a session on its own.
+
+## Fresh-Session Brief
+
+A long conversation resends every earlier turn, including dead-end hypotheses, failed commands, and rejected options. `/compact` lets the model choose what survives and keeps adding to the same session. A brief lets you choose, and the next session starts from zero.
+
+Suggest a brief when any of these hold: the approach changed and the earlier attempts no longer apply, two or more failed attempts sit in the history, the user says they will resume later (another day or after a long break, when the prompt cache will have expired), or the task is switching. Write it when the user agrees or asks for a handoff.
+
+Write `.claude/omo/briefs/<task-slug>.md`, kept apart from the ledgers so a resume summary never mistakes one for the other. Use only lowercase letters, digits, and hyphens in `<task-slug>`, because it also goes into the commands below. Unlike the ledger the brief is a snapshot: replace it on each handoff. Keep it under about 40 lines and point to files instead of pasting their content.
+
+```text
+# Brief: <task-slug>
+Written: <ISO 8601 timestamp>   Ledger: <path or none>   Branch: <branch>
+
+## Goal
+<one sentence>
+
+## Decisions changed
+<each decision, what it replaced, and why>
+
+## Current state of the code
+<changed files, what works, last validation command and result>
+
+## Directions that failed
+<what was tried, how it failed, why not to retry>
+
+## Unverified
+<assumptions and checks not yet run>
+
+## Next exact action
+<one concrete action>
+```
+
+Then start the next session:
+
+- Inside Orca (`orca worktree current --json` reports `"ok": true`) and the user asked to continue in a new session: run `orca terminal create --worktree active --title <task-slug> --command claude --json`, then `orca terminal wait --terminal <handle> --for tui-idle --timeout-ms 60000 --json`. Send only when the result reports `satisfied: true`: `orca terminal send --terminal <handle> --text "Read .claude/omo/briefs/<task-slug>.md and continue from its next exact action." --enter --wait-submit 15 --json`. On `satisfied: false`, wait once more with a larger timeout; if it still fails, report that the handoff did not start and do not send. Once the send reports `accepted: true` and the submission is observed, report the handle and stop working in this session; if only input acceptance is reported, tell the user to check that terminal instead of resending.
+- A `runtime_access_denied` (EPERM) error means the command sandbox blocked the Orca socket, not that Orca is absent. Tell the user so, and use the paste fallback below unless they choose to allow the Orca command outside the sandbox.
+- Otherwise: print that same one-line prompt and tell the user to run `/clear` (or open a new session) and paste it.
+
+Do not put secrets, tokens, or transcript excerpts in the brief.
 
 ## Record Contract
 

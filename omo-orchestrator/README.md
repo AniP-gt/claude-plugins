@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only apart from four small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger), [Pre-flight And Review Gate](#pre-flight-and-review-gate), and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. Local Git operations are governed by `omo-git-master`. GitHub actions, including publish, push, PR merge, and remote comments, are outside these skills; an external operator performs them only with the required explicit permission. The skills prepare local artifacts and handoffs only.
+This plugin is content-only apart from four small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger), [Pre-flight And Review Gate](#pre-flight-and-review-gate), and the JSON argument recovery hook) and one read-only helper script, `scripts/impact.mjs` (see [Impact Script](#impact-script)). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. Local Git operations are governed by `omo-git-master`. GitHub actions, including publish, push, PR merge, and remote comments, are outside these skills; an external operator performs them only with the required explicit permission. The skills prepare local artifacts and handoffs only.
 
 ## Install
 
@@ -23,7 +23,7 @@ Restart Claude Code after installation.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
 - `omo-hyperplan`: adversarial planning for hard, risky, or ambiguous work.
 - `omo-ralph-loop`: sole manual continuation controller for implementation, repair, review, validation, and handoff; one shared default budget of 20 iterations.
-- `omo-handoff`: manual durable handoff workflow for a task-linked append-only phase ledger.
+- `omo-handoff`: manual durable handoff workflow for a task-linked append-only phase ledger, plus a short fresh-session brief (decisions changed, code state, failed directions, unverified items) that can start the next Claude session through the Orca CLI.
 
 ## Specialized Skills
 
@@ -191,6 +191,18 @@ Quick check:
 ```bash
 printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"fix the retry logic"}' | node omo-orchestrator/hooks/preflight.mjs
 ```
+
+## Impact Script
+
+Version 1.23.0 adds `scripts/impact.mjs`, a dependency-free Node script that answers "who references this, and which tests cover it" in a few lines. It runs `git grep -w -F --untracked` from the repository root, without a shell, and never writes files. Tests: `node --test omo-orchestrator/scripts/impact.test.mjs`.
+
+```bash
+node omo-orchestrator/scripts/impact.mjs --symbol saveSnapshot   # callers and tests of a symbol
+node omo-orchestrator/scripts/impact.mjs --file src/auth/login.ts  # files that mention the module name
+node omo-orchestrator/scripts/impact.mjs --base main               # every changed code file against main
+```
+
+A chain of Grep and Read calls puts every match into the conversation, and those bytes are resent on every later turn. The script returns counts, `path (n: L10,L22)` entries, and test files, capped by `--limit` (default 15). It matches words, not a call graph: dynamic access and names built at runtime still need Grep or LSP references, and literal text such as messages belongs to Grep. The pre-flight hook, `omo-research`, and `omo-researcher` point to it for caller and impact questions. Version 1.23.0 also adds the `omo-handoff` fresh-session brief and an Orca CLI launch for the next session.
 
 ## Single Review Entry
 
