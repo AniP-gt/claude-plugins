@@ -4,6 +4,8 @@
 // Changed files come from the git snapshot preflight.mjs took at the prompt, so Bash and sub-agent edits
 // count; the transcript's Edit/Write calls are the fallback outside git.
 // The second stop arrives with stop_hook_active=true and always passes, so the hook cannot loop.
+// A background task notification continues the same turn and triggers a fresh stop without that flag, so
+// the gate also passes when its own feedback already follows the last edit: it asks once per edit.
 import { readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,7 +39,17 @@ function isRealUserPrompt(entry) {
   return stripInjected(text).trim().length > 0;
 }
 
-// Returns the tool_use blocks the main thread issued since the last real user prompt.
+// Marks where this gate's own feedback landed in the turn; summarizeTurn treats it like a review.
+export const GATE_FEEDBACK = "omo-review-gate-feedback";
+
+function isGateFeedback(entry) {
+  if (entry?.type !== "user" || entry.isMeta !== true || entry.isSidechain === true) return false;
+  const content = entry.message?.content;
+  return typeof content === "string" && content.includes(MARKER);
+}
+
+// Returns the tool_use blocks the main thread issued since the last real user prompt, with a
+// { name: GATE_FEEDBACK } entry wherever the gate already blocked a stop.
 export function currentTurnToolUses(entries) {
   let start = 0;
   for (let i = entries.length - 1; i >= 0; i -= 1) {
@@ -48,6 +60,10 @@ export function currentTurnToolUses(entries) {
   }
   const uses = [];
   for (const entry of entries.slice(start)) {
+    if (isGateFeedback(entry)) {
+      uses.push({ name: GATE_FEEDBACK });
+      continue;
+    }
     if (entry?.type !== "assistant" || entry.isSidechain === true) continue;
     const content = entry.message?.content;
     if (!Array.isArray(content)) continue;
@@ -78,6 +94,8 @@ export function summarizeTurn(uses, cwd) {
         delegatedEdit = true;
         reviewed = false;
       }
+    } else if (use.name === GATE_FEEDBACK) {
+      reviewed = true;
     } else if (use.name === "Skill") {
       if (REVIEW_SKILL_PATTERN.test(String(input.skill ?? ""))) reviewed = true;
     }
