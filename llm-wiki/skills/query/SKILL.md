@@ -1,6 +1,6 @@
 ---
 name: query
-description: LLM Wiki を根拠に質問へ答える。過去の設計判断、仕様、障害対応、用語を聞かれたとき、または作業中に仕様や経緯で迷ったときに使う。wiki に無ければ MemPalace などを検索し、良い答えや誤りの訂正は確認なしで wiki に書き戻す。「wiki で調べて」「前にどう決めた？」で使う。
+description: LLM Wiki を根拠に質問へ答える。過去の設計判断、仕様、障害対応、用語を聞かれたとき、または作業中に仕様や経緯で迷ったときに使う。wiki に無ければ context-mode の記録などを検索し、良い答えや誤りの訂正は確認なしで wiki に書き戻す。「wiki で調べて」「前にどう決めた？」で使う。
 ---
 
 # LLM Wiki: Query
@@ -17,7 +17,13 @@ description: LLM Wiki を根拠に質問へ答える。過去の設計判断、�
 
 ## 3. wiki に無いとき
 
-- MemPalace が使えるなら `mempalace_search` で検索する。コードで確認できることはリポジトリを調べる。
+次の順に探す。見つかった時点で止める。
+
+1. コードで確認できることは、リポジトリを調べる。
+2. 過去の session の経緯（何を試したか、なぜ却下したか）は、context-mode の `ctx_search` で探す。ツールは deferred なので、先に `ToolSearch` で `select:mcp__plugin_context-mode_context-mode__ctx_search` を読み込む。`queries` に複数の言い換えをまとめて渡し、`sort: "timeline"` で過去の session まで含める。今のリポジトリ以外の記録も見るときは `project: "global"` を付ける。
+3. MemPalace など、ほかの記憶ツールの MCP があるときだけ、それも検索する。
+
+context-mode の記録は自動で取られた断片で、検証されていない。答えに使うときはコードか資料で確かめ、確かめられない部分は推測と明記する。
 - wiki 以外で見つかった答えは「wiki に無かった」と明示する。今後も使えそうなら手順 4 で書き戻す。
 
 ## 4. 書き戻し

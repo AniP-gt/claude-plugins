@@ -111,7 +111,7 @@ Use `/omo-orchestrate` for complex multi-step work. Specialized LazyCodex-inspir
 LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・障害対応・用語）を Markdown の wiki に育てるプラグイン。wiki は Obsidian Vault 内など任意の場所に置ける。LLM が `raw/` の元資料を読み、`wiki/` のページと `index.md` / `log.md` を更新する。wiki の本文（ページ、`index.md`、`log.md`、用語集）は英語で書く。`raw/` の元資料は原文の言語のまま保存する。ユーザーへの報告はユーザーの言語で行う。
 
 - `/llm-wiki:setup`: リポジトリと wiki フォルダの対応を登録し、必要なら wiki の雛形を作る
-- `/llm-wiki:ingest`: PR・Issue・議事録・URL・MemPalace の検索結果などを取り込む。要点の確認は挟まず、矛盾は判断できる範囲で直す
+- `/llm-wiki:ingest`: PR・Issue・議事録・URL・context-mode の検索結果などを取り込む。要点の確認は挟まず、矛盾は判断できる範囲で直す
 - `/llm-wiki:query`: wiki を根拠に答え、良い答えや誤りの訂正は確認なしで wiki に書き戻す
 - `/llm-wiki:lint`: リンク切れ・孤立ページ・index 漏れ・根拠コードの変更を機械的に検出し、矛盾や古い記述を点検する。修正が必要と判断したものは確認なしで直す
 - コードの根拠（Grounded Claims）: コードから得た事実に `repo://<project>/<path>#L<a>-L<b>@<sha>` の参照を付ける。`llm_wiki.py claim-ref` が今の HEAD で参照を作り、`llm_wiki.py check-claims` が参照時点から根拠の行が変わったか（stale / missing / 行ずれ）を JSON で報告する

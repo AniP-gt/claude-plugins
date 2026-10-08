@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: 資料（PR、Issue、議事録、URL、ファイル、会話の結論、MemPalace などの検索結果、raw/inbox/ の自動抽出候補）を LLM Wiki に取り込む。raw/ に保存し、関連ページを作成・更新し、index.md と log.md を更新する。「wiki に取り込んで」「wiki に残して」「候補を整理して」で使う。
+description: 資料（PR、Issue、議事録、URL、ファイル、会話の結論、context-mode などの検索結果、raw/inbox/ の自動抽出候補）を LLM Wiki に取り込む。raw/ に保存し、関連ページを作成・更新し、index.md と log.md を更新する。「wiki に取り込んで」「wiki に残して」「候補を整理して」で使う。
 ---
 
 # LLM Wiki: Ingest
@@ -24,7 +24,8 @@ description: 資料（PR、Issue、議事録、URL、ファイル、会話の結
 ## 1. 資料を raw/ に保存する
 
 - ユーザーが指定したもの: ファイル、URL、PR / Issue 番号（`gh pr view` / `gh issue view`）、今の会話の結論など。
-- MemPalace が使えるなら（`mempalace_search` などの MCP ツールがある場合）、テーマを検索して結果を資料にしてよい。wing / room は結果を見て絞る。
+- 過去の session の経緯を資料にするときは、context-mode の `ctx_search`（`sort: "timeline"`）でテーマを検索してよい。自動で取られた断片なので、ページに書く前にコードか資料で確かめる。
+- MemPalace など、ほかの記憶ツールの MCP があるときは、それを検索した結果も資料にしてよい。
 - 保存先は `<wiki>/raw/YYYY-MM-DD-<short-title>.md`（題名は英語の kebab-case）。先頭に出典（URL、PR 番号、検索クエリ）を英語で書く。
 - 既に raw/ にある資料なら保存しない。raw/ のファイルは編集しない。
 - トークン、パスワード、個人の連絡先などの秘密情報は伏せて保存する。
