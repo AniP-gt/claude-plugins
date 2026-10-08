@@ -37,6 +37,8 @@ Classify the brief before anything else.
 - **Reference.** A user-designated visual target (screenshot, mockup, Figma export, named live site) is the visual contract. Match its layout, spacing, copy, states, and responsive intent unless the user accepts a deviation. Extract tokens from it; never copy logos or trademarked assets. A catalog selected to study a mechanism is not a visual target: adapt it to the project's existing design system.
 - **Kind.** New build, redesign of existing UI (audit weak spots first, then fix surgically), or a design-system task.
 
+For a standalone chart, table, or explanatory diagram with no existing application, route to `omo-visualize`. Its artifact contract replaces Phase 1's application discovery and Phase 2's application branches; use this skill's hierarchy, accessibility, direction, and implementer brief where applicable. Visualizations inside an existing application still follow every phase below.
+
 If the request is still ambiguous after two reads, ask one focused question ("minimal or premium?") before loading anything.
 
 ## Phase 1: Analyze the existing system (mandatory)

@@ -60,6 +60,7 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | File-level plan | `omo-planner`; hard or risky work: `omo-hyperplan` |
 | Plan executability check | `omo-plan-reviewer` |
 | Implementation and fixes | `omo-implementer` |
+| Standalone visual explanation, chart, table, or diagram | `omo-visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
 | Implement plus review loop | `omo-review-loop` |
 | Change review | `omo-reviewer` |
 | Architecture tradeoffs, hard debugging after repeated failures | `omo-oracle` |

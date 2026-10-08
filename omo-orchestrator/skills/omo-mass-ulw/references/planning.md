@@ -84,11 +84,11 @@ Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task
 ## Failure Playbook
 
 - **A failed task blocks only its dependents.** Read its error first, then recover that task in place. Never rebuild the whole graph.
-- **Retry first.** Re-dispatch only the failed task, with an edited prompt when the failure shows what was missing. Dependents stay pending until it verifies.
+- **Classify before retry.** Follow `omo-guardrails` `references/error-recovery.md` for start and resume failures: verify child status and ownership before replacement, keep unknown or foreign-owned children pending, and redact error payloads. STOP and BLOCKED override retry advice. Once recovery is authorized and the original child is confirmed absent or terminal, re-dispatch only the failed task with an edited prompt when needed. Dependents stay pending until it verifies.
 - **Amend when the definition was wrong.** Rewrite or split the bad task, then re-run it plus its transitive dependents. Verified unaffected tasks keep their results.
 - **SendMessage when the agent is alive but stuck or needs context.** Continuing the same agent keeps its context. If it cannot be continued, retry with a fresh dispatch.
 - **Start-time storms.** If many tasks in one wave fail within seconds without doing work, the environment or tool is failing, not the prompts. Stop dispatching, fix the cause, then retry the failed set.
-- **Verify a completion claim before trusting it.** A task that returns a report saying it was blocked has not completed. Retry it.
+- **Verify a completion claim before trusting it.** A task reporting a blocker has not completed. Classify and resolve the blocker before retrying; a report is not authority to bypass access or duplicate an unknown live child.
 - **Abandon only when the goal is abandoned.** Record the reason in the ledger.
 - For implementation/review tasks, every repair redispatch above first returns to `omo-ralph-loop` to reserve the next shared iteration; there is no separate task retry cap. Local command recovery and one missing-output follow-up stay within the current pass and never authorize an additional work pass. Research-only task retries follow the research workflow's convergence rules.
 

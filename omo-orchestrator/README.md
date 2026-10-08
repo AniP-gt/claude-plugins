@@ -39,6 +39,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions.
 - `omo-coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
 - `omo-visual-qa`: manual rendered-surface QA for browser pages and terminal TUIs, requiring fresh visual evidence and an `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` verdict.
+- `omo-visualize`: traceable standalone HTML/SVG charts, tables, and diagrams with self-contained assets, readable static content, explicit empty/error states, and rendered QA; existing application charts retain the frontend design-system gate.
 - `omo-get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
 - `omo-pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
 - `omo-work-with-pr`: end-to-end PR lifecycle workflow from issue understanding through review and validation.
@@ -96,6 +97,10 @@ Before changing files, it previews the mode, depth, generated candidates, confli
 This remains a content-only procedure. It does not add scripts, hooks, MCP servers, daemons, watchers, startup refresh, automatic continuation, atomic writes, or automatic Git operations. Generated rules are project guidance, not enforcement. After a run, inspect `/context` or `InstructionsLoaded` when available. Ignored-rule loading is not guaranteed, and child rules are scoped rather than eagerly loaded.
 
 ## Consolidated Personal Workflows
+
+Version 1.19.0 adapts upstream `visualize` at `c04544a95` (upstream 5.1.24) into `omo-visualize`. It preserves executable calculations, requires readable HTML/SVG without scripts or network assets, and routes final renders through `omo-visual-qa`. Standalone explanations use a local token set; charts inside applications still follow `omo-frontend`. No Senpi data engine, renderer, host theme, or inline-display capability is assumed.
+
+It also translates upstream start-failure diagnosis and deferred revival into manual recovery checks: distinguish host refusal, timeout, and transport loss; verify child ownership and state before replacement; preserve unknown or foreign-owned children; count confirmed live capacity; and keep raw error payloads out of handoffs. No automatic revival or fixed Senpi concurrency cap is introduced.
 
 Version 1.17.0 adds a failure ledger to the reviewer checklist (`omo-review`, `omo-reviewer`) for changes that fix a bug or add idempotency, locking, or transaction scope. The reviewer follows the downstream business result for delay and lost work, classifies each failure mode against the pre-change implementation as new, already present, or improved (already-present modes become out-of-scope notes and do not trigger a demand for a retry mechanism), grades frequency from the actual schedule, trigger, and concurrent actors, and checks any recovery claim in docs or comments against the code, including which inputs the next run processes. It remains a prompt-only update.
 
