@@ -27,7 +27,13 @@ export function minFiles(env = process.env) {
   return Number.isInteger(value) && value > 0 ? value : 2;
 }
 
-// Task notifications and system reminders arrive as user messages but continue the same turn.
+// A `!` shell command the user runs lands as <bash-input>/<bash-stdout> user messages. It fires no
+// UserPromptSubmit, so the snapshot stays at the last prompt; treating it as a new turn would forget the
+// gate's earlier feedback and block again on the same files.
+const BASH_MODE_PATTERN = /<(bash-input|bash-stdout|bash-stderr)>[\s\S]*?<\/\1>/g;
+
+// Task notifications, system reminders, and `!` shell commands arrive as user messages but continue the
+// same turn.
 function isRealUserPrompt(entry) {
   if (entry?.type !== "user" || entry.isMeta === true || entry.isSidechain === true) return false;
   const content = entry.message?.content;
@@ -36,7 +42,7 @@ function isRealUserPrompt(entry) {
   else if (Array.isArray(content) && !content.some((block) => block?.type === "tool_result")) {
     text = content.map((block) => (block?.type === "text" ? block.text : "")).join("\n");
   } else return false;
-  return stripInjected(text).trim().length > 0;
+  return stripInjected(text).replace(BASH_MODE_PATTERN, " ").trim().length > 0;
 }
 
 // Marks where this gate's own feedback landed in the turn; summarizeTurn treats it like a review.

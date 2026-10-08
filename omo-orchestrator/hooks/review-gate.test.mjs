@@ -17,10 +17,10 @@ const review = {
 const notification = { type: "user", origin: { kind: "task-notification" }, message: { content: "<task-notification>\n<status>completed</status>\n</task-notification>" } };
 const reply = { type: "assistant", message: { content: [{ type: "text", text: "ok" }] } };
 
-function gate(entries) {
+function gate(entries, changed = null) {
   const feedback = run(
     { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd },
-    { env: {}, loadTranscript: () => entries, changedFiles: () => null },
+    { env: {}, loadTranscript: () => entries, changedFiles: () => changed },
   );
   return feedback.length === 0 ? null : { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${JSON.parse(feedback).reason}` } };
 }
@@ -50,4 +50,22 @@ test("feedback from an earlier turn does not cover a new turn", () => {
   const earlier = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(earlier);
   assert.notEqual(gate([...earlier, feedback, reply, prompt, edit("c.js"), edit("d.js")]), null);
+});
+
+test("a `!` shell command after the gate's feedback does not start a new turn", () => {
+  const entries = [prompt, edit("a.js"), edit("b.js")];
+  // The files come from the git snapshot, which a `!` command does not refresh.
+  const fromGit = [`${cwd}/a.js`, `${cwd}/b.js`];
+  const feedback = gate(entries, fromGit);
+  assert.notEqual(feedback, null);
+  const bashInput = { type: "user", message: { content: "<bash-input>git push</bash-input>" } };
+  const bashOutput = { type: "user", message: { content: "<bash-stdout>main -> main</bash-stdout><bash-stderr></bash-stderr>" } };
+  assert.equal(gate([...entries, feedback, reply, bashInput, bashOutput, reply], fromGit), null);
+});
+
+test("a prompt that mixes the user's words with a shell block still starts a new turn", () => {
+  const entries = [prompt, edit("a.js"), edit("b.js")];
+  const feedback = gate(entries);
+  const mixed = { type: "user", message: { content: "これも直して <bash-input>ls</bash-input>" } };
+  assert.notEqual(gate([...entries, feedback, reply, mixed, edit("c.js"), edit("d.js")]), null);
 });
