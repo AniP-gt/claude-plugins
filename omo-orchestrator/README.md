@@ -98,6 +98,8 @@ This remains a content-only procedure. It does not add scripts, hooks, MCP serve
 
 ## Consolidated Personal Workflows
 
+Version 1.19.1 extends the reviewer checklist (`omo-review`, `omo-reviewer`). For a lock, guard, or uniqueness check that stops a duplicate run, the failure ledger asks whether the duplicate harms the downstream result at all, and reports a guard whose new wait timeout or skipped run loses work as costing more than it covers; another holder's hold time is read from the code it runs while holding the resource. A new concurrent-changes check lists other open PRs touching the same files (with a listing limit that covers every open PR, confirmed by the change under review appearing in its own result) and states conflicts, behavior once both land, contradicted premises, and a merge order.
+
 Version 1.19.0 adapts upstream `visualize` at `c04544a95` (upstream 5.1.24) into `omo-visualize`. It preserves executable calculations, requires readable HTML/SVG without scripts or network assets, and routes final renders through `omo-visual-qa`. Standalone explanations use a local token set; charts inside applications still follow `omo-frontend`. No Senpi data engine, renderer, host theme, or inline-display capability is assumed.
 
 It also translates upstream start-failure diagnosis and deferred revival into manual recovery checks: distinguish host refusal, timeout, and transport loss; verify child ownership and state before replacement; preserve unknown or foreign-owned children; count confirmed live capacity; and keep raw error payloads out of handoffs. No automatic revival or fixed Senpi concurrency cap is introduced.
