@@ -2,7 +2,7 @@
 
 OMO-inspired Claude Code orchestration plugin. It packages portable skills and agents for situation-led intent routing, decision-complete planning, dependency-aware execution, parallel research, real-surface QA, independent review gates, safety guardrails, and focused specialist workflows.
 
-This plugin is content-only apart from two small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger) and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. Local Git operations are governed by `omo-git-master`. GitHub actions, including publish, push, PR merge, and remote comments, are outside these skills; an external operator performs them only with the required explicit permission. The skills prepare local artifacts and handoffs only.
+This plugin is content-only apart from four small guidance hooks (see [Ulw Keyword Trigger](#ulw-keyword-trigger), [Pre-flight And Review Gate](#pre-flight-and-review-gate), and the JSON argument recovery hook). It does not install other scripts or hooks, MCP servers, provider routing, token storage, package manifests, or OpenCode runtime internals. Local Git operations are governed by `omo-git-master`. GitHub actions, including publish, push, PR merge, and remote comments, are outside these skills; an external operator performs them only with the required explicit permission. The skills prepare local artifacts and handoffs only.
 
 ## Install
 
@@ -165,6 +165,29 @@ Quick check:
 
 ```bash
 printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}' | node omo-orchestrator/hooks/ulw-keyword.mjs
+```
+
+## Pre-flight And Review Gate
+
+Version 1.20.0 adds two hooks so that hidden impact gets checked even when the user never asks for planning or review.
+
+- `hooks/preflight.mjs` (UserPromptSubmit): when a prompt asks for a code change (Japanese or English change verbs such as 実装, 修正, fix, add, refactor), it injects a short `<omo-preflight>` checklist: who else is affected, up to three undefined or contradictory cases, and a caller search for every existing unit about to change. Large or risky changes are pointed at `omo-implement`, which escalates to ultrawork. Prompts with a `ulw` keyword are left to the ulw hook. Text inside code spans and injected system or task blocks is ignored.
+- `hooks/review-gate.mjs` (Stop): reads the session transcript, and when the current turn edited 2 or more files inside the working directory (or delegated to an implementer or builder sub-agent) without calling a review skill or a reviewer, oracle, or security-check agent, it blocks the stop once. The reason asks Claude for a light review: a risk map of hidden reach for modified units, undefined cases, and the checks actually run, with `omo-review-work` for 3+ files, public or CLI behavior, persistence, or security. The follow-up stop carries `stop_hook_active` and always passes, so the gate cannot loop. Files under `.claude/omo/` and outside the working directory do not count.
+
+Limits: edits made through Bash (sed, heredocs, scripts) are not visible to the gate, and a review called earlier in the same turn counts even when edits follow it.
+
+Settings (environment variables):
+
+- `OMO_PREFLIGHT=off`: disable the pre-flight checklist.
+- `OMO_REVIEW_GATE=off`: disable the review gate.
+- `OMO_REVIEW_GATE_MIN_FILES=<n>`: number of edited files that triggers the gate (default 2).
+
+Both scripts are dependency-free Node, never touch the network, write nothing, and exit 0 on any input.
+
+Quick check:
+
+```bash
+printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"fix the retry logic"}' | node omo-orchestrator/hooks/preflight.mjs
 ```
 
 ## Included Agents

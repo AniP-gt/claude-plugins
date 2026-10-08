@@ -1,5 +1,5 @@
 {
-  "description": "OMO hooks: ulw / ultrawork keyword trigger, and JSON argument error recovery after failed tool calls",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist for change requests, review gate on stop after multi-file edits, and JSON argument error recovery",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -7,6 +7,11 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ulw-keyword.mjs\" || true",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight.mjs\" || true",
             "timeout": 5
           }
         ]
@@ -29,6 +34,17 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/review-gate.mjs\" || true",
             "timeout": 5
           }
         ]
