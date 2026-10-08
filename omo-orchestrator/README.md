@@ -169,26 +169,46 @@ printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}
 
 ## Pre-flight And Review Gate
 
-Version 1.20.0 adds two hooks so that hidden impact gets checked even when the user never asks for planning or review.
+Version 1.20.0 adds two hooks so that hidden impact gets checked even when the user never asks for planning or review. Version 1.21.0 makes the gate read changed files from git instead of only the transcript.
 
 - `hooks/preflight.mjs` (UserPromptSubmit): when a prompt asks for a code change (Japanese or English change verbs such as 実装, 修正, fix, add, refactor), it injects a short `<omo-preflight>` checklist: who else is affected, up to three undefined or contradictory cases, and a caller search for every existing unit about to change. Large or risky changes are pointed at `omo-implement`, which escalates to ultrawork. Prompts with a `ulw` keyword are left to the ulw hook. Text inside code spans and injected system or task blocks is ignored.
-- `hooks/review-gate.mjs` (Stop): reads the session transcript, and when the current turn edited 2 or more files inside the working directory (or delegated to an implementer or builder sub-agent) without calling a review skill or a reviewer, oracle, or security-check agent, it blocks the stop once. The reason asks Claude for a light review: a risk map of hidden reach for modified units, undefined cases, and the checks actually run, with `omo-review-work` for 3+ files, public or CLI behavior, persistence, or security. The follow-up stop carries `stop_hook_active` and always passes, so the gate cannot loop. Files under `.claude/omo/` and outside the working directory do not count.
+- `hooks/review-gate.mjs` (Stop): when the current turn changed 2 or more files inside the working directory and no review skill or reviewer, oracle, or security-check agent ran after the last edit, it blocks the stop once. The reason asks Claude for a light review: a risk map of hidden reach for modified units, undefined cases, and the checks actually run, with `omo-review` for 3+ files, public or CLI behavior, persistence, or security. The follow-up stop carries `stop_hook_active` and always passes, so the gate cannot loop. Files under `.claude/omo/` and outside the working directory do not count.
+- `hooks/turn-snapshot.mjs`: on every user prompt, `preflight.mjs` records the git state (HEAD plus a hash of each already-changed file) under `$TMPDIR/omo-orchestrator/turns/`. The gate compares the tree against it, so edits made through Bash, scripts, or sub-agents count, a file that was already dirty counts only when the turn changed it again, and commits made during the turn still count. Background task notifications do not start a new snapshot. Outside a git work tree the gate falls back to the transcript's Edit and Write calls.
 
-Limits: edits made through Bash (sed, heredocs, scripts) are not visible to the gate, and a review called earlier in the same turn counts even when edits follow it.
+Limits: a review that runs while edits are still coming from Bash counts until the next transcript-visible edit.
 
 Settings (environment variables):
 
 - `OMO_PREFLIGHT=off`: disable the pre-flight checklist.
 - `OMO_REVIEW_GATE=off`: disable the review gate.
 - `OMO_REVIEW_GATE_MIN_FILES=<n>`: number of edited files that triggers the gate (default 2).
+- `OMO_SNAPSHOT_DIR=<dir>`: where turn snapshots are kept (default `$TMPDIR/omo-orchestrator`).
 
-Both scripts are dependency-free Node, never touch the network, write nothing, and exit 0 on any input.
+The scripts are dependency-free Node, never touch the network, write only the snapshot file, run git read-only commands with a 2-second timeout, and exit 0 on any input.
 
 Quick check:
 
 ```bash
 printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"fix the retry logic"}' | node omo-orchestrator/hooks/preflight.mjs
 ```
+
+## Single Review Entry
+
+Version 1.21.0 makes `omo-review` the one place to ask for a review. It runs two lanes in parallel on the same frozen tree: an `omo-reviewer` agent with the omo review areas (or `omo-review-work` when real-surface QA evidence is needed), and the `self-review` skill in review-only mode through a sub-agent when that skill is installed. The stricter verdict decides, and fixes happen after both return. `omo-review-work` is now an internal gate stage (`user-invocable: false`), and `omo-review-loop` stays the entry for implement-plus-review loops.
+
+Every final gate in the controllers (`omo-review-loop`, `omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`) now always runs `self-review` alongside `omo-review-work` or `omo-reviewer`. `review-pr` runs only when the user asked for it, as an extra lane; it is no longer a fallback when `self-review` is missing.
+
+## Evals
+
+`evals/` holds `claude plugin eval` cases that measure whether the plugin finds impact the user did not ask about. `hidden-impact-rename` builds a small service with a scaffold script and asks for a one-line rename of a setting key; the key is also reached through names that `grep` for the key misses (an environment variable derived from it, a snake_case CSV import column), plus stored data and a public API field. LLM graders check each of those.
+
+```bash
+cd omo-orchestrator
+claude plugin eval . --scaffold --trust-plugin --no-publish --threshold 0 \
+  --model claude-sonnet-5-5 --allow-tools Bash Edit Write
+```
+
+The run compares the plugin against a no-plugin baseline by default. Results go to `evals/results/` (git-ignored).
 
 ## Included Agents
 

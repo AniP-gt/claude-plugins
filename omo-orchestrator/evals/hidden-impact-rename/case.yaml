@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: hidden-impact-rename
+tags: [hidden-impact]
+execution:
+  prompt: |
+    src/config.js の設定キー retryLimit が分かりにくいので maxRetries にリネームして。
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, Task]
+context:
+  scaffold_script: scaffold.sh

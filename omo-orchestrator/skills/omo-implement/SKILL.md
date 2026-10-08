@@ -1,6 +1,6 @@
 ---
 name: omo-implement
-description: Execute a planned change with exploration first, a risk map for existing code, minimal edits, test-first when the change scale needs tests, and no speculative compatibility paths.
+description: Execute a code change with exploration first, a risk map for existing code, minimal edits, and test-first when needed. Use proactively for any non-trivial change request.
 argument-hint: [task]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true

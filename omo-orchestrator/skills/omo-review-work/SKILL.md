@@ -1,9 +1,9 @@
 ---
 name: omo-review-work
-description: Post-implementation review gate with reusable current QA evidence, targeted revalidation, and APPROVE, REQUEST_CHANGES, or INCONCLUSIVE outcomes.
+description: Final review gate stage called by omo-review and omo controllers. Reuses current QA evidence, revalidates, and returns APPROVE, REQUEST_CHANGES, or INCONCLUSIVE. For a review request, use omo-review.
 argument-hint: [diff-or-goal]
 allowed-tools: Read, Grep, Glob, Bash, Task
-user-invocable: true
+user-invocable: false
 ---
 
 # OMO Review Work

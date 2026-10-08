@@ -132,7 +132,7 @@ When the user or project allows commits, commit one atomic, verified increment a
 
 Trigger when any apply: the user asked for rigor ("strictly", "rigorously", "厳密", "深く"), the task touches 3+ files or ran long, or it is refactor, migration, performance, security, persistence, or public-behavior work.
 
-1. Before this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (which skill runs: the plan's `REVIEW_SKILL`, else `self-review` review-only, else `review-pr` in LOCAL DIFF MODE, else a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
+1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (which skills run: the plan's `REVIEW_SKILL`, else `self-review` review-only; `review-pr` in LOCAL DIFF MODE only when the user asked for it; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path.
 3. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes.
 4. Return criterion-cited blockers to Ralph and reserve the next shared iteration before dispatching any fix. In that pass, fix the blockers, re-run the affected scenario QA, and update the notepad.

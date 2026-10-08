@@ -4,12 +4,12 @@ Phase 6 runs existing review skills on the task-wide local diff and uses their s
 
 ## Use from other entry skills
 
-Other entry skills (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, and direct `omo-ralph-loop` implementation tasks) run the same 6b external review before their own final gate and merge it with 6d. Differences from `omo-review-loop`:
+Other entry skills (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, and direct `omo-ralph-loop` implementation tasks) run the same 6b external review in parallel with their own final gate and merge it with 6d. Differences from `omo-review-loop`:
 
 - `OUTER_DIR` is `<repo root>/docs/reviews/{TASK_ID}/` unless the user or plan names another directory.
-- They run 6b, then their own built-in gate (`omo-reviewer` or `omo-review-work`, as their skill says). They do not add 6b2 on top of it. An agent gate such as `omo-reviewer` returns its result in the reply; quote its decision and blocking findings in the ledger entry instead of saving a separate file.
+- They run 6b alongside their own built-in gate (`omo-reviewer` or `omo-review-work`, as their skill says). They do not add 6b2 on top of it. An agent gate such as `omo-reviewer` returns its result in the reply; quote its decision and blocking findings in the ledger entry instead of saving a separate file.
 - External `must` and `should` fix directives become fix work the same way their own gate's blockers do (a graph task, a plan fix task, or a todo). Add that work right away as pending; dispatch it in the next Ralph pass, and when a pausing `ASK_USER` exists, only after the answer arrives.
-- Both gates run after the skill's final verification run and are independent, so they may run in parallel. When the built-in gate is `omo-review-work`, fill its `Phase 3.5 result` slot with that final verification output.
+- Both gates run after the skill's final verification run and are independent, so run them in parallel. When the built-in gate is `omo-review-work`, fill its `Phase 3.5 result` slot with that final verification output.
 - In the contract headers, replace `omo-review-loop Phase 6` / `Phase 6b2` with the calling skill and step (for example `omo-ulw-execute Phase 6`).
 - "Ledger" and `CYCLE_LOG` both mean the task's handoff ledger `.claude/omo/handoffs/<task-slug>.md` when the skill keeps no `CYCLE_LOG`. "Phase 7 follow-ups" means a `Follow-ups` list in the skill's final report.
 
@@ -17,7 +17,7 @@ They pass their own review base as `CYCLE_START_SHA` and their goal, constraints
 
 | Gate | Skill | Required | Report |
 |---|---|---|---|
-| external review | one installed review skill, picked in 6b: `self-review` (review only), else `review-pr` (LOCAL DIFF MODE) | optional, only if one is listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
+| external review | `self-review` (review only), always when installed; `review-pr` (LOCAL DIFF MODE) only when the user asked for it | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` (`review-pr`: `..._review_pr_{TIMESTAMP}.md`) |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review-work` | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
 
 ## Timestamp
@@ -48,16 +48,16 @@ REPORT_REPO_ROOT=$(git rev-parse --show-toplevel)
 | Oracle directives | `CYCLE_LOG` |
 | Phase 3.5 result | `{WORK_DIR}/verify_in_action_cycle{OUTER_CYCLE}.md` |
 
-## 6b: External review skill (optional)
+## 6b: External review skills
 
-This plugin does not ship the external reviewer; it uses one the user or project installed. Run at most one, picked in this order:
+This plugin does not ship the external reviewers; it uses the ones the user or project installed. Pick them like this:
 
-1. `REVIEW_SKILL` from `SPEC`, `task.md`, or the plan: a skill name to run, or `none` to skip 6b.
-2. `self-review`, when it appears in the available skills list. Use the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate.
-3. `review-pr`, when it appears in the available skills list, in LOCAL DIFF MODE (contract below).
-4. Neither is available: record `external review: SKIPPED (unavailable)` in `CYCLE_LOG` and go to 6b2.
+1. `REVIEW_SKILL` from `SPEC`, `task.md`, or the plan: a skill name to run instead of `self-review`, or `none` to skip `self-review`.
+2. `self-review`, when it appears in the available skills list: always run it with the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate.
+3. `review-pr` in LOCAL DIFF MODE (contract below) only when the user's own words in this task asked for `review-pr` or a PR-style review by it. It is never a fallback for a missing `self-review`; when it runs, it runs in addition to `self-review` and saves its report at `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_pr_{TIMESTAMP}.md`.
+4. A skill that is not installed: record `external review: SKIPPED (<skill> unavailable)` in `CYCLE_LOG`.
 
-Do not run both `self-review` and `review-pr`: `self-review`'s review stage is the same pipeline, so the second report adds cost without a new view. Record which skill ran as `external review: <skill>` in `CYCLE_LOG`.
+Run 6b and 6b2 in parallel, because the reviews are independent and read the same diff. A Skill call runs in the calling context, so dispatch each external review skill to its own sub-agent (`skill-runner` when listed, else a general-purpose agent) that invokes the skill with the contract below, while 6b2 proceeds; wait for every lane before 6c. Freeze the tree while they run: no edits until all reports are back. Record which skills ran as `external review: <skill>[, <skill>]` in `CYCLE_LOG`.
 
 ### self-review (review only)
 
@@ -166,6 +166,8 @@ The coordinator saves the report to the stated path. If `omo-review-work` cannot
 ## 6d: Verdict mapping
 
 Every gate that ran must clear; the stricter decides.
+
+When both `self-review` and `review-pr` ran, the external review column takes the stricter of the two verdicts and the union of their directives, deduplicated by file and defect mechanism.
 
 | external review | omo-review-work (or the entry skill's built-in gate) | Phase 6 decision |
 |---|---|---|

@@ -92,7 +92,7 @@ Phase 3b SYNTHESIZE    AUTO_FIX / ASK_USER / PASS
   ASK_USER             pause; preserve N and cap
 Phase 3.5 QA           real scenarios; failure returns to Ralph
 Phase 4-5 REPORT       feedback returns to Ralph; no new budget
-Phase 6 FINAL GATE     omo-review-work (+ optional self-review or review-pr)
+Phase 6 FINAL GATE     omo-review-work in parallel with self-review (+ review-pr only on user request)
   changes/evidence     return findings to Ralph for next N
   APPROVE              Ralph completes -> Phase 7 final report
 ```
@@ -183,8 +183,8 @@ Use `references/templates.md`. The Phase 4 report includes the loop summary, ite
 Follow `references/outer-gate.md`.
 
 1. 6a: build the LOCAL DIFF CONTEXT from the persistent `CYCLE_START_SHA`, including untracked files and current evidence. An empty diff still requires the final independent gate.
-2. 6b: run one installed external review skill (`self-review` review-only, else `review-pr` in LOCAL DIFF MODE, or the plan's `REVIEW_SKILL`); otherwise record its skip.
-3. 6b2: always run `omo-orchestrator:omo-review-work` on that context.
+2. 6b: run `self-review` review-only (or the plan's `REVIEW_SKILL`), plus `review-pr` in LOCAL DIFF MODE only when the user asked for it; record a skip for any skill that is not installed.
+3. 6b2: always run `omo-orchestrator:omo-review-work` on that context, in parallel with 6b.
 4. 6c: save reports and append their paths and outcomes to `CYCLE_LOG` and the controlling `LEDGER`.
 5. 6d: every executed gate must clear, and `omo-review-work` must explicitly return `APPROVE`. Findings go to Ralph for the next iteration; unavailable evidence pauses.
 6. 6e: recurring findings use the same Ralph blocker history and oracle consultation, not another loop.

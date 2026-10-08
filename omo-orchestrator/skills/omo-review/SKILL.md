@@ -1,14 +1,26 @@
 ---
 name: omo-review
-description: OMO-style PR review gate for evidence-first security, robustness, quality, goal alignment, scope control, and missing validation.
+description: The single review entry. Runs an evidence-first omo review and the self-review skill in parallel on local changes. Use proactively after editing 2+ files or before calling work done.
 argument-hint: [diff-or-goal]
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob, Bash, Task, Skill
 user-invocable: true
 ---
 
 # OMO Review
 
 Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Treat it as a PR-style gate with one completion state: `APPROVE`.
+
+## Entry Point
+
+This is the one review entry; other review skills are stages it or a controller calls.
+
+- Inside an active controller (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`, `omo-review-loop`), the controller's final gate already runs both lanes below; do not start a second review.
+- When the user asks for implementation plus review until it passes, route to `omo-review-loop`.
+- Otherwise, review the current local changes with two lanes in parallel on the same frozen tree (no edits until both return):
+  1. omo lane: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane.
+  2. self-review lane: when `self-review` is in the available skills list, dispatch a sub-agent (`skill-runner` when listed, else a general-purpose agent) that invokes `Skill(self-review)` with the review-only contract in the `omo-review-loop` skill's `references/outer-gate.md` § self-review, with `CALLER: omo-review`, the merge base of the current branch as `BASE_REF`, and a `REPORT_PATH` under `<repo root>/docs/reviews/self/`. When it is not listed, record `self-review: SKIPPED (unavailable)`.
+- Merge both results with `references/outer-gate.md` § 6c and § 6d of `omo-review-loop`: the stricter verdict decides, and directives are deduplicated by file and defect mechanism. Fixes happen after both lanes return, in the caller's next pass.
+- `review-pr` runs only when the user's own words asked for it, as a third lane in LOCAL DIFF MODE, or on a GitHub PR when the user named one. It never replaces a missing lane.
 
 ## Review Areas
 

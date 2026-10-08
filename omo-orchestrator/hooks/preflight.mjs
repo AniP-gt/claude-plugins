@@ -2,7 +2,9 @@
 // UserPromptSubmit hook: when a prompt asks for a code change, inject a short pre-flight checklist so that
 // affected users, undefined cases, and existing callers are looked at before the first edit, even when the
 // user did not ask for it. ulw prompts are left to ulw-keyword.mjs, which loads a fuller workflow.
+// Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
 import { fileURLToPath } from "node:url";
+import { saveSnapshot, takeSnapshot } from "./turn-snapshot.mjs";
 import { detectKeyword, stripCode, stripInjected } from "./ulw-keyword.mjs";
 
 const MARKER = "<omo-preflight>";
@@ -37,9 +39,18 @@ export function buildContext() {
   ].join("\n");
 }
 
-export function run(input, { env = process.env } = {}) {
+export function recordTurnStart(input, env = process.env) {
+  if (typeof input.session_id !== "string" || typeof input.cwd !== "string") return;
+  // A task notification continues the current turn; resnapshotting would hide the turn's earlier edits.
+  if (stripInjected(input.prompt).trim().length === 0) return;
+  if (/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) return;
+  saveSnapshot(input.session_id, takeSnapshot(input.cwd), env);
+}
+
+export function run(input, { env = process.env, record = recordTurnStart } = {}) {
   if (typeof input !== "object" || input === null || typeof input.prompt !== "string") return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "UserPromptSubmit") return "";
+  record(input, env);
   if (/^(off|0|false)$/i.test(env.OMO_PREFLIGHT ?? "")) return "";
   if (detectKeyword(input.prompt) !== null) return "";
   if (!wantsChange(input.prompt)) return "";

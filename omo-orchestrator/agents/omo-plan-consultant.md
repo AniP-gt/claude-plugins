@@ -1,6 +1,6 @@
 ---
 name: omo-plan-consultant
-description: Read-only pre-planning consultant that classifies intent, explores evidence, maps affected-user ideal-state gaps, and gives concrete planning directives.
+description: Read-only pre-planning consultant that maps affected users, undefined cases, and ideal-state gaps. Use proactively before a change that spans 3+ files or leaves behavior undefined.
 tools: Read, Grep, Glob
 model: sonnet
 effort: high
