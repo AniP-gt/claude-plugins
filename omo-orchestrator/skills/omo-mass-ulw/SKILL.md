@@ -82,7 +82,7 @@ Then run the `omo-ultrawork` manual QA table on the real surface and re-read the
 
 ## Final Review Gate
 
-In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (which skills run: the plan's `REVIEW_SKILL`, else `self-review` review-only; `review-pr` in LOCAL DIFF MODE only when the user asked for it; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
+In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 
 Then spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, external review report path, and ledger path. Outcomes:
 

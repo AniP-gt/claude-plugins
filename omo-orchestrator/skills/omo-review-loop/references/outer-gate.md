@@ -1,6 +1,6 @@
 # Phase 6: Outer Gate
 
-Phase 6 runs existing review skills on the task-wide local diff and uses their saved reports as the gate. It does not run its own reviewer agents and does not re-implement review logic.
+Phase 6 runs the installed `self-review` skill and `omo-review-work` on the task-wide local diff and uses their saved reports as the gate. It does not run its own reviewer agents and does not re-implement review logic.
 
 ## Use from other entry skills
 
@@ -17,7 +17,7 @@ They pass their own review base as `CYCLE_START_SHA` and their goal, constraints
 
 | Gate | Skill | Required | Report |
 |---|---|---|---|
-| external review | `self-review` (review only), always when installed; `review-pr` (LOCAL DIFF MODE) only when the user asked for it | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` (`review-pr`: `..._review_pr_{TIMESTAMP}.md`) |
+| external review | `self-review` (review only), always when installed | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review-work` | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
 
 ## Timestamp
@@ -48,16 +48,15 @@ REPORT_REPO_ROOT=$(git rev-parse --show-toplevel)
 | Oracle directives | `CYCLE_LOG` |
 | Phase 3.5 result | `{WORK_DIR}/verify_in_action_cycle{OUTER_CYCLE}.md` |
 
-## 6b: External review skills
+## 6b: External review (self-review)
 
-This plugin does not ship the external reviewers; it uses the ones the user or project installed. Pick them like this:
+This plugin does not ship `self-review`; it uses the one the user or project installed. Decide whether it runs like this:
 
-1. `REVIEW_SKILL` from `SPEC`, `task.md`, or the plan: a skill name to run instead of `self-review`, or `none` to skip `self-review`.
+1. `REVIEW_SKILL: none` in `SPEC`, `task.md`, or the plan skips `self-review`; record `external review: SKIPPED (REVIEW_SKILL: none)`. Any other `REVIEW_SKILL` value is ignored and `self-review` runs. No other external review skill runs here; `review-pr` is for GitHub PRs and only the user invokes it.
 2. `self-review`, when it appears in the available skills list: always run it with the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate.
-3. `review-pr` in LOCAL DIFF MODE (contract below) only when the user's own words in this task asked for `review-pr` or a PR-style review by it. It is never a fallback for a missing `self-review`; when it runs, it runs in addition to `self-review` and saves its report at `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_pr_{TIMESTAMP}.md`.
-4. A skill that is not installed: record `external review: SKIPPED (<skill> unavailable)` in `CYCLE_LOG`.
+3. When `self-review` is not installed: record `external review: SKIPPED (self-review unavailable)` in `CYCLE_LOG`.
 
-Run 6b and 6b2 in parallel, because the reviews are independent and read the same diff. A Skill call runs in the calling context, so dispatch each external review skill to its own sub-agent (`skill-runner` when listed, else a general-purpose agent) that invokes the skill with the contract below, while 6b2 proceeds; wait for every lane before 6c. Freeze the tree while they run: no edits until all reports are back. Record which skills ran as `external review: <skill>[, <skill>]` in `CYCLE_LOG`.
+Run 6b and 6b2 in parallel, because the reviews are independent and read the same diff. A Skill call runs in the calling context, so dispatch `self-review` to an `omo-external-reviewer` agent, naming the skill and passing the contract below verbatim, while 6b2 proceeds; wait for every lane before 6c. Freeze the tree while they run: no edits until all reports are back. Record `external review: self-review` in `CYCLE_LOG` when it ran.
 
 ### self-review (review only)
 
@@ -85,30 +84,13 @@ RISK_LEVEL: {RISK_LEVEL}
 {evidence block, unchanged}
 ```
 
-### review-pr (LOCAL DIFF MODE)
+If the external review skill saved the report at a different path than the one requested (for example with a `_2` suffix), record the path it reports and use that file; do not move it. If it reports completion but no file exists at any path it states, re-invoke once. If it fails again, record `external review: NOT_EXECUTED - no report` and continue with 6b2. Never infer a verdict from the chat response.
 
-`review-pr` defaults to GitHub PRs, so every override must be stated or it will try to resolve a PR number. Invoke `Skill(skill: "review-pr", args: <contract>)`:
+### Review input block
+
+`omo-review-work` in 6b2 takes this block inline, because it reviews a diff it does not build itself:
 
 ```
-LOCAL DIFF MODE - invoked from omo-review-loop Phase 6.
-
-There is no GitHub PR and none is required. Review the local changes below exactly
-as you would a PR diff.
-
-Overrides (all mandatory):
-- Skip review-pr Phase 1. Do NOT run `gh pr view`, `gh pr diff`, `gh api`,
-  `gh pr checkout`, `git checkout`, or `git switch`. Do not resolve a PR number.
-  PR_DIFF is supplied inline; PR_COMMENTS is empty.
-- Skip review-pr Phase 5 (CodeRabbit comments) unconditionally. Record
-  "Phase 5: skipped (local diff mode)". Post nothing anywhere.
-- Skip the PR-template completeness check; judge goal alignment against
-  GOAL / CONSTRAINTS / BACKGROUND below.
-- Skip review-pr Phase 6 (user feedback loop). Return after the report is saved.
-- Run review-pr Phases 2, 2.5, 3, and 4 normally.
-- Phase 4 is REQUIRED: save exactly one report at
-  {OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md (absolute path) and state that
-  absolute path in your final response.
-
 REPORT_REPO_ROOT: {REPORT_REPO_ROOT}
 TASK_ID: {TASK_ID}    OUTER_CYCLE: {OUTER_CYCLE}    TIMESTAMP: {TIMESTAMP}
 RISK_LEVEL: {RISK_LEVEL}
@@ -128,8 +110,6 @@ RISK_LEVEL: {RISK_LEVEL}
 {CYCLE_DIFF}
 {contents of each new untracked file}
 ```
-
-If the external review skill saved the report at a different path than the one requested (for example with a `_2` suffix), record the path it reports and use that file; do not move it. If it reports completion but no file exists at any path it states, re-invoke once. If it fails again, record `external review: NOT_EXECUTED - no report` and continue with 6b2. Never infer a verdict from the chat response.
 
 ## 6b2: omo-review-work (always)
 
@@ -152,22 +132,20 @@ Invoked from omo-review-loop Phase 6b2 as the outer gate.
 ## Phase 3.5 result
 {verbatim, or "SKIPPED - <reason>"}
 
-{the GOAL / CONSTRAINTS / BACKGROUND / evidence / Changed Files / Diff Under Review block from the review-pr contract above. Paste it in full even when `self-review` ran in 6b, since that contract carries no diff}
+{the review input block above, in full. `self-review` builds its own diff, so its contract carries none}
 ```
 
 The coordinator saves the report to the stated path. If `omo-review-work` cannot run, record `omo-review-work: NOT_EXECUTED - <reason>`. A missing mandatory `omo-review-work` is always `INCONCLUSIVE`: stop and report the blocker even if the optional external review approved. Never substitute a self-written review.
 
 ## 6c: Read the saved reports
 
-- `self-review` and `review-pr` write the same report format, in Japanese. Extract the verdict from the `## 判定:` heading (`Approve` / `Request Changes` / `Needs Attention`) and quote the `Findings: must` items verbatim (file, line, description). Also quote the `Findings: should` items: they are fix directives in the same way, unless the fix changes a public API, schema, applied migration, or external contract, contradicts the GOAL or CONSTRAINTS, or conflicts with another finding; those become `ASK_USER`. An `ask` item whose answer could change a fix directive, the GOAL, or a contract becomes `ASK_USER` and pauses before the next iteration. Any other `ask` the code or evidence does not answer is carried to Phase 7 as a question for the user, and the fix pass proceeds. `nit` and `fyi` items are Phase 7 follow-ups.
+- `self-review` writes its report in Japanese. Extract the verdict from the `## 判定:` heading (`Approve` / `Request Changes` / `Needs Attention`) and quote the `Findings: must` items verbatim (file, line, description). Also quote the `Findings: should` items: they are fix directives in the same way, unless the fix changes a public API, schema, applied migration, or external contract, contradicts the GOAL or CONSTRAINTS, or conflicts with another finding; those become `ASK_USER`. An `ask` item whose answer could change a fix directive, the GOAL, or a contract becomes `ASK_USER` and pauses before the next iteration. Any other `ask` the code or evidence does not answer is carried to Phase 7 as a question for the user, and the fix pass proceeds. `nit` and `fyi` items are Phase 7 follow-ups.
 - `omo-review-work`: extract the decision (`APPROVE` / `REQUEST_CHANGES` / `INCONCLUSIVE`), blocking findings, and for `INCONCLUSIVE` the exact missing evidence, verbatim.
 - Do not write a third, competing review report. Append one entry to `CYCLE_LOG` (template in `templates.md`) with both decisions, both absolute report paths, `CYCLE_START_SHA`, `TIMESTAMP`, and the blocking findings carried forward. Never overwrite earlier entries. `CYCLE_LOG` is a real file so the loop can resume after a context reset, and it is the authoritative source for a previous cycle's report paths (never glob for them).
 
 ## 6d: Verdict mapping
 
 Every gate that ran must clear; the stricter decides.
-
-When both `self-review` and `review-pr` ran, the external review column takes the stricter of the two verdicts and the union of their directives, deduplicated by file and defect mechanism.
 
 | external review | omo-review-work (or the entry skill's built-in gate) | Phase 6 decision |
 |---|---|---|

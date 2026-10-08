@@ -59,7 +59,7 @@ export function buildReviewContext() {
     MARKER,
     "This prompt asks for a review. If it does not, ignore this block.",
     "Load `omo-orchestrator:omo-review` with the Skill tool before reading the change. It is the single review",
-    "entry: it runs an omo reviewer and the `self-review` skill in parallel and merges their verdicts.",
+    "entry: it runs an omo reviewer, then the `self-review` skill to fix findings, and merges their verdicts.",
     "Whatever runs, follow each changed value past the diff: who reads a status, flag, or field the change",
     "now writes (queries, schedulers, jobs, other services), what the old code did on the failure path that",
     "the new code changes, and whether a retried or repeated call is safe.",

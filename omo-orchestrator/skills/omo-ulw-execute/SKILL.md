@@ -151,7 +151,7 @@ Only after the verifier returns `confirmed`:
 When every task and the final verification wave are done:
 
 1. Dispatch a worker to run the plan's final verification commands and the full scenario list against the final tree.
-2. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (which skills run: the plan's `REVIEW_SKILL`, else `self-review` review-only; `review-pr` in LOCAL DIFF MODE only when the user asked for it; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
+2. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 3. Run `omo-review-work` on the full diff with the goal, plan, QA matrix, and ledger. It launches one fresh independent reviewer and returns exactly one outcome:
    - `APPROVE`: the sole completion state.
    - `REQUEST_CHANGES`: append the findings to the ledger, add each as a bounded fix task and todo, execute and verify it through Phases 3 to 5, then re-run this gate with a fresh reviewer. Each fix/re-review pass is the next iteration of the same Ralph state and remaining cap; no separate gate retry budget.
@@ -165,7 +165,7 @@ verification: <commands and results>
 artifacts: <paths>
 cleanup: <receipts>
 review: APPROVE (<reviewer evidence>)
-external review: <skill and verdict, report path> | SKIPPED (unavailable)
+external review: self-review <verdict>, <report path> | SKIPPED (self-review unavailable) | SKIPPED (REVIEW_SKILL: none)
 ```
 
 ## Delivery And Git Boundaries

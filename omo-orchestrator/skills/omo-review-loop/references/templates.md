@@ -83,7 +83,7 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
 ```markdown
 ### Ralph iteration {N}/{CAP} (artifact alias: cycle{OUTER_CYCLE})
 
-- **External review**: self-review | self-review + review-pr | SKIPPED (unavailable) | NOT_EXECUTED
+- **External review**: self-review | SKIPPED (self-review unavailable) | SKIPPED (REVIEW_SKILL: none) | NOT_EXECUTED
 - **External review verdict**: Approve | Needs Attention | Request Changes | n/a
 - **omo-review-work outcome**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE | NOT_EXECUTED
 - **Phase 6 decision**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE (mandatory final gate must run)
@@ -108,10 +108,9 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
   - Directive: {verbatim}
   - Controller action: next iteration / paused / exhausted / stuck
   - Remaining Ralph iterations: {CAP minus N}
-- **CodeRabbit comments**: skipped (local diff mode) (only when review-pr ran)
 ```
 
-Special lines: `- **Diff**: empty; mandatory independent final gate still required`; `- **External review**: SKIPPED (unavailable)`; `- **omo-review-work**: NOT_EXECUTED - <reason>`.
+Special lines: `- **Diff**: empty; mandatory independent final gate still required`; `- **External review**: SKIPPED (self-review unavailable)`; `- **omo-review-work**: NOT_EXECUTED - <reason>`.
 
 ## Phase 7: Final summary (in the response, not saved)
 
@@ -139,7 +138,7 @@ One row per gate invocation; preserve earlier report paths. No empty template ro
 
 ### Lane and Gate Coverage
 - Copilot lane: ran / SKIPPED (not installed) / NOT_EXECUTED
-- External review gate: self-review / self-review + review-pr / SKIPPED (unavailable) / NOT_EXECUTED
+- External review gate: self-review / SKIPPED (self-review unavailable) / SKIPPED (REVIEW_SKILL: none) / NOT_EXECUTED
 - Other lanes with NOT_EXECUTED: {list or none}
 
 ### External Library Contract Checks

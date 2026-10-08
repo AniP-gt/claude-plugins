@@ -158,7 +158,7 @@ export function buildReason({ files, delegatedEdit }) {
     "residual risks; product decisions go to the user as one precise question.",
     "When the change touches 3+ files, public or CLI behavior, persistence, or security, run",
     "`omo-orchestrator:omo-review` instead of the light review: it is the single review entry and runs the",
-    "`self-review` skill in parallel with its own reviewer.",
+    "`self-review` skill after its own reviewer.",
     "If the change is only wording, docs, or config values with no new branch, say so in one line and stop.",
   ];
   if (delegatedEdit && files.length === 0) {

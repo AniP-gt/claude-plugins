@@ -1,6 +1,6 @@
 ---
 name: omo-review
-description: The single review entry. Runs an evidence-first omo review and the self-review skill in parallel on local changes. Use proactively after editing 2+ files or before calling work done.
+description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes. Use proactively after editing 2+ files or before calling work done.
 argument-hint: [diff-or-goal]
 allowed-tools: Read, Grep, Glob, Bash, Task, Skill
 user-invocable: true
@@ -14,13 +14,37 @@ Use this skill before handing off changes that touch 2+ files, public/API/CLI be
 
 This is the one review entry; other review skills are stages it or a controller calls.
 
-- Inside an active controller (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`, `omo-review-loop`), the controller's final gate already runs both lanes below; do not start a second review.
+- Inside an active controller (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`, `omo-review-loop`), the controller's final gate already runs its own omo gate and a review-only `self-review`; do not start a second review.
 - When the user asks for implementation plus review until it passes, route to `omo-review-loop`.
-- Otherwise, review the current local changes with two lanes in parallel on the same frozen tree (no edits until both return):
-  1. omo lane: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane.
-  2. self-review lane: when `self-review` is in the available skills list, dispatch a sub-agent (`skill-runner` when listed, else a general-purpose agent) that invokes `Skill(self-review)` with the review-only contract in the `omo-review-loop` skill's `references/outer-gate.md` § self-review, with `CALLER: omo-review`, the merge base of the current branch as `BASE_REF`, and a `REPORT_PATH` under `<repo root>/docs/reviews/self/`. When it is not listed, record `self-review: SKIPPED (unavailable)`.
-- Merge both results with `references/outer-gate.md` § 6c and § 6d of `omo-review-loop`: the stricter verdict decides, and directives are deduplicated by file and defect mechanism. Fixes happen after both lanes return, in the caller's next pass.
-- `review-pr` runs only when the user's own words asked for it, as a third lane in LOCAL DIFF MODE, or on a GitHub PR when the user named one. It never replaces a missing lane.
+- Otherwise, review the current local changes in two lanes, one after the other, so that no lane reads a tree another lane is changing. `review-pr` never runs here; it is for GitHub PRs and only the user invokes it. The second lane edits the working tree; it never commits, pushes, or posts.
+  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane. Make no edits while it runs.
+  2. self-review lane after the omo lane returns: when `self-review` is in the available skills list, dispatch an `omo-external-reviewer` agent naming `self-review`, with this contract and without `--dry-run`:
+
+     ```
+     CALLER: omo-review (standalone, fix mode)
+     BASE_REF: <merge base of the current branch>
+     REPORT_PATH: <repo root>/docs/reviews/self/<branch-slug>_self_review_<YYYYMMDDHHMM>.md (absolute path; slug = branch name with / replaced by -, or the short HEAD SHA on a detached HEAD)
+
+     - Run the full flow, Phase 1 to Phase 9: review, fix the findings in the working
+       tree (test-first when the fix needs a test), verify, re-review, and append the
+       fix log. This call is not an omo final gate, so the stop after Phase 4 does not apply.
+     - Edit only files in the diff against BASE_REF (untracked files included), new test files for those fixes, and
+       the report. Do not commit, push, stash, switch branches, or post anything.
+     - Do not ask the user questions; record each one as a needs-decision item.
+
+     ## GOAL
+     <the user's goal for the change, from the request or the skill argument; "unstated" when none>
+     ## CONSTRAINTS
+     <constraints the user or project stated, or "unstated">
+     ## BACKGROUND
+     <why the change exists, or "unstated">
+
+     ## Focus notes (omo lane findings)
+     <each omo-reviewer blocking finding and warning, with file and line>
+     ```
+
+     When `self-review` is not listed, record `self-review: SKIPPED (self-review unavailable)`.
+- Merge both results with `references/outer-gate.md` § 6c and § 6d of `omo-review-loop`: the stricter verdict decides, using the self-review lane's final (re-review) verdict, and directives are deduplicated by file and defect mechanism. Treat each omo-lane finding that the self-review fix log addresses as fixed only after re-reading the changed lines, then take the omo lane's verdict from its findings that are still open: when none of its blocking findings remain, it counts as `APPROVE` (or stays `INCONCLUSIVE` while an evidence gap remains). Re-run the validation for every file in the agent's `CHANGED FILES`. When the omo lane ran `omo-review-work` with QA evidence and the self-review lane changed files, re-run the QA scenarios those files affect before approving. Remaining findings, `NEEDS DECISION` items, any `ask` that changes behavior or a contract, and any `CONTRACT DEVIATIONS` go back to the caller.
 
 ## Review Areas
 
@@ -77,6 +101,7 @@ Before recording a blocking finding, follow this sequence:
 - Residual risks.
 - Approval evidence that supports every required final check when the decision is `APPROVE`.
 - Release or security escalation needed, if applicable.
+- Self-review lane, when it ran: pre-fix and final verdicts, the fixes applied with their files, `CHANGED FILES`, `NEEDS DECISION` items, and `CONTRACT DEVIATIONS`.
 
 Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 
