@@ -2,7 +2,7 @@
 name: omo-mass-ulw
 description: Mass ultrawork. Splits a job into a dependency-ordered task graph and runs ready waves in parallel. Use when the user says mass ulw / mulw or asks for fan-out work where some tasks wait on others.
 argument-hint: [task]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, AskUserQuestion
 user-invocable: true
 ---
 
@@ -19,6 +19,8 @@ Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse
 Before defining any task, read [planning.md](references/planning.md) in full. It holds the decomposition doctrine, owner routing, write-scope rules, the task prompt contract, the verification wave, and the failure playbook. A graph built without it is unplanned work.
 
 Then write the run plan in one pass and execute that plan: components, tasks, waves, the owner and one-line reason for every non-default owner, and the verification wave. When reality forces a change, replan out loud instead of drifting task by task.
+
+Before dispatching a run or node that depends on an unresolved owner decision (scope expansion, new spend, or an irreversible action), the main session asks through Claude Code's `AskUserQuestion` when available, otherwise in chat. Do not bury that decision in a child prompt or execution script. Use only the tool's supported parameters. A timed-out, dismissed, or unavailable answer is not authorization, even if the tool advises best judgment; leave the dependent work pending and record the decision in the ledger. Independent authorized work may continue. Respect authorization already given for the same scope and action, including an explicit instruction to proceed without interviews; do not ask again. Such authorization does not extend to newly discovered spend or scope expansion.
 
 ## Bootstrap
 

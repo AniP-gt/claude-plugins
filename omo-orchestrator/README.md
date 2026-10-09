@@ -13,6 +13,8 @@ This plugin is content-only apart from four small guidance hooks (see [Ulw Keywo
 
 Restart Claude Code after installation.
 
+Version 1.26.0 refreshes portable planning and execution contracts against upstream `5943705430de7879690923a61b6ca5b94d282783` (5.1.27). Approval and authorization questions stay in the main session; missing or timed-out answers leave dependent work pending. Existing explicit authorization is reused. Claude Code uses `AskUserQuestion` or a chat fallback, without Senpi-specific tool parameters. Runtime changes to task cancellation, memory locks, side panels, provider routing, and installers are not ported. Evaluation evidence is recorded in `docs/reports/2026-10-09-omo-upstream-refresh/`.
+
 ## Included Skills
 
 - `omo-orchestrate`: main workflow for complex multi-step work.

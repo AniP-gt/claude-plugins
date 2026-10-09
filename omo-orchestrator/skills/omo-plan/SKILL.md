@@ -2,7 +2,7 @@
 name: omo-plan
 description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use only when the user explicitly asks for a plan or work breakdown.
 argument-hint: [goal]
-allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite
+allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite, AskUserQuestion
 user-invocable: true
 ---
 
@@ -40,8 +40,9 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 1. Present one concise approval brief after exploration and before final-plan writing.
 2. The brief must name the goal, non-goals, chosen defaults, owner decisions, proposed files or systems, dependency shape, QA approach, blockers, and the statement: `Approval writes the plan only. It does not authorize implementation.`
 3. If a decision-changing question remains, ask that question before the brief and wait for the answer. Don't substitute an unapproved default for an owner decision.
-4. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
-5. If the user changes scope before approval, update and show the draft again. If scope changes after approval, return to the approval gate for the changed portion.
+4. After the brief, request approval even when no owner question remains, unless the user has already explicitly authorized this approach and scope. Use Claude Code's `AskUserQuestion` when available, with a clear approval question and the recommended option first. Otherwise ask in chat and state that the question tool is unavailable. Use only parameters exposed by the current tool; do not copy another runtime's `required` or wait flags. A timed-out, dismissed, or unavailable answer is not approval, even if a tool advises proceeding on best judgment. Keep the visible draft's state `awaiting-approval`, report the pending decision, and end the turn without a final executable plan. This pending-status response replaces the usual question-or-brief ending on an unanswered gate. Optional reversible defaults do not replace approval. Honor explicit authorization already given for this scope; do not ask for the same permission again. An initial request to make a plan alone is not approval of an unseen approach.
+5. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
+6. If the user changes scope before approval, update and show the draft again. If scope changes after approval, return to the approval gate for the changed portion.
 
 ## Final Plan Requirements
 
