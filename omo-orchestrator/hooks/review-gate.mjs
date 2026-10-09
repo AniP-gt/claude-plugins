@@ -138,32 +138,23 @@ function display(absolute, cwd) {
   return (inside(absolute, cwd) ?? absolute).replace(/[\r\n]+/g, " ");
 }
 
+const MAX_LISTED_FILES = 5;
+
 export function buildReason({ files, delegatedEdit }) {
-  const changed = files.length > 0 ? files.map((file) => `- ${file}`).join("\n") : "- (edited by a sub-agent)";
-  const lines = [
-    MARKER,
-    `This turn changed ${files.length > 0 ? `${files.length} files` : "files through a sub-agent"} and no review ran after the last edit.`,
-    changed,
+  const what = files.length > 0 ? `${files.length} ファイルを変更し` : "サブエージェントがファイルを変更し";
+  const lines = [`${MARKER} ${what}、最後の編集のあとにレビューしていません。`];
+  for (const file of files.slice(0, MAX_LISTED_FILES)) lines.push(`- ${file}`);
+  if (files.length > MAX_LISTED_FILES) lines.push(`- ほか ${files.length - MAX_LISTED_FILES} 件`);
+  if (delegatedEdit && files.length === 0) lines.push("先にサブエージェントの差分（git diff）を読んでください。");
+  lines.push(
     "",
-    "Before you finish, do a light review of what the user did not ask about but will be hit by:",
-    "1. Risk map: for each modified existing function, class, config key, or command, search its callers",
-    "   (name the search) and note hidden reach: references by string or reflection, queued or scheduled",
-    "   work, data the old code already wrote, consumers outside this repository, flags or env vars.",
-    "   Mark each found, none, or could not verify, and name the guardrail (test, type, lint, none).",
-    "2. Undefined cases: empty input, boundaries, repeated or concurrent runs, partial failure, data that",
-    "   already exists. Note which the change handles and which it leaves open.",
-    "3. Validation: name the checks you actually ran this session for these files, and what remains unrun.",
-    "",
-    "Fix anything confirmed and in scope. Rows with impact and no guardrail go in your final answer as",
-    "residual risks; product decisions go to the user as one precise question.",
-    "When the change touches 3+ files, public or CLI behavior, persistence, or security, run",
-    "`omo-orchestrator:omo-review` instead of the light review: it is the single review entry and runs the",
-    "`self-review` skill after its own reviewer.",
-    "If the change is only wording, docs, or config values with no new branch, say so in one line and stop.",
-  ];
-  if (delegatedEdit && files.length === 0) {
-    lines.push("", "The edits came from a sub-agent: read its diff (git diff) before reviewing.");
-  }
+    "終える前に、次のどれか1つを選んでください。",
+    "- 文言・ドキュメント・設定値だけの変更なら、そう1行で書いて終える。",
+    "- 3ファイル以上、公開 API や CLI の挙動、永続化、セキュリティに関わるなら `omo-orchestrator:omo-review` を実行する。",
+    "- それ以外は軽いレビュー: 変更した関数などの呼び出し元と隠れた影響範囲、それを守るテストなど。",
+    "  空入力・境界値・重複や並行実行・途中失敗・既存データの扱い。実際に実行した確認。",
+    "  範囲内の問題は直し、守りのないリスクは最終回答に書き、必要なら利用者に1つだけ質問する。",
+  );
   return lines.join("\n");
 }
 
