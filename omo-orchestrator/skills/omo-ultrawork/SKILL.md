@@ -27,6 +27,7 @@ Do not write code until you understand what the user actually wants, how the exi
 - Delegate exploration when scope warrants it: use parallel `omo-researcher` (codebase) and `omo-librarian` (external libraries, upstream source) agents for unclear, multi-surface, risky, or upstream-dependent work. For trivial, fully understood scope, confirm the context directly.
 - For hard problems, consult `omo-oracle` instead of struggling alone.
 - If ambiguity remains after exploration, ask the user. Do not guess.
+- When the user settled a decision in the conversation before `ulw`, restate your reading in the `# Goal` block as `Decided: <A>, not <B>` whenever the wording allows a second reading (keep or remove, all or a filtered subset, this change or a later issue). Keep these lines in the ledger, open each progress or done report with them, and do not re-propose an option the user rejected. Misreading "leave the delete as is for now" as "remove it later" cost five rounds of correction.
 
 You are not ready while you are making assumptions about requirements, are unsure which files to modify, or your plan contains "probably" or "maybe".
 

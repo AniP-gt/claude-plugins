@@ -36,7 +36,7 @@ Review responses, conflict resolution, and refactors added after the PR was open
    - Shared code the base added or changed (a helper, base class, guard, notifier) that does the same job as code on the branch. Decide whether the branch should move onto it. If it should not, give the concrete reason (a different detection model, a call that would need extra arguments). If it should, say whether to do it in this PR or a follow-up issue, with a recommendation. Recommend only; move the code only when the user asked for that refactor.
    - Docs and comments from the base that the branch now contradicts. Fix them in this PR.
    Put the result in the done report as one line each: shared code brought in (name or none), adopt or not and why, docs fixed. Do this before the user asks.
-6. When the follow-up answers review comments, draft one reply per comment or thread handled: what changed and where (file and line; the commit hash once it is pushed), or why it was declined, with the evidence. A comment outside the diff that has no thread gets a PR-level comment draft that links to it. Put the drafts, the PR body draft from item 2, and the command shape for posting each in the done report, so one "post them" from the user finishes the round.
+6. When the follow-up answers review comments, draft one reply per comment or thread handled: what changed and where (file and line; the commit hash once it is pushed), or why it was declined, with the evidence. A comment outside the diff that has no thread gets a PR-level comment draft that links to it. Put the drafts, the PR body draft from item 2, a commit message draft for uncommitted work, and the command shape for posting each in the done report, so one "post them" from the user finishes the round. A tool note that it acknowledges or resolves the feedback on the host is not a reply; draft the replies anyway.
 
 ## Hard Rules
 
@@ -46,6 +46,7 @@ Review responses, conflict resolution, and refactors added after the PR was open
 - Treat remote check status as unverified unless its artifact is available in the current session. Record the source and time of any observed status.
 - If a required remote check is unreadable, return `INCONCLUSIVE` and keep the PR not-ready. Name the exact missing check artifact and operator handoff needed to obtain it.
 - Do not answer review feedback without checking the code or diff that triggered it.
+- When a review comment names a file, term, or setting you cannot find in the repository, ask what it is; do not guess and write it into the change.
 - Reply and write artifacts in the user's conversation language, even when the skill text, the delegated request, PR data, or tool output is in another language.
 
 ## Untrusted Data Boundary

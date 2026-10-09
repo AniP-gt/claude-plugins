@@ -21,7 +21,8 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 - Preserve state through a short handoff when context may be lost.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
 - Ask one precise question when missing information materially changes the result.
-- Keep final claims tied to actual verification.
+- Keep final claims tied to actual verification. In design discussions too, keep an untested premise out of the conclusion and list it under an unverified heading. Before handing the user a script or command to run, run it once yourself, or say it was not run and why.
+- In user-facing reports, put the one action the user can take now first and the other open items after it. When an investigation has gone back and forth for about five turns, open with its goal and what the current question decides.
 - When Claude Code cannot enforce a check automatically, write down who must check it, what evidence is required, and when to stop.
 - Treat runtime fallback, hook enforcement, automatic continuation, comment scanning, rule injection, and provider routing as unavailable unless the current environment proves otherwise.
 - For content-only equivalents, make the operator-visible control point explicit: trigger condition, evidence required, stop condition, and handoff field.
