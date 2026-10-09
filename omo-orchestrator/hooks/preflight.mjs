@@ -2,7 +2,8 @@
 // UserPromptSubmit hook: when a prompt asks for a code change, inject a short pre-flight checklist so that
 // affected users, undefined cases, and existing callers are looked at before the first edit, even when the
 // user did not ask for it. When it asks for a review, route it to omo-review, the single review entry, which
-// a model does not pick on its own for a plain "review this" request.
+// a model does not pick on its own for a plain "review this" request. When it hands over review comments
+// on an existing PR, ask for the follow-up steps (review, reply drafts, PR body) that a fix there skips.
 // ulw prompts are left to ulw-keyword.mjs, which loads a fuller workflow.
 // Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
 import { fileURLToPath } from "node:url";
@@ -24,6 +25,14 @@ const CHANGE_PATTERNS = [
 const REVIEW_PATTERNS = [/レビュー|監査|指摘だけ|指摘して/, new RegExp(`${B}(?:review|audit)${E}`, "i")];
 // The user picked a specific reviewer or command; leave that choice alone.
 const NAMED_REVIEWER_PATTERN = /review-pr|code-review|self-review|omo-review|security-review/i;
+
+// A link to a PR review thread or a review thread id. Unlike the request patterns, this is checked in
+// pasted text too: review tools hand over the comments to address as a paste.
+const REVIEW_THREAD_PATTERN = /\/pull\/\d+#(?:discussion_r|pullrequestreview-)\d+|(?<![A-Za-z0-9_])PRRT_[A-Za-z0-9_-]+/;
+
+export function handsOverReviewComments(prompt) {
+  return REVIEW_THREAD_PATTERN.test(stripInjected(prompt));
+}
 
 export function wantsReview(prompt) {
   const text = userText(prompt);
@@ -67,6 +76,18 @@ export function buildReviewContext() {
   ].join("\n");
 }
 
+export function buildFollowUpContext() {
+  return [
+    MARKER,
+    "This prompt hands over review comments on an existing PR. If it does not, ignore this block.",
+    "Load `omo-orchestrator:omo-work-with-pr` and follow its section on follow-up changes to an existing PR.",
+    "Before calling the work done, without asking first: run `omo-orchestrator:omo-review` on the whole",
+    "branch diff, and end the report with one reply draft per comment you handled and a PR body update",
+    "draft (or `no update needed` with the reason), so the user only has to approve posting.",
+    "</omo-preflight>",
+  ].join("\n");
+}
+
 export function recordTurnStart(input, env = process.env) {
   if (typeof input.session_id !== "string" || typeof input.cwd !== "string") return;
   // A task notification continues the current turn; resnapshotting would hide the turn's earlier edits.
@@ -83,7 +104,8 @@ export function run(input, { env = process.env, record = recordTurnStart } = {})
   if (detectKeyword(input.prompt) !== null) return "";
   // A review request often says "do not fix" (修正はせず), so it is checked before the change verbs.
   let context;
-  if (wantsReview(input.prompt)) context = buildReviewContext();
+  if (handsOverReviewComments(input.prompt)) context = buildFollowUpContext();
+  else if (wantsReview(input.prompt)) context = buildReviewContext();
   else if (wantsChange(input.prompt)) context = buildContext();
   else return "";
   const output = {

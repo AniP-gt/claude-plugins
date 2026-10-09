@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { recordTurnStart, run, wantsChange, wantsReview } from "./preflight.mjs";
+import { handsOverReviewComments, recordTurnStart, run, wantsChange, wantsReview } from "./preflight.mjs";
 import { loadSnapshot } from "./turn-snapshot.mjs";
 import { detectKeyword, stripPasted } from "./ulw-keyword.mjs";
 
@@ -23,6 +23,23 @@ test("the user's own words around a paste still route", () => {
   assert.equal(wantsReview(`${paste("log output")}\nこれをレビューして`), true);
   assert.equal(wantsChange(`これを修正して\n${paste("stack trace")}`), true);
   assert.notEqual(detectKeyword(`ulw ${paste("notes")}`), null);
+});
+
+test("review comments handed over in a paste route to the PR follow-up steps", () => {
+  const thread = '"threadId": "PRRT_kwDOB_Rkc86qJvT0", "url": "https://github.com/o/r/pull/12#discussion_r4213500002"';
+  const prompt = paste(`Inspect and fix the selected review feedback for PR #12.\n${thread}`);
+  assert.equal(handsOverReviewComments(prompt), true);
+  assert.equal(handsOverReviewComments("https://github.com/o/r/pull/12#discussion_r1 このコメントに返信して"), true);
+  assert.equal(handsOverReviewComments("https://github.com/o/r/pull/12#pullrequestreview-9"), true);
+  const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+  assert.match(output, /omo-work-with-pr/);
+  assert.match(output, /reply draft/);
+});
+
+test("a PR link without a review thread does not route to the follow-up steps", () => {
+  assert.equal(handsOverReviewComments("https://github.com/o/r/pull/12 をレビューして"), false);
+  assert.equal(handsOverReviewComments("XPRRT_abc"), false);
+  assert.match(run({ hook_event_name: "UserPromptSubmit", prompt: "https://github.com/o/r/pull/12 をレビューして" }, noRecord), /omo-review/);
 });
 
 test("an unclosed paste tag is stripped to the end", () => {

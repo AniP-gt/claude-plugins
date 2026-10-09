@@ -28,7 +28,7 @@ This is the one review entry; other review skills are stages it or a controller 
      - Run the full flow, Phase 1 to Phase 9: review, fix the findings in the working
        tree (test-first when the fix needs a test), verify, re-review, and append the
        fix log. This call is not an omo final gate, so the stop after Phase 4 does not apply.
-     - Edit only files in the diff against BASE_REF (untracked files included), new test files for those fixes, and
+     - Edit only files in the diff against BASE_REF (untracked files included), test files for those fixes (new files, or existing test files of the changed code), and
        the report. Do not commit, push, stash, switch branches, or post anything.
      - Do not ask the user questions; record each one as a needs-decision item.
 
@@ -58,6 +58,7 @@ This is the one review entry; other review skills are stages it or a controller 
 - Test necessity: tests are required for changes to branching, calculations, state transitions, data writes, parsing or validation, public contracts, and bug fixes (the regression test must fail without the fix); then check for test-first evidence and that expected values come from the spec, not from the code's output. Do not ask for tests or TDD on wording (including only the text of an existing message), docs, renames, config values, or wiring that adds no branch. Exception: a rename or text change needs a test only when an in-repo consumer matches on the old name or text (a lookup by string, a caller comparing an error message); an outside consumer that could not be verified is reported as unverified, not a reason to add a test.
 - Static guardrails: when a contract could be enforced by the type system, a schema or constraint, or an existing lint rule instead of caller discipline, suggest it; it is blocking only when a high-impact risk-map row has no other guardrail.
 - Test-double realism: a contract method stubbed to always fail leaves the call wiring and order unverified; require one case with the real collaborator and only external boundaries stubbed.
+- Configuration reuse: a destination (channel, address, bucket), threshold, or on/off switch written as a literal or an environment check in code, when the repository already keeps such values in a per-environment settings layer. Search for the existing keys, and check that non-production environments cannot reach a production destination.
 - Scope creep and unrelated changes.
 - Domain scope filtering: ignore incidental AI harness, bot, generated-analysis, or review-tool noise unless the task explicitly changes that tooling.
 - File understanding: identify each changed file's role and local change before judging it.
@@ -97,7 +98,8 @@ Before recording a blocking finding, follow this sequence:
 - Verified non-issues, separate from findings, with evidence that disproves each suspected concern.
 - Spec review result: contradictions, undefined cases with the implementation's current behavior, and owner questions.
 - Risk map for modified existing code, with unknowns and the places a human should understand before merging (at most five).
-- Missing validation.
+- Missing validation. A claim that rests on production data, frequency, or an environment you could not inspect is labeled unverified, never stated as settled. For each one, give a read-only check the user can run (a SELECT, a log query, a command) and the result that would confirm or refute it, so the user does not have to ask "is there anything else to check?".
+- For each risk, whether it existed before this change or is introduced by it.
 - Residual risks.
 - Approval evidence that supports every required final check when the decision is `APPROVE`.
 - Release or security escalation needed, if applicable.

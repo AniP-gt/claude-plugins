@@ -23,9 +23,9 @@ Use this skill to prepare PR artifacts: reviewable changes, a summary or respons
 
 ## Follow-Up Changes on an Existing PR
 
-Review responses, conflict resolution, and refactors added after the PR was opened usually bypass the implement-review loop. Before calling such a change done, run these on the cumulative branch diff (`git diff <base>...HEAD` plus uncommitted work), not only on the latest fix:
+Review responses, conflict resolution, and refactors added after the PR was opened usually bypass the implement-review loop. Before calling such a change done, run these on the cumulative branch diff (`git diff <base>...HEAD` plus uncommitted work), not only on the latest fix. Do them without asking first; "should I also review / update the body / reply?" leaves the user to request each step separately.
 
-1. Re-run the PR-style review from step 6, even for a one-line fix.
+1. Run `omo-orchestrator:omo-review` (it fixes what it finds), even for a one-line fix. When a commit already holds the fix, review the branch diff anyway; the review edits the working tree only.
 2. Compare the current PR body with the cumulative diff and draft an updated body when any of these hold (if the body cannot be read, say so and draft only the additions):
    - A changed file or behavior is not explained. When files outside the component named in the title changed, say why they had to change.
    - A statement became stale after the follow-up (method names, notification destinations, conditions, limits).
@@ -36,6 +36,7 @@ Review responses, conflict resolution, and refactors added after the PR was open
    - Shared code the base added or changed (a helper, base class, guard, notifier) that does the same job as code on the branch. Decide whether the branch should move onto it. If it should not, give the concrete reason (a different detection model, a call that would need extra arguments). If it should, say whether to do it in this PR or a follow-up issue, with a recommendation. Recommend only; move the code only when the user asked for that refactor.
    - Docs and comments from the base that the branch now contradicts. Fix them in this PR.
    Put the result in the done report as one line each: shared code brought in (name or none), adopt or not and why, docs fixed. Do this before the user asks.
+6. When the follow-up answers review comments, draft one reply per comment or thread handled: what changed and where (file and line; the commit hash once it is pushed), or why it was declined, with the evidence. A comment outside the diff that has no thread gets a PR-level comment draft that links to it. Put the drafts, the PR body draft from item 2, and the command shape for posting each in the done report, so one "post them" from the user finishes the round.
 
 ## Hard Rules
 
@@ -59,3 +60,4 @@ Review responses, conflict resolution, and refactors added after the PR was open
 - Validation run.
 - Remaining blockers.
 - PR summary or response artifact, plus remote-action commands and operator handoff or missing check evidence.
+- Refer to findings and code by what they are, not by a label alone: write `N3 (an unused attribute)`, not `N3`, and introduce a module or class the user may not know in a few words, saying when it exists only on a branch that is not yet merged.
