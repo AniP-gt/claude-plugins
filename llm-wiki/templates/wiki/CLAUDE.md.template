@@ -14,7 +14,8 @@ The rules in this file take precedence over any CLAUDE.md in parent folders. Edi
 
 | Path | Role | How the LLM treats it |
 |---|---|---|
-| `raw/` | Source material (PR summaries, meeting notes, chat excerpts, search results) | Read only. Never edit or delete |
+| `raw/YYYY/MM/MM-DD-topic-name.md` | Source material (PR summaries, meeting notes, chat excerpts, search results) | Preserve source contents |
+| `raw/inbox/` | Pending, unverified automatic candidates | Review before ingestion |
 | `wiki/repos/` | Overview of each repository | Create and update |
 | `wiki/features/` | One page per feature | Create and update |
 | `wiki/decisions/` | Design decisions (why it was done this way) | Create and update |
@@ -22,6 +23,12 @@ The rules in this file take precedence over any CLAUDE.md in parent folders. Edi
 | `wiki/glossary.md` | Business terms | Append |
 | `index.md` | Table of contents for all pages | Update every time |
 | `log.md` | Operation history (newest first) | Append every time |
+
+Save sources using their source date, or the ingestion date when unknown, and an English kebab-case title. Example: `raw/2026/10/10-09-logic-pitch-correction.md`. Create year/month directories as needed. Check existing directories and local rules before saving. Reuse an identical source; add a distinguishing identifier for a different source rather than overwriting it.
+
+Move processed inbox candidates into the same dated layout without changing their contents, including rejected candidates. Include a session identifier in candidate titles. Do not save new processed sources in `raw/sessions/`.
+
+When the user requests a layout migration, update all affected links, including links inside raw sources, and verify that no old references or broken links remain. Preserve all other source contents. Do not migrate existing sources merely to ingest a new source.
 
 ## Writing pages
 
@@ -33,7 +40,7 @@ The rules in this file take precedence over any CLAUDE.md in parent folders. Edi
   id: <file name>
   aliases: []
   tags: [<project name>, <repo|feature|decision|problem>]
-  sources: ["[[raw/xxx]]"]
+  sources: ["[[raw/YYYY/MM/MM-DD-topic-name]]"]
   updated: YYYY-MM-DD
   verified: YYYY-MM-DD  # optional. Date the code evidence was last checked
   ---
