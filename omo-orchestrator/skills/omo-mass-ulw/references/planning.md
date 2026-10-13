@@ -22,6 +22,10 @@ Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw/re
 
 **Default shape is fan-out, then fan-in.** N parallel lanes with no dependencies, then one synthesis task depending on all of them. Merging verified pieces is mechanical unless the merge itself needs judgment, so the synthesis owner starts cheap too.
 
+**Join adjacent waves through one review task.** When every consumer needs every producer's output, use `producers -> shared review -> consumers`, rather than all-to-all edges. The review verifies the producers against their declared checks and gates the consumers. A consumer needing only A1 gets `A1 -> review-A1 -> consumer` and starts when that branch clears; it does not wait for unrelated producers. Compute readiness from verified dependencies as results return, rather than imposing a whole-wave barrier. Preserve any additional dependency explicitly required by the plan or shared state.
+
+A review finding names the failed producer and criterion. Repair that producer under the shared Ralph iteration budget, rerun its affected verification and any already-run consumers whose evidence it invalidates, and retain verified independent results. A downstream task waiting on the shared review remains pending until all inputs it consumes are supported. Branch and shared reviews may reuse the same current QA evidence under `omo-review-work` Evidence Reuse; they are dependency checks, not additional final-gate reviewer panels.
+
 **Mass harvests: tasks are not items.** When a scan must cover hundreds or thousands of files or sources, shard items into tasks. Each task owns a batch (roughly 50-200 items) and writes one bounded report file (a few thousand tokens at most) to a ledger path. Chain phases when one wave is not enough, with an aggregator per phase, so synthesis reads digests, never raw outputs.
 
 **Do not split implementation from its test.** One task owns one deliverable end to end: the change and its proof. A code-only task and a test-only task serialize on the same files and double coordination.
@@ -50,7 +54,7 @@ A graph where every task goes to the strongest owner is a routing failure: it ov
 - `depends_on` is ordering only. Every prompt stands alone.
 - **Disjoint write scopes or serialize.** No two tasks in the same wave edit the same file or shared state (lockfile, generated index, shared config, DB schema, the same manifest). If two lanes must touch the same files, chain them or merge them.
 - **Never add an edge to pass a fact you already know.** Paste it into the prompt and leave the edge out. Add an edge only when B consumes something A produces.
-- Parallel implementers editing overlapping trees can use `isolation: "worktree"` on the Agent call; the coordinator then owns the merge as its own serialized task with a verification step.
+- Only when the user requested worktrees, parallel implementers editing overlapping trees can use `isolation: "worktree"` on the Agent call; the coordinator then owns the merge as its own serialized task with a verification step. Otherwise serialize overlapping writes in the current checkout.
 - Dependency self-check before wave 1: every id exists, no cycles, no edge without a consumed output, every wave has a runnable task.
 
 ## Task Prompt Contract

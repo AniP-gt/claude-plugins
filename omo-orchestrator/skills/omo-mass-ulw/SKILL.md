@@ -42,6 +42,8 @@ Self-check before wave 1: every dependency id exists, no cycles, no edge without
 
 Record the graph in TodoWrite, one item per task: `<id> [wave N, deps: a,b] <path>: <action> - verify by <check>`. For multi-phase or long runs, also keep the `omo-handoff` ledger at `.claude/omo/handoffs/<task-slug>.md` with the graph, per-task status, and evidence paths, so a new context can resume without redoing verified tasks.
 
+Keep exactly one coordinator action `in_progress` in TodoWrite. Track concurrent workers separately in the graph ledger as `pending`, `running`, `verified`, `failed`, or `invalidated`; several workers may be `running` while that one action supervises them. Complete each task's TODO individually when its verification passes.
+
 ## Running Waves
 
 Default runtime: one message per wave containing one Agent tool call per ready task. Each task is owned by exactly one sub-agent (`omo-implementer`, `omo-researcher`, `omo-librarian`, `omo-reviewer`, `omo-oracle`, `omo-media-reader`).
@@ -50,7 +52,9 @@ Default runtime: one message per wave containing one Agent tool call per ready t
 2. State the independence justification for the wave in one line per task pair that could collide: disjoint write paths, no shared contract, no shared mutable state. If you cannot justify it, serialize.
 3. Dispatch the whole ready set in a single message. Do not dispatch a task whose predecessor is only reported done but not yet verified.
 4. When results return, verify each task against its `success` observable before marking it complete. Read the output; a worker that reports being blocked has not completed.
-5. Update TodoWrite and the ledger, then compute the next ready set. Repeat until the graph is exhausted.
+5. Update TodoWrite and the ledger as each result verifies, then compute the next ready set. A verified branch may release its consumers while unrelated tasks remain in progress; a dispatch wave is not a global barrier. Apply the branch/shared review topology in planning.md and preserve explicit plan dependencies. Repeat until the graph is exhausted.
+
+For budget accounting, each newly dispatched implementation ready set is an initial wave: reserve one iteration in the shared Ralph ledger before dispatch, even while another wave's workers remain active. Record that iteration on its tasks. Verification and dependency reviews belong to the producer's reserved pass and do not reserve a new implementation iteration; a shared review records the current input identities and their iterations. A repair ready set reserves the next shared iteration under Recovery. Resuming an interrupted dispatch reuses its recorded reservation.
 
 Very wide waves (more than ~10 tasks) fan in through aggregator tasks that read bounded per-task reports written to files. The coordinator never reads N raw outputs.
 
@@ -64,7 +68,7 @@ Check each returned task against its own prompt's scope: the assigned work, only
 
 ## Recovery
 
-A failed task blocks only its dependents. Completed and verified tasks are never re-run.
+A failed task blocks only its dependents. Retain completed, verified tasks while their evidence remains valid. Changed inputs invalidate the affected tasks and checks, which must be revalidated before reuse; preserve verified independent results.
 
 | Situation | Move |
 |---|---|
@@ -74,7 +78,7 @@ A failed task blocks only its dependents. Completed and verified tasks are never
 | Many tasks in a wave fail at start within seconds | Environment or tool failure, not the prompts. Stop dispatching, fix the cause, retry the failed set. |
 | Retry budget spent | Record every attempt in the ledger, stop, and surface the blocker. |
 
-Every implementation repair or renewed review dispatch must reserve the next iteration in the same Ralph ledger before work starts. There is no separate per-task implementation retry cap. Bounded local tool recovery and one missing-output follow-up remain available within the current pass; neither authorizes another work pass or resets the shared budget. Elapsed time alone never justifies abandoning a running task.
+Each implementation repair/re-review pass reserves the next iteration in the same Ralph ledger before its repair work starts. Its affected verification and re-review share that reservation; they do not each charge another iteration. An ordinary dependency review uses its producer's pass under Running Waves. There is no separate per-task implementation retry cap. Bounded local tool recovery and one missing-output follow-up remain available within the current pass; neither authorizes another work pass or resets the shared budget. Elapsed time alone never justifies abandoning a running task.
 
 ## Verification Wave
 

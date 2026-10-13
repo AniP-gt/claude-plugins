@@ -58,6 +58,7 @@ Before returning a final outcome, verify:
 - The real-surface QA matrix, including its evidence artifacts and whether any later edit made a row stale.
 - Handoff completeness: current state, findings, blockers, retries, evidence, and one next exact action.
 - Version agreement across every manifest that declares the version when the change is release-facing.
+- Resource-cleanup evidence when the task created temporary resources: creation-time TODOs, identity and ownership, read-back QA and task-directory teardown receipts, and readable durable evidence outside deleted roots. A legitimately retained worktree or handoff artifact needs its reason and owner recorded; a shared cache or foreign resource is preserved. An unexplained leftover or missing required receipt does not support `APPROVE`.
 
 ## Findings Rules
 

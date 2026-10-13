@@ -55,6 +55,15 @@ Parallelize independent agent calls in one message. Read before change, never in
 
 ## Execution Rules
 
+### Task Resources
+
+Before the first task command, create and record one owned scratch root with `RUN_TMP=$(mktemp -d)`. Register its cleanup TODO immediately, before using it. For task commands, export `TMPDIR="$RUN_TMP" NODE_COMPILE_CACHE="$RUN_TMP/node-compile-cache" BUN_RUNTIME_TRANSPILER_CACHE_PATH="$RUN_TMP/bun-transpiler"`. A new shell does not retain exports: set them in each command invocation, and pass them explicitly to children that do not inherit the environment. Independent child tasks create and record their own roots; these variables do not redirect every tool's cache, so record any additional owned cache paths separately.
+
+- At creation, add a cleanup TODO for every owned worktree, cache, PID, port, tmux session, browser context, container, script, and temporary path. Record its exact identity and owner. Keep these TODOs when reconciling the plan or resuming after interruption.
+- Capture durable evidence and the handoff ledger outside disposable roots. If evidence was captured inside a root, copy it to the recorded durable location and verify it is readable before deleting the original. The durable notepad is retained for handoff.
+- Tear down QA resources before recording a scenario as complete; remove the run root and eligible worktrees at task end, after owned processes exit. A teardown command's exit status alone is insufficient: record a read-back receipt, such as PID absent, port unbound, context closed, or exact temporary path absent. Distinguish absence from a permission error or failed inspection tool; an inconclusive probe leaves cleanup pending. Check the recorded launch identity before stopping a PID that could have been reused. No receipt leaves its cleanup TODO pending.
+- Remove only resources whose task ownership is established. Never wipe shared caches, user files, foreign resources, or a parent directory containing retained resources. Worktrees are created only when the user requests them; preserve a worktree needed by an open PR, another task, or an explicit handoff, record why it is retained and who owns its next action, and remove other owned worktrees only under the authorized Git lifecycle. Unknown ownership blocks that deletion, not independent work.
+
 - TODO format: `path: <action> for <scenario-id> - verify by <check>`. Exactly one `in_progress` at a time. Mark completed immediately; never batch. Rewrite vague items such as "Implement feature" or "Fix bug".
 - Bounded follow-up: if a delegated track stalls, do one follow-up pass, then record the gap and stop waiting.
 - Do not duplicate research once an agent owns that question.
@@ -75,7 +84,7 @@ Each scenario states upfront a binary pass condition, the real surface that prov
 
 ## Durable Notepad
 
-Create once at start: `NOTE=$(mktemp -t ulw-$(date +%Y%m%d-%H%M%S).XXXXXX.md)` and echo the path. Append, never rewrite:
+Create once at start in the durable repository handoff directory: create `.claude/omo/handoffs/` if absent, then run `NOTE=$(mktemp "$PWD/.claude/omo/handoffs/ulw-notepad.XXXXXX")` and record the returned absolute path. This explicit directory keeps the notepad outside `$RUN_TMP` even after `TMPDIR` is exported. Retain it for handoff; append, never rewrite:
 
 ```text
 # Ultrawork Notepad - <one-line goal>
@@ -114,14 +123,14 @@ Evidence stays valid until one of its inputs changes. When a change affects an i
 | Modifies config handling | Load the config and verify it parses |
 | Touches a path with an external side effect (upload, outbound send, payment, write to a third party) | Do not trigger the real effect: replace the boundary in-process, drive the path with fixed fake data, and report the range that could not be verified |
 
-Name the exact tool and invocation with concrete inputs for every scenario. "This should work", "the types check out", and "tests pass" are not QA. Cleanup is part of QA: every spawned process, port, tmux session, browser context, container, or temp dir gets a teardown TODO that is executed before done.
+Name the exact tool and invocation with concrete inputs for every scenario. "This should work", "the types check out", and "tests pass" are not QA. Cleanup is part of the task: register teardown TODOs at resource creation under Task Resources, verify QA teardown before closing the scenario, and finish task-directory teardown before done. Retained handoff resources need the owner and reason recorded there.
 
 ## Test Decision
 
 1. Read the tests covering the area before touching it. A wrong test is a finding to report; never edit a test green. Reproduce a bug before fixing it.
 2. Make the smallest change that meets the scenario and update tests it makes stale. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
 3. Exercise the real surface named by the scenario and record the artifact path in the notepad.
-4. Re-run the full scenario list plus the step-1 tests and record pass or fail with evidence.
+4. Reconcile the full scenario list plus the step-1 tests against the final inputs. Run every missing or affected check; reuse an unchanged row only under `omo-review-work` Evidence Reuse, recording its current provenance. Record pass or fail for the complete set with evidence. A full scenario set does not require repeating independently valid rows.
 
 Prose, documentation, and prompt changes take semantic review plus real-surface QA only when a runnable surface exists; do not add tests that pin wording. Visual-only changes still require rendered-surface QA.
 

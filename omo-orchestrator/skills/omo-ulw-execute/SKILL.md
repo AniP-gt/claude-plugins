@@ -81,7 +81,7 @@ Each dispatch is self-contained and includes:
 4. Automated verification commands to run.
 5. One manual QA channel with the exact tool, invocation, input, and binary PASS/FAIL observable: `curl -i` against a live endpoint, a real CLI run with its stdout, a tmux session for a TUI, `omo-visual-qa` for rendered UI, a parsed config dump, or a DB state diff. Never "verify it works".
 6. The adversarial classes that apply (below) and how each is probed.
-7. Required artifact path and cleanup receipt.
+7. Required durable artifact path and cleanup receipt. Read `omo-ultrawork` Task Resources before dispatch: each worker registers resource-cleanup TODOs at creation, uses its own scratch root and runtime-cache environment, and reports read-back teardown receipts. Preserve cleanup TODOs when reconciling the plan and ledger; retain evidence outside disposable roots.
 8. The expected return: a done claim in the shape defined in Phase 4.
 
 ### Adversarial Classes
@@ -104,7 +104,7 @@ A class applies when its trigger holds. Probe each applicable class; record the 
 
 - Each `Task` result is the lane's completion signal. Do not sleep, poll, or re-read status hoping it changed.
 - If a worker stalls or returns without its deliverable, do one bounded follow-up with `SendMessage` to the same agent. If that fails, record the gap as inconclusive (never a pass) and dispatch a smaller, fresh sub-task for the missing deliverable.
-- Any process, port, tmux session, browser context, container, or temp dir a worker spawns gets a teardown todo that is executed and receipted before the task closes.
+- At creation, any process, port, tmux session, browser context, container, worktree, cache, or temp path a worker spawns gets a cleanup todo with its identity and owner. QA teardown is verified before its scenario closes; task roots and eligible worktrees are cleaned at task end under `omo-ultrawork` Task Resources. Retained evidence and authorized handoff resources remain readable, with their owner and retention reason recorded.
 
 ## Phase 4: Verify Every Done Claim
 
