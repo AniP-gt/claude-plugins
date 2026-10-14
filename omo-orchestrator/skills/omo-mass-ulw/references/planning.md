@@ -18,7 +18,7 @@ Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw/re
 
 - By component: each independently shippable part is its own lane.
 - By file domain: one component spanning disjoint file sets gets one task per set.
-- By phase: collect (investigate in parallel), verify (falsify the collections), synthesize (turn verified facts into the deliverable).
+- By stage: collect (investigate in parallel), expand (follow leads), verify (falsify the collections), synthesize (turn verified facts into the deliverable). Put all already-known stages inside the same phase graph; a phase ends at its acceptance checkpoint.
 
 **Default shape is fan-out, then fan-in.** N parallel lanes with no dependencies, then one synthesis task depending on all of them. Merging verified pieces is mechanical unless the merge itself needs judgment, so the synthesis owner starts cheap too.
 
@@ -26,7 +26,9 @@ Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw/re
 
 A review finding names the failed producer and criterion. Repair that producer under the shared Ralph iteration budget, rerun its affected verification and any already-run consumers whose evidence it invalidates, and retain verified independent results. A downstream task waiting on the shared review remains pending until all inputs it consumes are supported. Branch and shared reviews may reuse the same current QA evidence under `omo-review-work` Evidence Reuse; they are dependency checks, not additional final-gate reviewer panels.
 
-**Mass harvests: tasks are not items.** When a scan must cover hundreds or thousands of files or sources, shard items into tasks. Each task owns a batch (roughly 50-200 items) and writes one bounded report file (a few thousand tokens at most) to a ledger path. Chain phases when one wave is not enough, with an aggregator per phase, so synthesis reads digests, never raw outputs.
+Declare each required dependency review in the graph before dispatch. The coordinator's artifact and identity check does not replace that review. In a harvest -> expand -> verify chain, the verify task reviews the expanded claims; add a branch review before expand when it consumes harvested facts, and a shared review before reduction when it consumes several verified branches. A stage already owned by an independent reviewer can itself satisfy that dependency review when its declared check covers every consumed input; do not add a duplicate review of the same evidence.
+
+**Mass harvests: tasks are not items.** When a scan must cover hundreds or thousands of files or sources, shard items into tasks. Each task owns a batch (roughly 50-200 items) and writes one bounded report file (a few thousand tokens at most) to its declared handoff path. Define each batch's already-known harvest -> expand -> verify chain before dispatch, then fan in through an aggregator that reads verified digests, never raw outputs. More tasks than available agent slots means bounded dispatch batches, not a new phase. Add tasks after results only when newly found leads determine their scope; preserve verified independent branches.
 
 **Do not split implementation from its test.** One task owns one deliverable end to end: the change and its proof. A code-only task and a test-only task serialize on the same files and double coordination.
 
@@ -51,7 +53,7 @@ A graph where every task goes to the strongest owner is a routing failure: it ov
 
 ## Concurrency And Write Scope
 
-- `depends_on` is ordering only. Every prompt stands alone.
+- **Dependencies order; handoffs carry data.** `depends_on` substitutes nothing into a prompt. For file handoffs, paste the producer's absolute output path into its prompt and the same input path into the consumer's prompt. Verify existence, current input identity, and the producer's acceptance evidence before release; a missing report is a failed handoff. Each producer owns only its declared report, not the coordinator's graph or journal. For reply handoffs, the coordinator embeds bounded verified facts at dispatch. Every prompt stands alone.
 - **Disjoint write scopes or serialize.** No two tasks in the same wave edit the same file or shared state (lockfile, generated index, shared config, DB schema, the same manifest). If two lanes must touch the same files, chain them or merge them.
 - **Never add an edge to pass a fact you already know.** Paste it into the prompt and leave the edge out. Add an edge only when B consumes something A produces.
 - Only when the user requested worktrees, parallel implementers editing overlapping trees can use `isolation: "worktree"` on the Agent call; the coordinator then owns the merge as its own serialized task with a verification step. Otherwise serialize overlapping writes in the current checkout.
@@ -98,9 +100,9 @@ Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task
 
 ## Mass Research
 
-When the user combines the mass trigger with research ("mass ulw research", "mulw research"), run the harvest as phased waves and follow `omo-ultraresearch` for its evidence contract and convergence rules.
+When the user combines the mass trigger with research ("mass ulw research", "mulw research"), define the known harvest -> expand -> verify chains in one phase graph and follow `omo-ultraresearch` for its evidence contract and convergence rules. Slot limits determine dispatch batches within that phase.
 
 - Wave 1 over-collects: enumerate every angle (source territory, sub-question, entity, time window, competing approach) and give each its own task. Coverage is the deliverable.
 - Route across the owner table in one graph; one owner tier across every task is the routing failure above.
-- Each wave's leads define the next wave's tasks. Deduplicate against leads already seen and stop when new waves repeat known evidence.
+- Verified leads determine additional chains whose scope was unknown, not permission to postpone already-known stages. Register those chains before dispatch, deduplicate against leads already seen, and stop expanding when new waves repeat known evidence.
 - Synthesis reduces through several parallel slice tasks reading bounded digests, then one final reducer (`omo-oracle` when the merge needs judgment). Never hand dozens of raw outputs to one task.

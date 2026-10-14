@@ -18,7 +18,7 @@ Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse
 
 Before defining any task, read [planning.md](references/planning.md) in full. It holds the decomposition doctrine, owner routing, write-scope rules, the task prompt contract, the verification wave, and the failure playbook. A graph built without it is unplanned work.
 
-Then write the run plan in one pass and execute that plan: components, tasks, waves, the owner and one-line reason for every non-default owner, and the verification wave. When reality forces a change, replan out loud instead of drifting task by task.
+Then write the run plan in one pass and execute that plan: components, every stage and dependency chain already known, each task's handoff path, waves, the owner and one-line reason for every non-default owner, and the verification wave. A phase is an acceptance checkpoint, not a harvest or pipeline stage. Define known harvest, expand, verify, and reduce stages in the phase's graph before the first dispatch; dispatch only ready tasks. Extend the graph after reading verified results only when those results determine new tasks or their prompts. When reality forces a change, replan out loud instead of drifting task by task.
 
 Before dispatching a run or node that depends on an unresolved owner decision (scope expansion, new spend, or an irreversible action), the main session asks through Claude Code's `AskUserQuestion` when available, otherwise in chat. Do not bury that decision in a child prompt or execution script. Use only the tool's supported parameters. A timed-out, dismissed, or unavailable answer is not authorization, even if the tool advises best judgment; leave the dependent work pending and record the decision in the ledger. Independent authorized work may continue. Respect authorization already given for the same scope and action, including an explicit instruction to proceed without interviews; do not ask again. Such authorization does not extend to newly discovered spend or scope expansion.
 
@@ -34,7 +34,7 @@ Each task has:
 
 - `id`: short stable slug (`api-auth`, `docs-rewrite`).
 - `owner`: the sub-agent that runs it, chosen from the routing table in planning.md.
-- `depends_on`: ids that must be verified complete first. Ordering only: nothing from an upstream result is injected automatically, so each prompt must stand alone. When a downstream task needs a verified upstream fact, the coordinator pastes it into that task's prompt at dispatch.
+- `depends_on`: ids that must be verified complete first. Ordering only: nothing from an upstream result is injected automatically, so each prompt must stand alone. For artifact-based handoffs, the producer prompt names the absolute report path it writes and the consumer prompt names the same path to read. A missing, stale, or unverified report blocks the consumer even if the producer reports done. For reply-based handoffs, the coordinator pastes the bounded verified facts into the consumer prompt at dispatch. A fact the coordinator already knows goes directly into the prompt without adding an edge.
 - `scope`: exact read and write paths. Parallel tasks never share a write path.
 - `success`: a binary observable and the command or surface that proves it.
 
