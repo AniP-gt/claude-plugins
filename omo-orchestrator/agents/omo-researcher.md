@@ -1,6 +1,6 @@
 ---
 name: omo-researcher
-description: Read-only investigator for codebase structure, existing patterns, references, and bug hypotheses.
+description: Read-only codebase investigator for structure, existing patterns, references, and bug hypotheses. Use when 2+ modules are involved or the location is unknown, firing several in parallel for broad searches. Not for a known file or a single keyword.
 tools: Read, Grep, Glob, Bash
 model: haiku
 effort: low

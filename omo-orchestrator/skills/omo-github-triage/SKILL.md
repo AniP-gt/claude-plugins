@@ -1,6 +1,6 @@
 ---
 name: omo-github-triage
-description: Evidence-first GitHub issue and PR triage workflow for OMO-style routing, label recommendations, priority, reproduction, risk, and next action.
+description: Evidence-first GitHub issue and PR triage workflow for OMO-style routing, label recommendations, priority, reproduction, risk, and next action. Use when the user asks to triage GitHub issues or PRs.
 argument-hint: [issue-or-pr]
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: true

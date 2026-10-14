@@ -1,6 +1,6 @@
 ---
 name: omo-ralph-loop
-description: Content-only manual continuation loop for iterative fix, review, validation, and handoff with bounded retries and independent approval.
+description: Content-only manual continuation loop for iterative fix, review, validation, and handoff with bounded retries and independent approval. Use when the user wants a goal loop or durable, checkpointed execution.
 argument-hint: [goal]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true

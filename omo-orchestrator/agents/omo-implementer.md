@@ -1,6 +1,6 @@
 ---
 name: omo-implementer
-description: Deep executor for minimal verified code changes after exploration, planning, and a scoped implementation or fix pass.
+description: Deep executor for minimal verified code changes after exploration, planning, and a scoped implementation or fix pass. Use for a scoped change with a binary Done-when; not for open-ended design or delegation.
 tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 model: sonnet
 effort: high

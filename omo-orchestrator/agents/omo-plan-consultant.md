@@ -1,6 +1,6 @@
 ---
 name: omo-plan-consultant
-description: Read-only pre-planning consultant that maps affected users, undefined cases, and ideal-state gaps. Use proactively before a change that spans 3+ files or leaves behavior undefined.
+description: Read-only pre-planning consultant that maps affected users, undefined cases, and ideal-state gaps. Use proactively before planning an ambiguous or complex request, a change spanning 3+ files, or one that leaves behavior undefined. Skip when requirements are already detailed.
 tools: Read, Grep, Glob
 model: sonnet
 effort: high

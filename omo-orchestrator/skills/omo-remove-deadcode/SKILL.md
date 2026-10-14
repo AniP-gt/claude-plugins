@@ -1,6 +1,6 @@
 ---
 name: omo-remove-deadcode
-description: Safely remove dead code with reference checks, behavior locks, dependency analysis, and zero-false-positive deletion discipline.
+description: Safely remove dead code with reference checks, behavior locks, dependency analysis, and zero-false-positive deletion discipline. Use when the user asks to remove dead, unused, or unreachable code.
 argument-hint: [scope]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true

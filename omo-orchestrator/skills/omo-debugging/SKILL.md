@@ -1,6 +1,6 @@
 ---
 name: omo-debugging
-description: Hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verified recovery.
+description: Hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verified recovery. Use for crashes, silent failures, hangs, wrong responses, memory leaks, or async misbehavior.
 argument-hint: [bug]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true

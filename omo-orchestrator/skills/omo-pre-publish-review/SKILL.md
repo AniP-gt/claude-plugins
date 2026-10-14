@@ -1,6 +1,6 @@
 ---
 name: omo-pre-publish-review
-description: Release gate for OMO work. Reviews unpublished changes across compatibility, security, packaging, docs, tests, and operational risk.
+description: Release gate for OMO work. Reviews unpublished changes across compatibility, security, packaging, docs, tests, and operational risk. Use only when the user explicitly asks for a pre-publish or release review.
 argument-hint: [release-scope]
 allowed-tools: Read, Grep, Glob, Bash, Task
 user-invocable: true

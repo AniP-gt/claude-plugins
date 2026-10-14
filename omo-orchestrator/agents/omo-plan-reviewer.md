@@ -1,6 +1,6 @@
 ---
 name: omo-plan-reviewer
-description: Read-only plan executability reviewer that verifies references, task closure, ideal-state coverage, and executable QA before a plan is used.
+description: Read-only plan executability reviewer that verifies references, task closure, ideal-state coverage, and executable QA. Use once on a written plan (a plan file or an omo-plan draft) before execution starts. Not for todo lists or one-step plans.
 tools: Read, Grep, Glob
 model: sonnet
 effort: medium

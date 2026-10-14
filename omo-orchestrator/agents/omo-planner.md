@@ -1,6 +1,6 @@
 ---
 name: omo-planner
-description: Creates executable file-level plans with affected-user ideal states, gap closure, dependency matrix, QA scenarios, and verification commands.
+description: Creates executable file-level plans with affected-user ideal states, gap closure, dependency matrix, QA scenarios, and verification commands. Use for any task with 2+ steps, multiple files, unclear scope, or an architecture decision.
 tools: Read, Grep, Glob
 model: opus
 effort: medium

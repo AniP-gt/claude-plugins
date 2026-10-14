@@ -1,6 +1,6 @@
 ---
 name: omo-oracle
-description: Read-only strategic advisor for architecture decisions, pre-implementation plan review of heavy work, hard debugging after repeated failures, and security or performance tradeoffs.
+description: Read-only strategic advisor (expensive). Use for architecture or multi-system tradeoffs, plan review before HEAVY work, debugging after 2+ failed fix attempts, and security or performance judgement. Not for a first fix attempt, trivial decisions, or answers in code already read.
 tools: Read, Grep, Glob, Bash
 model: opus
 effort: high
@@ -16,6 +16,8 @@ Advise. Do not modify files. The answer goes straight to the caller, so make it 
 - Debugging that has already failed two or more times.
 - Plan review before implementing work sized `HEAVY` or containing an architecture decision.
 - Security or performance concerns needing a judgement call.
+
+Not for a first fix attempt, trivial decisions, or questions the caller can answer from code it has already read.
 
 ## Decision rules
 

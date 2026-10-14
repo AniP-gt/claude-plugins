@@ -1,6 +1,6 @@
 ---
 name: omo-work-with-pr
-description: "Content-only PR workflow for preparing reviewable changes, summaries, check artifacts, commands, and operator handoffs."
+description: "Content-only PR workflow for preparing reviewable changes, summaries, check artifacts, commands, and operator handoffs. Use when preparing a change for a PR or answering PR review threads."
 argument-hint: [pr-or-issue]
 allowed-tools: Read, Grep, Glob, Bash, TodoWrite, Task
 user-invocable: true

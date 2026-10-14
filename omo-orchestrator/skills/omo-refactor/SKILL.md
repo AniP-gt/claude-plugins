@@ -1,6 +1,6 @@
 ---
 name: omo-refactor
-description: Safe refactoring workflow with behavior lock first, caller and callee inventory, small steps, and verification against drift.
+description: Safe refactoring workflow with behavior lock first, caller and callee inventory, small steps, and verification against drift. Use when the user asks to refactor, simplify, extract, restructure, or modernize code.
 argument-hint: [refactor-goal]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true

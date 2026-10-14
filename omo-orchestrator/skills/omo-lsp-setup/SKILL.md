@@ -1,6 +1,6 @@
 ---
 name: omo-lsp-setup
-description: Detect which language servers a project needs, propose install commands, wire a Claude Code LSP plugin, and verify the server really answers. Never installs without asking.
+description: Detect which language servers a project needs, propose install commands, wire a Claude Code LSP plugin, and verify the server really answers. Never installs without asking. Use when a project needs an LSP or a 'no LSP server configured' error appears.
 argument-hint: [language-or-project]
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: true

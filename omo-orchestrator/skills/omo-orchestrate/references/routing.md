@@ -58,12 +58,12 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | PDF, image, diagram content | `omo-media-reader` |
 | Pre-planning gap analysis | `omo-plan-consultant` |
 | File-level plan | `omo-planner`; hard or risky work: `omo-hyperplan` |
-| Plan executability check | `omo-plan-reviewer` |
+| Plan executability check (a written plan file or omo-plan draft; not todo lists) | `omo-plan-reviewer` |
 | Implementation and fixes | `omo-implementer` |
 | Standalone visual explanation, chart, table, or diagram | `omo-visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
 | Implement plus review loop | `omo-review-loop` |
 | Change review | `omo-reviewer` |
-| Architecture tradeoffs, hard debugging after repeated failures | `omo-oracle` |
+| Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |
 | Long command-driven verification (local real runs, Docker scenarios) | `omo-implementer` with a verification-only scope and the work budget from `omo-guardrails` |
 

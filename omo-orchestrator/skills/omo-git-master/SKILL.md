@@ -1,6 +1,6 @@
 ---
 name: omo-git-master
-description: Git workflow for atomic commits, rebase and squash, and history archaeology (pickaxe, blame, bisect). Detects commit style and language from existing history instead of assuming a convention.
+description: Git workflow for atomic commits, rebase and squash, and history archaeology (pickaxe, blame, bisect). Detects commit style and language from existing history instead of assuming a convention. Use whenever a task needs a commit or a git-history answer (commit, rebase, squash, who wrote, when was X added); skip for ordinary code edits.
 argument-hint: [commit message, rebase target, or history question]
 allowed-tools: Read, Grep, Glob, Edit, Bash, TodoWrite
 user-invocable: true

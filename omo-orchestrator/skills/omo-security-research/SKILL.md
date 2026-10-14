@@ -1,6 +1,6 @@
 ---
 name: omo-security-research
-description: Exploitability-first security research workflow for OMO work. Uses evidence, PoC thinking, severity calibration, and safe reporting.
+description: Exploitability-first security research workflow for OMO work. Uses evidence, PoC thinking, severity calibration, and safe reporting. Use for security review, vulnerability research, exploitability audits, or threat model validation.
 argument-hint: [scope]
 allowed-tools: Read, Grep, Glob, Bash, Task
 user-invocable: true

@@ -25,7 +25,7 @@ Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse
 Do not write code until you understand what the user actually wants, how the existing code works, and exactly which files change.
 
 - Delegate exploration when scope warrants it: use parallel `omo-researcher` (codebase) and `omo-librarian` (external libraries, upstream source) agents for unclear, multi-surface, risky, or upstream-dependent work. For trivial, fully understood scope, confirm the context directly.
-- For hard problems, consult `omo-oracle` instead of struggling alone.
+- Consult `omo-oracle` for hard problems and after 2 failed fix attempts on the same problem, not on a first attempt. After 3 consecutive failures, stop editing, revert to the last working state, document each attempt, consult `omo-oracle`, and ask the user if it is still unresolved.
 - When the work is sized `HEAVY` or contains an architecture decision, send the plan to `omo-oracle` before the first implementation wave: the goal, the files and changes per task, and the specific uncertainties. Ask it to check the approach, missed issues, and a simpler path. Fold its findings into the plan; do not implement a decision it was asked to settle before it answers. Skip this for `LIGHT` work.
 - If ambiguity remains after exploration, ask the user. Do not guess.
 - When the user settled a decision in the conversation before `ulw`, restate your reading in the `# Goal` block as `Decided: <A>, not <B>` whenever the wording allows a second reading (keep or remove, all or a filtered subset, this change or a later issue). Keep these lines in the ledger, open each progress or done report with them, and do not re-propose an option the user rejected. Misreading "leave the delete as is for now" as "remove it later" cost five rounds of correction.
@@ -34,7 +34,7 @@ You are not ready while you are making assumptions about requirements, are unsur
 
 ## Plan Agent (Non-Trivial Work)
 
-Size the scope first: count distinct surfaces, files, and steps. Any task with 2+ steps, multiple files, unclear scope, or an architecture decision requires `omo-planner` (use `omo-plan-consultant` first when intent is unclear). Execute in the exact wave order and parallel grouping the plan specifies, and run the verification it defines for each task. Use `SendMessage` to continue the same planner for clarifications or refinements instead of spawning a fresh one.
+Size the scope first: count distinct surfaces, files, and steps. Any task with 2+ steps, multiple files, unclear scope, or an architecture decision requires `omo-planner` (use `omo-plan-consultant` first when intent is unclear). Execute in the exact wave order and parallel grouping the plan specifies, and run the verification it defines for each task. Use `SendMessage` to continue the same planner for clarifications or refinements instead of spawning a fresh one. When the plan is saved to a file (`.claude/omo/plans/*.md`), run `omo-plan-reviewer` once on that path before the first wave; skip it for inline plans and todo lists.
 
 ## Delegate By Default
 
@@ -45,7 +45,7 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Codebase exploration | `omo-researcher`, in parallel |
 | Documentation or upstream lookup | `omo-librarian`, in parallel |
 | Planning | `omo-planner` |
-| Hard problem, architecture, repeated failures | `omo-oracle` |
+| Hard problem, architecture, 2+ failed fix attempts | `omo-oracle` |
 | Implementation | `omo-implementer`, one owner per independent file set |
 | PDFs, images, diagrams | `omo-media-reader` |
 | Review gate | `omo-reviewer` |

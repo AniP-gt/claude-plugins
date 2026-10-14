@@ -1,6 +1,6 @@
 ---
 name: omo-coding-agent-sessions
-description: Read-only investigation of local coding-agent session history, transcripts, child sessions, and accounting metadata.
+description: Read-only investigation of local coding-agent session history, transcripts, child sessions, and accounting metadata. Use when asked to find or search past sessions, transcripts, or subagent runs.
 argument-hint: [question-or-session-id]
 allowed-tools: Read, Grep, Glob
 user-invocable: true

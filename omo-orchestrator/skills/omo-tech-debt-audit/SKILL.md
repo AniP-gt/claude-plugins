@@ -1,6 +1,6 @@
 ---
 name: omo-tech-debt-audit
-description: Read-only, file-cited tech debt audit across 9 dimensions with severity, effort estimates, and prioritized fixes, written to a TECH_DEBT_AUDIT.md report.
+description: Read-only, file-cited tech debt audit across 9 dimensions with severity, effort estimates, and prioritized fixes, written to a TECH_DEBT_AUDIT.md report. Use when the user asks about tech debt, a debt audit, or code health.
 argument-hint: [scope]
 allowed-tools: Read, Grep, Glob, Bash, Write, Task
 user-invocable: true

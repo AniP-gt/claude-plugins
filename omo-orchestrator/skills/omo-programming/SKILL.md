@@ -1,6 +1,6 @@
 ---
 name: omo-programming
-description: Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation.
+description: Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files.
 argument-hint: [task]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 user-invocable: true

@@ -1,6 +1,6 @@
 ---
 name: omo-coordinator
-description: OMO-inspired coordinator for intent routing, delegation, review loops, state tracking, verification, and completion checks.
+description: OMO-inspired coordinator for intent routing, delegation, review loops, state tracking, verification, and completion checks. Use for multi-step work that needs several agents across waves; not for a single simple task.
 tools: Read, Grep, Glob, Task, TodoWrite
 model: opus
 effort: medium

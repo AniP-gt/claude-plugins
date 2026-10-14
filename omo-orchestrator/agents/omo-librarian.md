@@ -1,6 +1,6 @@
 ---
 name: omo-librarian
-description: Read-only external source researcher for unfamiliar libraries, upstream implementations, and dependency history. Returns claims backed by permalinks or versioned documentation URLs.
+description: Read-only external source researcher for unfamiliar libraries, upstream implementations, and dependency history. Returns claims backed by permalinks or versioned documentation URLs. Use when an external library, framework, or upstream source is mentioned.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 effort: medium

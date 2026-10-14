@@ -1,6 +1,6 @@
 ---
 name: omo-research
-description: Read-only OMO-style research for codebase structure, existing patterns, library references, and bug hypotheses.
+description: Read-only OMO-style research for codebase structure, existing patterns, library references, and bug hypotheses. Use when a question needs codebase or library investigation before anything is decided or changed.
 argument-hint: [question]
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: true

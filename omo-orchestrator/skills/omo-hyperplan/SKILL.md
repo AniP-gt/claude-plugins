@@ -1,6 +1,6 @@
 ---
 name: omo-hyperplan
-description: Adversarial OMO planning for hard work. Runs hostile plan critique rounds, then distills an executable plan with evidence and gates.
+description: Adversarial OMO planning for hard work. Runs hostile plan critique rounds, then distills an executable plan with evidence and gates. Use when the user says hyperplan or hpp, or when hard, high-risk work needs an adversarial plan.
 argument-hint: [goal]
 allowed-tools: Read, Grep, Glob, Task, TodoWrite
 user-invocable: true
