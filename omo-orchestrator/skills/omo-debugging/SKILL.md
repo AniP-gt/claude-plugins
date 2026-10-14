@@ -21,6 +21,7 @@ Ultrawork escalation: when invoked standalone, size the task first and decide wh
 5. Before applying a fix, observe an existing owner test or one regression or validation target fail on the pre-fix code when the project supports such checks.
 6. Apply the smallest fix that removes the proven cause.
 7. Re-run the reproduction and related validation.
+8. When two fix rounds have failed (the reproduction still fails after the fix), stop editing, revert your unverified edits, and consult `omo-oracle` once with the reproduction, the hypotheses with their evidence, and each attempted fix and how it failed. Resume from its recommendation; if it cannot resolve the cause, ask the user.
 
 ## Multi-Signal Or Cascading Errors
 
