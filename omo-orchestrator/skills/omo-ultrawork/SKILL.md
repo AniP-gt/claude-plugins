@@ -48,6 +48,9 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Implementation | `omo-implementer`, one owner per independent file set |
 | PDFs, images, diagrams | `omo-media-reader` |
 | Review gate | `omo-reviewer` |
+| Research that writes files, long command-driven verification | see `omo-orchestrate` `references/routing.md` |
+
+Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (or `"haiku"` for read-only); they otherwise inherit the main model. Every brief that runs commands carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
 Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), and a binary `Done when`. Without `Done when` the executor has no exit.
 

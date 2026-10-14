@@ -49,6 +49,8 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 | `deep-*` / `ultrabrain` | `omo-oracle` | Hairy cross-module reasoning or a trade-off evidence cannot settle. At most one per graph for the single hardest decision everything else depends on |
 | review | `omo-reviewer` | Verification and final gate |
 
+Do not route a lane to `general-purpose` or a skill runner: they inherit the main session's model. When no owner above fits, pass `model: "sonnet"` on that Agent call. Every lane prompt carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
+
 A graph where every task goes to the strongest owner is a routing failure: it overpays mechanical lanes and starves the one lane that needed the horsepower. Honor the user's literal routing words ("all quick", "deep") exactly.
 
 ## Concurrency And Write Scope

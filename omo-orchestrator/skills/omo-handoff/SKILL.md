@@ -16,7 +16,7 @@ This is a manual workflow. It provides no hook, automatic creation, automatic pe
 
 A long conversation resends every earlier turn, including dead-end hypotheses, failed commands, and rejected options. `/compact` lets the model choose what survives and keeps adding to the same session. A brief lets you choose, and the next session starts from zero.
 
-Suggest a brief when any of these hold: the approach changed and the earlier attempts no longer apply, two or more failed attempts sit in the history, the user says they will resume later (another day or after a long break, when the prompt cache will have expired), or the task is switching. Write it when the user agrees or asks for a handoff.
+Suggest a brief when any of these hold: the approach changed and the earlier attempts no longer apply, two or more failed attempts sit in the history, the user says they will resume later (another day or after a long break, when the prompt cache will have expired), the task is switching (another issue or PR), or the session has run past about 150 turns. Write it when the user agrees or asks for a handoff.
 
 Write `.claude/omo/briefs/<task-slug>.md`, kept apart from the ledgers so a resume summary never mistakes one for the other. Use only lowercase letters, digits, and hyphens in `<task-slug>`, because it also goes into the commands below. Unlike the ledger the brief is a snapshot: replace it on each handoff. Keep it under about 40 lines and point to files instead of pasting their content.
 

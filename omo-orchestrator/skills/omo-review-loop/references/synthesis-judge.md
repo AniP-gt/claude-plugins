@@ -7,6 +7,7 @@ One fresh judge per iteration reads every lane report and classifies each findin
 ```
 Agent(
   subagent_type="general-purpose",
+  model="sonnet",
   description="synthesis judge iter{N}",
   prompt="""
   {Prompt section below}

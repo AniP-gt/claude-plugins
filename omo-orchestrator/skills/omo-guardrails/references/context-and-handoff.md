@@ -34,6 +34,20 @@ Return ONLY:
 Do not return file contents, reasoning narrative, or a restatement of the task.
 ```
 
+## Sub-Agent Work Budget
+
+A sub-agent resends its whole context on every turn, so one that runs 100 turns and keeps 300k characters of command output costs more than the rest of its task. In one week of measured sessions, single lanes reached 80-100 turns and 200-420k tokens of context, mostly from full Bash logs. Put these lines in every delegation prompt that runs commands or reads widely:
+
+```
+Budget: about 40 tool calls. When you reach it, stop and return what you have,
+the open questions, and the next step, instead of continuing.
+Output: never print a full log, test run, or file dump. Filter with grep, head,
+tail, or wc, or use context-mode when it is available, and keep each command's
+output under about 200 lines.
+```
+
+Raise the budget in the prompt when the task needs it (a long real-run verification), and say why. A lane that returns at its budget is continued with `SendMessage` or split into a new lane, not restarted from zero.
+
 ## Cross-Agent Handoff
 
 Sub-agents are stateless and see only their prompt. The coordinator bridges phases:

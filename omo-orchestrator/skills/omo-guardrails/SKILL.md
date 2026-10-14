@@ -19,6 +19,7 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 - Stop local tool/delegation loops after 5 identical calls or delegation deeper than 3 levels. Implementation/review stall decisions and iteration budgets belong exclusively to `omo-ralph-loop`; use its shared blocker history rather than a separate flat-metric counter.
 - Treat stalled delegated agents as recoverable blockers: wait for one bounded follow-up, then stop retrying, record the gap, and continue with available evidence when safe.
 - Preserve state through a short handoff when context may be lost.
+- Keep the main session short. When it has run past about 150 turns, or the user moves on to a second issue or PR, suggest an `omo-handoff` fresh-session brief before continuing. In measured sessions, ones past 150 turns carried 400-700k tokens of context on every turn and spent over a third of all main-session usage. Every sub-agent brief carries the work budget in `references/context-and-handoff.md`.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
 - Ask one precise question when missing information materially changes the result.
 - Keep final claims tied to actual verification. In design discussions too, keep an untested premise out of the conclusion and list it under an unverified heading. Before handing the user a script or command to run, run it once yourself, or say it was not run and why.
