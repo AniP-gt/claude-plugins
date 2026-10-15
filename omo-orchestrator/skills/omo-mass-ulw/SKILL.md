@@ -70,10 +70,12 @@ Check each returned task against its own prompt's scope: the assigned work, only
 
 A failed task blocks only its dependents. Retain completed, verified tasks while their evidence remains valid. Changed inputs invalidate the affected tasks and checks, which must be revalidated before reuse; preserve verified independent results.
 
+Apply `omo-orchestrate`'s **Pending delivery and late results** contract before the recovery moves below. A queued or acknowledged send is not task completion, and a missing-output timeout does not end the original execution or release its write paths. Do not resend or replace a potentially live writer. Correlate late outcomes with the original task and attempt, correct affected provisional claims, and invalidate only affected dependent evidence; stale attempts cannot complete replacements. Use available Claude Code result channels rather than assuming Senpi notifications or automatic wake support.
+
 | Situation | Move |
 |---|---|
 | Agent alive but stuck, off scope, or missing a fact | `SendMessage` to the same agent with the fact or boundary. Keeps its context. |
-| Task failed or returned no usable result | Re-dispatch that task alone with a corrected prompt (retry). Dependents stay pending. |
+| Task failed or returned no usable result | Re-dispatch that task alone with a corrected prompt only after terminal failure or confirmed cancellation and release of write ownership. Otherwise keep it running with evidence unavailable and its dependents pending. |
 | Task definition itself was wrong | Amend: rewrite that task's prompt or split it, then re-run it plus every transitive dependent. Verified unaffected tasks keep their results. |
 | Many tasks in a wave fail at start within seconds | Environment or tool failure, not the prompts. Stop dispatching, fix the cause, retry the failed set. |
 | Retry budget spent | Record every attempt in the ledger, stop, and surface the blocker. |

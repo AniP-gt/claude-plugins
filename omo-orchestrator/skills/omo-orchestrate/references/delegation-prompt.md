@@ -34,6 +34,7 @@ Sub-agents are stateless. Every prompt carries all six sections, one atomic goal
 
 - Before: collect findings, decisions, and artifacts from earlier phases and put them in CONTEXT.
 - After: check the result against EXPECTED OUTCOME, existing patterns, and the MUST DO / MUST NOT DO lists. Record what changed or was decided, then mark the task done. Do not start a dependent task before this check passes.
+- For acknowledged background delivery, missing output, or a late result, apply the parent skill's **Pending delivery and late results** contract. Keep the original task/attempt identity and write ownership until termination is established; a follow-up timeout does not authorize resending or replacement. Reconcile late failures before reusing dependent claims or evidence.
 
 ## Auto-continue
 
