@@ -10,6 +10,8 @@ description: 資料（PR、Issue、議事録、URL、ファイル、会話の結
 `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py resolve` を実行して `wiki` のパスを得る。
 失敗したら `/llm-wiki:setup` を案内して終わる。以降 `<wiki>` はそのパス。
 
+wiki のファイルは Write / Edit ツールで書く。Bash の `cat >>` やリダイレクトで書くと、wiki がリポジトリの外にあるときにサンドボックスに拒否され、記録できずに終わる（2026-10-14 に発生）。
+
 最初に `<wiki>/CLAUDE.md`（書き方のルール）と `<wiki>/index.md`（既存ページ）を読む。`AGENTS.md` にもローカルルールがあれば確認する。ルールはこのファイルよりwikiのローカルルールを優先する。保存前に `raw/` の既存フォルダ構成も確認し、指定された構成に揃える。
 
 ### 書く言語
