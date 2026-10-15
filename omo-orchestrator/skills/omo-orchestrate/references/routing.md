@@ -12,6 +12,7 @@ Use this before the first delegation of a request. State the routing decision in
 | "what do you think about X?" | Evaluation | evaluate, propose, then wait for user confirmation before any edit |
 | "I'm seeing error X", "Y is broken" | Fix | diagnose root cause (`omo-debugging`), then a minimal fix; no refactor while fixing |
 | "refactor", "improve", "clean up" | Open-ended change | codebase assessment first, then propose an approach (`omo-refactor`, `omo-remove-ai-slop`) |
+| "write tests", "test cases for X", "add specs" for existing code | Test design | `omo-test-design`: detect the existing spec style, derive cases, approve the case table, then write specs. A feature or fix that also needs tests stays Implementation; `omo-implement` calls `omo-test-design` itself |
 | "review this", PR link | Review | `omo-reviewer` or `omo-review`; implement plus review goes to `omo-review-loop` |
 
 ## Request size
