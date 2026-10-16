@@ -99,7 +99,7 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
   1. {question, gate named}
 - **Unresolved evidence gaps** (from INCONCLUSIVE, verbatim):
   1. {missing evidence}
-- **Needs Attention items** (Phase 7 follow-ups, non-blocking: nit/fyi and non-pausing `ask` items):
+- **Needs Attention items** (Phase 7 follow-ups, non-blocking: nit/imo and non-pausing `ask` items):
   1. {File:Line - description}
 - **Nits**: {N} (non-blocking)
 - **Recurring from previous cycle**: yes / no -> {omo-oracle consulted / n/a}
