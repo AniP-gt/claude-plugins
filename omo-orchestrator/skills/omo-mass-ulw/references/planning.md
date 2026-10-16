@@ -70,6 +70,7 @@ A task prompt is the only thing the sub-agent sees. It has no conversation histo
 3. **SCOPE**: what it may read and write, with exact paths, as a hard boundary. Name what is out of scope when a sibling task owns it.
 4. **VERIFY**: the literal command it runs on its own work and the expected result.
 5. **STOP WHEN**: the single observable condition that ends the task.
+6. **LOAD_SKILLS**: for a prompt to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner`, add a plain line `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` (not a bold label value), chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
 
 Rules that make prompts obeyed:
 

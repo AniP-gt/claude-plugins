@@ -2,7 +2,7 @@
 name: omo-ast-grep
 description: Search and rewrite code by AST shape with the ast-grep `sg` CLI. Use for syntax patterns, codemods, and YAML lint rules; plain text, comments, and file names go to Grep.
 argument-hint: [pattern-or-goal]
-allowed-tools: Read, Grep, Glob, Edit, Bash
+allowed-tools: Read, Grep, Glob, Edit, Bash(ast-grep *), Bash(command -v *)
 user-invocable: true
 ---
 

@@ -2,7 +2,7 @@
 name: omo-test-design
 description: Design test cases (RSpec, Jest, and similar) that follow the project's existing spec style, using black-box and white-box techniques and domain risk checklists. Returns a case table for approval, then writes the specs. Use when asked to design, list, or add test cases or specs.
 argument-hint: [target code or behavior]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, TodoWrite
 user-invocable: true
 ---
 

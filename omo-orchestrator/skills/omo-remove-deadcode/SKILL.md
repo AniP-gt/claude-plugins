@@ -12,6 +12,10 @@ Use this skill to remove unused code without deleting behavior that is still rea
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions.
+
 ## Workflow
 
 1. Define the deletion scope and non-goals.

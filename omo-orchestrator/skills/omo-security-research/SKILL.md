@@ -2,13 +2,17 @@
 name: omo-security-research
 description: Exploitability-first security research workflow for OMO work. Uses evidence, PoC thinking, severity calibration, and safe reporting. Use for security review, vulnerability research, exploitability audits, or threat model validation.
 argument-hint: [scope]
-allowed-tools: Read, Grep, Glob, Bash, Task
+allowed-tools: Read, Grep, Glob, Task
 user-invocable: true
 ---
 
 # OMO Security Research
 
 Use this skill for security review, threat modeling, vulnerability research, or pre-release security checks.
+
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions. Here the hunter and PoC passes are those steps: run the pass your brief assigns, and name the remaining passes as next actions.
 
 ## Workflow
 

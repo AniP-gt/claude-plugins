@@ -2,7 +2,7 @@
 name: omo-visual-qa
 description: Manual visual verification for browser pages and terminal TUIs with fresh evidence and APPROVE, REQUEST_CHANGES, or INCONCLUSIVE outcomes. Use for any UI build or change, or when asked whether a page, component, or TUI looks right.
 argument-hint: [surface-or-goal]
-allowed-tools: Read, Grep, Glob, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, TodoWrite
 user-invocable: true
 ---
 

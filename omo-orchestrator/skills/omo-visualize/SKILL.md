@@ -2,7 +2,7 @@
 name: omo-visualize
 description: Build traceable, self-contained HTML or SVG charts, tables, and diagrams with readable static content and rendered QA. Use for standalone visual explanations or a visualization inside an existing UI.
 argument-hint: [question-and-data]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
+allowed-tools: Read, Grep, Glob, Edit, Write, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
@@ -12,11 +12,15 @@ Claude Code adaptation of upstream `packages/omo-senpi/skills/visualize/SKILL.md
 
 Use a visualization when it answers the reader's question more clearly than prose. State that question, the input source, and the output path first. A single fact or one-step instruction usually needs no page.
 
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions. Here the `omo-implementer` build and `omo-visual-qa` steps are those steps: build the artifact yourself if your brief covers it, and return the rendered QA to the caller as a named next action.
+
 ## Workflow
 
 1. **Compute.** Use an available local computation tool for every displayed figure. Preserve the input reference and executable query or calculation with the artifact. Record units, aggregation grain, denominator, missing rows, and time window. Do not estimate numbers from a screenshot or invent missing values. A diagram with no quantitative claims can mark calculation `N/A`.
 2. **Choose the surface.** For a standalone explanation, use one local HTML file or SVG with a small documented token set and system fonts. No application discovery is required when no application exists. For a chart inside an existing application, follow `omo-frontend` including its design-system discovery, tokens, and implementation brief. This branch does not waive the application's checks.
-3. **Build through `omo-implementer`.** Give it the question, source and calculation, exact output path, units and caveats, required states, dependency boundary, and a binary done condition. Use installed tools and original markup; do not install a chart library just to make one figure.
+3. **Build through `omo-implementer`.** Give it the question, source and calculation, exact output path, units and caveats, required states, dependency boundary, and a binary done condition. The dispatch carries `LOAD_SKILLS` per `skills/omo-orchestrate/references/skill-catalog.md` (typically `[omo-frontend, omo-visual-qa]` or `none`). Use installed tools and original markup; do not install a chart library just to make one figure.
 4. **Verify data and render.** Re-run the saved calculation and compare its results with every displayed number. Then give `omo-visual-qa` the artifact, expected finding, states, and final source identity. Inspect phone `390x844` and desktop `1440x900`, paired light/dark when supported, every required state and applicable scroll position, and the console when available. Exercise any controls and a scripts-disabled view. Fix confirmed failures and recapture affected views after the final edit.
 5. **Deliver.** Link the artifact and its calculation/evidence paths, state the QA verdict, and explain only what the figure does not already say. Only fresh `APPROVE` evidence permits a claim of visual verification. If rendering is unavailable, deliver the artifact as unverified with `INCONCLUSIVE`, the missing tool or surface, and one next action. Do not install a renderer or claim an inline preview without an available capability.
 

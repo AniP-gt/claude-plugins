@@ -46,7 +46,7 @@ For large codebases (roughly >50k LOC), split dimensions across parallel `omo-or
 - Lane C: dimensions 4, 5, 6
 - Lane D: dimensions 8, 9
 
-Each prompt includes: the mental model, scope, tool availability, the dimension checklist below, and the requirement to return every finding as `ID, category, path:line, severity, effort hours, description, recommendation`. Researchers stay read-only. For smaller repos, run the dimensions directly with parallel tool calls. After one bounded follow-up, mark a stalled lane as `unmeasured` rather than blocking.
+Each prompt includes: the mental model, scope, tool availability, the dimension checklist below, and the requirement to return every finding as `ID, category, path:line, severity, effort hours, description, recommendation`. Researchers stay read-only. Each researcher dispatch carries a `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` line chosen per `skills/omo-orchestrate/references/skill-catalog.md`. For smaller repos, run the dimensions directly with parallel tool calls. After one bounded follow-up, mark a stalled lane as `unmeasured` rather than blocking.
 
 ### 1. Architectural Decay
 

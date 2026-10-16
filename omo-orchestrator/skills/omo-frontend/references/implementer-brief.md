@@ -7,6 +7,10 @@ For multi-step work, append the brief to the task ledger at `.claude/omo/handoff
 ## Template
 
 ```markdown
+## LOAD_SKILLS
+LOAD_SKILLS: [omo-frontend, omo-visual-qa]
+(Add rows from [skill-catalog.md](../../omo-orchestrate/references/skill-catalog.md) that apply. A PreToolUse hook denies a brief without this line.)
+
 ## Goal
 What UI is being built or changed, and for whom.
 

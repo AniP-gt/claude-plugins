@@ -36,6 +36,8 @@ Agent(
 )
 ```
 
+The `LOAD_SKILLS:` line required by the dispatch gate is the first line of the Lane Context block (SKILL.md 3a); set it for this lane there.
+
 The coordinator saves the returned report to `{ITER_DIR}/omo_review.md`.
 
 ## Synthesis effect

@@ -128,6 +128,7 @@ Each dimension prompt is assembled as: lane prompt + Lane Context block + `refer
 Lane Context block (identical for every lane):
 
 ```
+LOAD_SKILLS: {per lane, from `../omo-orchestrate/references/skill-catalog.md`; e.g. security lane [omo-security-research], quality lane [omo-remove-ai-slop] only to judge slop patterns (reviewers do not edit), others none unless the diff calls for omo-test-design or omo-visual-qa}
 TASK_ID: {TASK_ID}    Ralph iteration: {N}/{CAP}    Ledger: {LEDGER}
 Stack: {DETECTED_STACK}    IS_CI_CHANGE: {true|false}
 Risk: {RISK_LEVEL} - {RISK_REASON}
@@ -154,7 +155,7 @@ After every lane returns, spawn one judge per `references/synthesis-judge.md`. I
 
 ### 3c. Fix
 
-A synthesis finding ends the current pass. Return it to Ralph; only after the controller reserves the next iteration may the fix dispatch run. Dispatch `omo-orchestrator:omo-implementer` with `synthesis.md`, `SPEC`, the ledger path, and the library evidence. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
+A synthesis finding ends the current pass. Return it to Ralph; only after the controller reserves the next iteration may the fix dispatch run. Dispatch `omo-orchestrator:omo-implementer` with `synthesis.md`, `SPEC`, the ledger path, and the library evidence. The fix dispatch carries a `LOAD_SKILLS` line chosen per `../omo-orchestrate/references/skill-catalog.md`. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
 
 ### 3d. Verify
 

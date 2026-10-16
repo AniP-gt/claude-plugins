@@ -79,12 +79,13 @@ Each dispatch is self-contained and includes:
 
 1. Goal and the exact files or directories in scope.
 2. Tests already covering the behavior, to be read before any edit as the behavior of record. For a bug, the reproduction to capture before the fix. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
-3. Constraints from the plan and project rules (`omo-programming`, `omo-implement`).
+3. Constraints from the plan and project rules (`omo-programming`, `omo-implement`). `omo-implement` is main-only, so its rules travel as text in the brief, never in `LOAD_SKILLS`; `omo-programming` is already preloaded by `omo-implementer`.
 4. Automated verification commands to run.
 5. One manual QA channel with the exact tool, invocation, input, and binary PASS/FAIL observable: `curl -i` against a live endpoint, a real CLI run with its stdout, a tmux session for a TUI, `omo-visual-qa` for rendered UI, a parsed config dump, or a DB state diff. Never "verify it works".
 6. The adversarial classes that apply (below) and how each is probed.
 7. Required durable artifact path and cleanup receipt. Read `omo-ultrawork` Task Resources before dispatch: each worker registers resource-cleanup TODOs at creation, uses its own scratch root and runtime-cache environment, and reports read-back teardown receipts. Preserve cleanup TODOs when reconciling the plan and ledger; retain evidence outside disposable roots.
 8. The expected return: a done claim in the shape defined in Phase 4.
+9. For a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner`, a `LOAD_SKILLS: [...]` or `LOAD_SKILLS: none` line chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
 
 ### Adversarial Classes
 

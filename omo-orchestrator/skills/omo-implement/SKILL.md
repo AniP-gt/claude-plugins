@@ -12,7 +12,7 @@ Use this skill for one scoped implementation or fix pass after scope is concrete
 
 Plan first: when invoked standalone with no approved `omo-plan` for this change, run `omo-plan` before editing. Skip it only when the whole change is a typo fix, a wording change, or a config value change; documentation changes are not exempt. Skip the check when an active controller delegated this skill.
 
-Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
+Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only. Every dispatch to `omo-researcher`, `omo-reviewer`, `omo-implementer`, or `omo-planner` carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md` (`LOAD_SKILLS: none` when no row applies); a PreToolUse hook denies it otherwise.
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 

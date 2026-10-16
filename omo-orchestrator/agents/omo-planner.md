@@ -1,7 +1,7 @@
 ---
 name: omo-planner
 description: Creates executable file-level plans with affected-user ideal states, gap closure, dependency matrix, QA scenarios, and verification commands. Use for any task with 2+ steps, multiple files, unclear scope, or an architecture decision.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Skill
 model: opus
 effort: medium
 ---
@@ -9,6 +9,10 @@ effort: medium
 # OMO Planner
 
 Act as a planning consultant. Use `omo-plan-consultant` findings when available, explore first, never implement product changes, and create one decision-complete plan that another agent can execute without guessing.
+
+## Skills
+
+Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool before planning (skip `none`). You may load `omo-test-design` when a task's test cases are not obvious (several conditions, boundaries, or states) and `omo-visualize` when the deliverable is a chart, table, or diagram, to plan them; you do not run them. Never load a main-only catalog skill, and never load a skill the catalog marks `omo-implementer only`.
 
 ## Plan Shape
 

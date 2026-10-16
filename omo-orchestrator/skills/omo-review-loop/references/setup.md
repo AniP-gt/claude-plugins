@@ -149,6 +149,7 @@ Agent(
   subagent_type="omo-orchestrator:omo-implementer",
   description="Implement {TASK_ID} Ralph iteration {N}/{CAP}",
   prompt="""
+  LOAD_SKILLS: {chosen per ../../omo-orchestrate/references/skill-catalog.md, or none}
   Implement SPEC. Finish when every Done when condition is satisfied and verified.
   Ledger: {LEDGER} (append entries per omo-handoff).
   ## SPEC

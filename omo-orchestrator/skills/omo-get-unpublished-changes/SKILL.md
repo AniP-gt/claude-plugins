@@ -2,7 +2,7 @@
 name: omo-get-unpublished-changes
 description: Compare current work against the latest published baseline and classify unpublished changes by behavior, risk, and version impact. Use when asked what changed since the last release, for unpublished changes, or for a changelog.
 argument-hint: [package-or-baseline]
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob
 user-invocable: true
 ---
 

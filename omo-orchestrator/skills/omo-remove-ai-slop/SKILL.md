@@ -2,7 +2,7 @@
 name: omo-remove-ai-slop
 description: Clean AI-generated code patterns with regression lock first, better comments, lower complexity, deduplication, and real verification. Use when the user asks to clean up, deslop, or remove AI-slop patterns from recent changes.
 argument-hint: [diff-or-files]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
+allowed-tools: Read, Grep, Glob, Edit, Write, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
@@ -11,6 +11,14 @@ user-invocable: true
 Use this skill to clean AI-generated code smells without changing intended behavior.
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
+
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions.
+
+The hand-off to `/omo-remove-deadcode` becomes loading that skill with the Skill tool inside a sub-agent, not a dispatch.
+
+Only omo-implementer loads `omo-remove-deadcode` (it is `omo-implementer only`). Inside any other sub-agent, do not load it; return the deletion candidates with their reachability evidence to the caller instead.
 
 ## Cleanup Priorities
 

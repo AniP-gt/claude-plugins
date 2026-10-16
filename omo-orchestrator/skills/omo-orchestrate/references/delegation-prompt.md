@@ -1,8 +1,14 @@
 # Delegation Prompt
 
-Sub-agents are stateless. Every prompt carries all six sections, one atomic goal, and the context the worker cannot see. A prompt that leaves scope, verification, or forbidden actions implicit is not ready to send.
+Sub-agents are stateless. Every prompt carries all six sections (plus section 0 for gated workers), one atomic goal, and the context the worker cannot see. A prompt that leaves scope, verification, or forbidden actions implicit is not ready to send.
+
+Every dispatch to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) also carries a `LOAD_SKILLS` line (section 0). A PreToolUse hook (`hooks/load-skills-gate.mjs`) denies a dispatch without it.
 
 ```markdown
+## 0. LOAD_SKILLS
+LOAD_SKILLS: [omo-test-design, omo-ast-grep]
+(Or `none`. Choose per [skill-catalog.md](skill-catalog.md).)
+
 ## 1. TASK
 <Quote the exact task item. One action per delegation.>
 
@@ -44,7 +50,7 @@ Once a verified step passes, dispatch the next ready step without asking "should
 
 | Violation | Severity |
 |---|---|
-| Missing any of the six sections | HIGH |
+| Missing any of the six sections (or section 0 for a gated worker) | HIGH |
 | Asking to continue between verified steps | HIGH |
 | Not passing prior context | HIGH |
 | Starting the next task before verifying the current one | MEDIUM |

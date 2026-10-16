@@ -76,6 +76,8 @@ Report: changed files, validation command and result, remaining issues
 
 An executor without a `Done when` condition has no exit. Do not delegate without one.
 
+The dispatch also carries a `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` line chosen per `skills/omo-orchestrate/references/skill-catalog.md`.
+
 ## Iteration Shapes
 
 | Task | Typical progression | Done when |

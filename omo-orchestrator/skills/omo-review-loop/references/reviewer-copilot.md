@@ -88,6 +88,7 @@ Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
   description="copilot CLI lane iter{N}",
   prompt="""
+  LOAD_SKILLS: none
   Run the Copilot CLI review below exactly. Do not review the code yourself and do not
   edit the output. Return the output file path, its line count, and the exit code.
 

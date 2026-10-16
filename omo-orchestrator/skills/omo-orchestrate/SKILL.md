@@ -85,11 +85,14 @@ Every delegated task should include:
 
 Use the full template, state-passing rule, and auto-continue policy in [Delegation prompt](references/delegation-prompt.md). After a verified step passes, dispatch the next ready step without asking the user to continue.
 
+Every dispatch to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS:` line chosen from the [Skill catalog](references/skill-catalog.md), written as `LOAD_SKILLS: none` when no skill applies; the `load-skills-gate` hook denies a dispatch without it.
+
 Ask for output that another operator can verify quickly: changed files, evidence, blockers, and next exact action.
 
 ## References
 
 - [Routing](references/routing.md)
 - [Delegation prompt](references/delegation-prompt.md)
+- [Skill catalog](references/skill-catalog.md)
 - [Workflow](references/workflow.md)
 - [Handoff template](references/handoff-template.md)

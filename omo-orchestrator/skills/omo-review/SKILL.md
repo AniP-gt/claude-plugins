@@ -17,7 +17,7 @@ This is the one review entry; other review skills are stages it or a controller 
 - Inside an active controller (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`, `omo-review-loop`), the controller's final gate already runs its own omo gate and a review-only `self-review`; do not start a second review.
 - When the user asks for implementation plus review until it passes, route to `omo-review-loop`.
 - Otherwise, review the current local changes in two lanes, one after the other, so that no lane reads a tree another lane is changing. `review-pr` never runs here; it is for GitHub PRs and only the user invokes it. The second lane edits the working tree; it never commits, pushes, or posts.
-  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane. Make no edits while it runs.
+  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane. Make no edits while it runs. The `omo-reviewer` dispatch carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies it otherwise.
   2. self-review lane after the omo lane returns: when `self-review` is in the available skills list, dispatch an `omo-external-reviewer` agent naming `self-review`, with this contract and without `--dry-run`:
 
      ```

@@ -56,6 +56,8 @@ The main context orchestrates. It does not implement unless the change is trivia
 
 Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (or `"haiku"` for read-only); they otherwise inherit the main model. Every brief that runs commands carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
+Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
+
 Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), and a binary `Done when`. Without `Done when` the executor has no exit.
 
 Parallelize independent agent calls in one message. Read before change, never in parallel with it. Serialize same-file writes, shared mutable state, shared contracts, and named predecessors. Size the work as `LIGHT` or `HEAVY` once and only ratchet toward `HEAVY` when risk grows.

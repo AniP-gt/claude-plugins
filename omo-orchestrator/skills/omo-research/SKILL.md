@@ -2,13 +2,17 @@
 name: omo-research
 description: Read-only OMO-style research for codebase structure, existing patterns, library references, and bug hypotheses. Use when a question needs codebase or library investigation before anything is decided or changed.
 argument-hint: [question]
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *)
 user-invocable: true
 ---
 
 # OMO Research
 
 Use this skill when the next action depends on understanding existing code or reference material.
+
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the `omo-oracle` consult, review lanes, parallel workers, QA by another role) to the caller as named next actions. Where this skill says to split independent questions across agents, answer the questions in your brief yourself and return the remaining independent questions to the caller.
 
 ## Research Contract
 

@@ -20,7 +20,7 @@ This skill runs without automatic team-mode support; use parallel reviewers, or 
 4. Round 1 collects independent concerns. Round 2 cross-tests only Round 1 concerns with evidence. Round 3 defends, refines, or rejects the survivors. A missing return is recorded as an evidence gap, not inferred agreement.
 5. Use one manual review section per perspective when `Task` reviewers are unavailable. Keep the same fields, but scale the number of perspectives to available capacity and state which perspectives were omitted and why.
 6. Distill only surviving findings into an insight bundle. Mark each candidate as accepted, rejected with evidence, or blocked by missing information.
-7. Hand the bundle and its unresolved questions to `omo-planner` for plan formalization. The adversarial lead must not pre-write the executable plan.
+7. Hand the bundle and its unresolved questions to `omo-planner` for plan formalization. The adversarial lead must not pre-write the executable plan. The dispatch carries a `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` line chosen per `skills/omo-orchestrate/references/skill-catalog.md`.
 8. The planner returns one plan with clear owners, ordered dependencies, parallel opportunities, verification gates, `IS-*` task and QA mappings, and every unresolved critical blocker. Have `omo-plan-reviewer` verify plan executability and ideal-state coverage before implementation. Hand it to an implementer only after the planner resolves or exposes those blockers.
 
 ## Hard Rules

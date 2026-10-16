@@ -61,6 +61,7 @@ Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
   description="Phase 3.5 verify in action",
   prompt="""
+  LOAD_SKILLS: {per ../../omo-orchestrate/references/skill-catalog.md; e.g. [omo-visual-qa] for a browser UI or TUI surface, else none}
   You are a QA verifier. Exercise the implemented behavior on its real surface. Do not
   edit product files. Run commands, requests, and sessions; record what you observe.
 
