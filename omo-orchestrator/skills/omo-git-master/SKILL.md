@@ -32,6 +32,14 @@ Parse the actual request. Do not default to commit mode.
 - Never pass `--no-verify`. If a pre-commit or commit-msg hook fails, report the failure output and stop rather than bypassing it.
 - Report what you actually did. If a step failed or was skipped, say so with the output.
 
+### Machine-readable path inventory
+
+When a command's output will select paths or compute counts, use `git status --porcelain=v1 -z --untracked-files=all`, `git diff --numstat -z -M <revision>`, and `git ls-files -z --others --exclude-standard` as needed. Human-readable status and diffstat remain useful for display, but never parse them as a path inventory. Preserve literal path bytes, including tabs, newlines, quotes, and leading/trailing spaces; do not trim records, split on whitespace or newlines, or unescape Git's display quoting.
+
+Parse NUL-delimited records according to each command's format. In porcelain `-z`, a rename/copy record contains status plus destination, then a separate source field. In numstat `-z`, split only the first two tabs for counts; an empty path field introduces separate source then destination fields. Count that rename once under the destination. Binary counts (`-`) are unknown, not measured zero lines. Keep untracked paths distinct from tracked changes.
+
+Pass selected paths as individual arguments with `--`, using argument arrays or exact shell quoting, and literal pathspecs (for example `git --literal-pathspecs add -- <old-path> <new-path>`). Include both endpoints when staging an authorized rename; never expand a broad directory or glob to reconstruct it. Check the staged NUL inventory and the staged diff before committing; leave unrelated paths untouched.
+
 ---
 
 ## Commit Mode
