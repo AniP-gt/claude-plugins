@@ -1,5 +1,5 @@
 {
-  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist for change requests, review gate on stop after multi-file edits, LOAD_SKILLS gate on omo worker dispatches, and JSON argument error recovery",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist for change requests, review gate on stop after multi-file edits, LOAD_SKILLS gate on omo worker dispatches, JSON argument error recovery, and a .gitignore for .claude/omo/",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -35,6 +35,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/omo-dir-ignore.mjs\" || true",
             "timeout": 5
           }
         ]
