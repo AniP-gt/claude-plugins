@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 1.49.0 makes reviews and implementation check alert text from the receiver's side: an error notification names the target and the specific cause in its message text (not only in context fields), says which of several conditions fired, and states that a whole run stopped with its arguments. How much more it carries and its language are the receiving team's choice, so `omo-implement` asks the user with a draft and `omo-review` / `omo-reviewer` raise an owner question instead of a blocking finding.
+
 Version 1.48.0 makes `omo-implement` treat a background job as its own real surface: the job runs under a real worker with its real queue and lock store, and a test that calls it inline does not count. When the change touches the job's loop or control flow, error handling, retries, or locking (also inside services it calls, but not a pure formatting or value helper), the check adds a graceful stop in mid-run with the production timeout and a hard kill in mid-run, each followed by the re-run, while the job's normal inputs keep arriving, before the change is reported done.
 
 Version 1.47.2 follows the review skill's renamed prefix: the `omo-review-loop` report template lists non-blocking items as `nit`/`imo` (formerly `nit`/`fyi`).
