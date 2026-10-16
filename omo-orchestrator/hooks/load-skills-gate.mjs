@@ -53,16 +53,18 @@ export function implementerOnlySkills(catalogText) {
   return names;
 }
 
-// The first line of the prompt that carries the LOAD_SKILLS label decides: `LOAD_SKILLS: [..]` /
-// `LOAD_SKILLS: none` on one line, or a `## 0. LOAD_SKILLS` heading whose value is on the next non-empty line.
-// Returns undefined when no line carries the label, otherwise { line, value } where value is undefined when the
-// text after the label is neither `none` nor `[..]`, or is `none` followed by more skill names. Lines are matched one at a time with single-pass patterns.
-export function findLoadSkills(prompt) {
+// Every LOAD_SKILLS label in the prompt, in order: `LOAD_SKILLS: [..]` / `LOAD_SKILLS: none` on one line, or a
+// `## 0. LOAD_SKILLS` heading whose value is on the next non-empty line (a label line read that way is not listed again).
+// Each entry is { line, value } where value is undefined when the text after the label is neither `none` nor `[..]`,
+// or is `none` followed by more skill names. Lines are matched one at a time with single-pass patterns.
+export function findAllLoadSkills(prompt) {
   const lines = prompt.split("\n").map((line) => line.trim());
+  const found = [];
   for (let i = 0; i < lines.length; i += 1) {
     const lead = LEAD_PATTERN.exec(lines[i])[0];
     const rest = lines[i].slice(lead.length);
     if (!LABEL_PATTERN.test(rest)) continue;
+    const labelLine = lines[i];
     let valueText = rest.slice("LOAD_SKILLS".length).replace(AFTER_LABEL_PATTERN, "");
     if (valueText === "" && lead.includes("#")) {
       let next = i + 1;
@@ -70,16 +72,24 @@ export function findLoadSkills(prompt) {
       const nextLine = lines[next] ?? "";
       const nextRest = nextLine.slice(LEAD_PATTERN.exec(nextLine)[0].length);
       // The next line may itself be the label line (`LOAD_SKILLS: [..]`); then its value follows its own label.
-      valueText = LABEL_PATTERN.test(nextRest)
-        ? nextRest.slice("LOAD_SKILLS".length).replace(AFTER_LABEL_PATTERN, "")
-        : nextLine.replace(/^`+/, "");
+      if (LABEL_PATTERN.test(nextRest)) {
+        valueText = nextRest.slice("LOAD_SKILLS".length).replace(AFTER_LABEL_PATTERN, "");
+        i = next;
+      } else {
+        valueText = nextLine.replace(/^`+/, "");
+      }
     }
     const cleaned = valueText.replace(/^`+/, "");
     const value = VALUE_PATTERN.exec(cleaned)?.[0];
     const isNoneWithNames = value !== undefined && !value.startsWith("[") && NONE_THEN_NAME_PATTERN.test(cleaned.slice(value.length));
-    return { line: lines[i], value: isNoneWithNames ? undefined : value };
+    found.push({ line: labelLine, value: isNoneWithNames ? undefined : value });
   }
-  return undefined;
+  return found;
+}
+
+// The first LOAD_SKILLS label decides the answer; undefined when the prompt has none.
+export function findLoadSkills(prompt) {
+  return findAllLoadSkills(prompt)[0];
 }
 
 // The accepted LOAD_SKILLS value of the prompt as a list of zero or one entries.
@@ -133,11 +143,14 @@ export function run(input, { env = process.env, catalogText } = {}) {
   if (typeof toolInput.subagent_type !== "string" || typeof toolInput.prompt !== "string") return "";
   if (!GATED_WORKERS.has(withoutPrefix(toolInput.subagent_type))) return "";
   if (typeof catalogText !== "string") return "";
-  const found = findLoadSkills(toolInput.prompt);
+  const all = findAllLoadSkills(toolInput.prompt);
+  const found = all[0];
   if (found === undefined) return deny(MISSING_REASON);
   if (found.value === undefined) return deny(malformedReason(found.line));
+  // The first label is the answer, but a worker may also act on a later one, so restricted names are checked on every readable label.
+  const listed = all.flatMap((entry) => (entry.value === undefined ? [] : skillNames(entry.value)));
   const mainOnly = mainOnlySkills(catalogText);
-  const named = [...new Set(skillNames(found.value).filter((name) => mainOnly.has(name)))];
+  const named = [...new Set(listed.filter((name) => mainOnly.has(name)))];
   if (named.length > 0) {
     return deny(
       [
@@ -150,7 +163,7 @@ export function run(input, { env = process.env, catalogText } = {}) {
   }
   if (!READ_ONLY_WORKERS.has(withoutPrefix(toolInput.subagent_type))) return "";
   const implementerOnly = implementerOnlySkills(catalogText);
-  const restricted = [...new Set(skillNames(found.value).filter((name) => implementerOnly.has(name)))];
+  const restricted = [...new Set(listed.filter((name) => implementerOnly.has(name)))];
   if (restricted.length === 0) return "";
   return deny(
     [

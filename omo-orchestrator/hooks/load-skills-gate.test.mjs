@@ -106,9 +106,24 @@ test("`none` followed by more skill names is malformed, not an answer of none", 
   }
 });
 
-test("only the first LOAD_SKILLS line counts", () => {
+test("only the first LOAD_SKILLS line counts as the answer", () => {
   assert.equal(gate(dispatch("LOAD_SKILLS: none\n\nPasted brief:\nLOAD_SKILLS: [omo-review-loop]")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\n\nPasted brief:\nLOAD_SKILLS: omo-test-design")), "");
   assert.equal(decision(gate(dispatch("LOAD_SKILLS: [omo-ralph-loop]\nLOAD_SKILLS: none"))).permissionDecision, "deny");
+});
+
+test("a restricted skill on a later LOAD_SKILLS line is denied too", () => {
+  const mainOnly = decision(gate(dispatch("LOAD_SKILLS: none\ndo x\nLOAD_SKILLS: [omo-ralph-loop]")));
+  assert.equal(mainOnly.permissionDecision, "deny");
+  assert.match(mainOnly.permissionDecisionReason, /main-only skill/);
+  assert.match(mainOnly.permissionDecisionReason, /omo-ralph-loop/);
+  const implementerOnly = decision(
+    gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\n## 0. LOAD_SKILLS\n[omo-debugging]", "omo-reviewer")),
+  );
+  assert.equal(implementerOnly.permissionDecision, "deny");
+  assert.match(implementerOnly.permissionDecisionReason, /omo-debugging/);
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nLOAD_SKILLS: [omo-debugging]")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\nLOAD_SKILLS: [omo-test-design]", "omo-reviewer")), "");
 });
 
 test("a LOAD_SKILLS line with a malformed value is denied with its own reason that quotes the line", () => {
@@ -274,6 +289,8 @@ test("pathological prompts are scanned in linear time", () => {
   gate(dispatch(`${"**".repeat(50000)}LOAD_SKILLS${"`".repeat(50000)}x`));
   gate(dispatch(`LOAD_SKILLS: [${"a,".repeat(50000)}`));
   gate(dispatch(`LOAD_SKILLS: [${"/OMO-orchestrator:a,".repeat(5000)}]`));
+  gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\n".repeat(50000)));
+  gate(dispatch("## LOAD_SKILLS\n\n".repeat(50000)));
   assert.ok(Date.now() - started < 1000, `took ${Date.now() - started}ms`);
 });
 
