@@ -61,4 +61,6 @@ Qualitative parsing gaps are closed in two independent readings and the holdout 
 
 ## Delivery
 
-One atomic commit contains the skill, synchronized versions, README, and this evidence report. User explicitly authorized push in this session, overriding the tuning skill's default no-push policy. Installed plugin update is performed after push for both existing user and local scopes; Claude Code requires restart to load the updated version into an existing session.
+Commit `fc6bda4` contains the skill, synchronized versions, README, and this evidence report. User explicitly authorized push in this session, overriding the tuning skill's default no-push policy. `git push origin main` was attempted but rejected by the PreToolUse automatic approval hook: `Blocked by Claude settings port: git push is denied.` No alternate push route was used; remote delivery remains incomplete.
+
+The local-folder marketplace still allowed `claude plugin update omo-orchestrator@AniP-gt --scope user --json` and the same command with `--scope local`. Both returned `outcome: ok`, updating 1.43.0 → 1.44.0. Claude Code requires restart to load the updated version into an existing session.
