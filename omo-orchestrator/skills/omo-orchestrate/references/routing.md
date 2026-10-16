@@ -20,7 +20,7 @@ Use this before the first delegation of a request. State the routing decision in
 | Type | Signal | Action |
 |---|---|---|
 | Trivial | one file, known location, direct answer | one small delegation or a direct answer from evidence already read |
-| Explicit | specific file or line, clear command | delegate directly without a plan |
+| Explicit | specific file or line, clear command | delegate directly without a plan only for a typo, wording, or config value change; any other change goes through `omo-plan` first |
 | Exploratory | "how does X work", "find Y" | fan out 2 to 5 read-only researchers in parallel |
 | Open-ended | improve, refactor, add feature | codebase assessment, then plan |
 | Ambiguous | unclear scope, several readings | ask one clarifying question |

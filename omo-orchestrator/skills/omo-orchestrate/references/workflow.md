@@ -10,7 +10,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | `omo-planner` | File-level implementation planning |
 | `omo-plan-consultant` | Read-only intent classification, exploration, affected-user ideal-state and gap analysis, and planning directives |
 | `omo-plan-reviewer` | Read-only plan executability check with `OKAY` or `REJECT` |
-| `omo-plan` | User-invoked only: TL;DR, dependency matrix, blocking executable QA scenarios, gap classification, and handoff inputs |
+| `omo-plan` | On a plan request, and before the first edit of any change request or GitHub issue except a typo, wording, or config value change: TL;DR, dependency matrix, blocking executable QA scenarios, gap classification, and handoff inputs |
 | `omo-hyperplan` | Adversarial planning for high-risk or ambiguous work before implementation |
 | `omo-implementer` | Minimal verified implementation |
 | `omo-researcher` | Read-only codebase investigation |

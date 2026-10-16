@@ -2,7 +2,7 @@
 name: omo-ulw-execute
 description: Runs a written omo plan wave by wave via sub-agents with an evidence ledger, verified done claims, and a final review gate. Use when the user says ulw execute or asks to run a written omo plan.
 argument-hint: [plan-path]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
@@ -11,6 +11,8 @@ user-invocable: true
 Claude Code adaptation of oh-my-openagent `packages/shared-skills/skills/ulw-execute`. The `ulw execute` keyword hook in this plugin points here. Every rule below binds until the plan is complete or a stop condition fires.
 
 This is a manual, content-only workflow. It has no Boulder state, no continuation hook, and no automatic resume. Progress lives in TodoWrite, the plan file, and the handoff ledger, and the operator keeps driving until done.
+
+Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
 
 ## Absolute Rule: Orchestrator, Never Implementer
 

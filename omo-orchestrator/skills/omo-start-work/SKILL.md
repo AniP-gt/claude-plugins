@@ -13,7 +13,7 @@ Use this skill at the start of non-trivial work, especially when the task spans 
 ## Kickoff Workflow
 
 1. Restate the goal, constraints, and non-goals.
-2. Distinguish plan creation, plan approval, and kickoff authorization: create a plan when required, approval records that plan only, and separate explicit kickoff authorization permits its edits. Before any edit, confirm an approved plan with that authorization, or a bounded task with a clear outcome, scope, owner, and validation target.
+2. Distinguish plan creation, plan approval, and kickoff authorization: create a plan when required, approval records that plan only, and separate explicit kickoff authorization permits its edits, except that approving an `omo-plan` made for a change request or GitHub issue also authorizes kickoff of the executor it recommends. Before any edit, confirm an approved plan with that authorization, or a bounded task with a clear outcome, scope, owner, and validation target.
 3. Gather local context: likely files, existing patterns, related tests, and project rules.
 4. Identify missing facts that must be resolved before editing.
 5. Define evidence targets for completion, such as tests, diagnostics, build checks, or manual QA. Record the goal, non-goals, evidence targets, risks, shared-file owners, and dependency waves.

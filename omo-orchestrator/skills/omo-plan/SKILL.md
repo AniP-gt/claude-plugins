@@ -1,6 +1,6 @@
 ---
 name: omo-plan
-description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use only when the user explicitly asks for a plan or work breakdown.
+description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use when the user asks for a plan, and proactively before the first edit of any change request or GitHub issue, except a typo, wording, or config value change.
 argument-hint: [goal]
 allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite, AskUserQuestion
 user-invocable: true
@@ -8,9 +8,9 @@ user-invocable: true
 
 # OMO Plan
 
-Use only on an explicit user request for a plan.
+Use on an explicit user request for a plan, and before the first edit of any change request or GitHub issue (the `preflight` hook points here). Skip it only when the whole change is a typo fix, a wording change, or a config value change. Documentation changes are not exempt, because describing behavior correctly often needs the source read. Cost follows `RISK_LEVEL`: a low or medium plan gets one `omo-plan-reviewer` pass, and only high or critical plans get the rigorous lanes.
 
-Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and gap analysis when available, explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks, runtime automation, automatic execution, or automatic continuation.
+Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and gap analysis when available, explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks or runtime automation. Execution starts only through the approval scope in Planning Boundary step 8.
 
 ## Planning Boundary
 
@@ -21,7 +21,7 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 5. Name affected users, state their concrete `IS-*` ideal-state rows, and record each current shortfall as a `GAP-*` row before questions or the approval brief.
 6. Show a visible draft before the approval gate. The draft must include the intent verdict, evidence, assumptions, decisions, open blockers, affected users, `IS-*` rows, `GAP-*` rows, proposed scope, and the next planning action.
 7. Do not present an executable final plan before the user explicitly approves the draft or approval brief.
-8. Approval authorizes writing the final plan only. Plan approval never authorizes implementation, delegation of implementation, edits, or execution commands. A separate user-directed workflow starts execution.
+8. The approval scope depends on how planning started. On a plan request (the user asked for a plan or a work breakdown), approval authorizes writing the final plan only; it never authorizes implementation, delegation of implementation, edits, or execution commands, and a separate user-directed workflow starts execution. On a change request or a GitHub issue (planning entered before the first edit), approval also authorizes starting the executor the brief recommends, for the approved scope only. When an executor (`omo-implement`, `omo-review-loop`, `omo-ulw-execute`, or another controller) invoked this skill, approval returns the plan to that caller, which continues; do not start a different executor.
 
 ## Intent And Decision Routing
 
@@ -38,10 +38,10 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 ## Draft And Approval Gate
 
 1. Present one concise approval brief after exploration and before final-plan writing.
-2. The brief must name the goal, non-goals, chosen defaults, owner decisions, proposed files or systems, dependency shape, QA approach, blockers, and the statement: `Approval writes the plan only. It does not authorize implementation.`
+2. The brief must name the goal, non-goals, chosen defaults, owner decisions, proposed files or systems, dependency shape, QA approach, blockers, and the approval scope: `Approval writes the plan only. It does not authorize implementation.` on a plan request, `Approval starts <executor> on this scope.` on a change request or GitHub issue, or `Approval returns this plan to <caller>.` when an executor invoked this skill.
 3. If a decision-changing question remains, ask that question before the brief and wait for the answer. Don't substitute an unapproved default for an owner decision.
 4. After the brief, request approval even when no owner question remains, unless the user has already explicitly authorized this approach and scope. Use Claude Code's `AskUserQuestion` when available, with a clear approval question and the recommended option first. Otherwise ask in chat and state that the question tool is unavailable. Use only parameters exposed by the current tool; do not copy another runtime's `required` or wait flags. A timed-out, dismissed, or unavailable answer is not approval, even if a tool advises proceeding on best judgment. Keep the visible draft's state `awaiting-approval`, report the pending decision, and end the turn without a final executable plan. This pending-status response replaces the usual question-or-brief ending on an unanswered gate. Optional reversible defaults do not replace approval. Honor explicit authorization already given for this scope; do not ask for the same permission again. An initial request to make a plan alone is not approval of an unseen approach.
-5. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
+5. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file or the approved executor is `omo-ulw-execute`, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
 6. If the user changes scope before approval, update and show the draft again. If scope changes after approval, return to the approval gate for the changed portion.
 
 ## Final Plan Requirements
@@ -134,4 +134,4 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
    - Plan review result: iterations, verdict, and remaining issues.
    - Escalation decision: normal plan, hyperplan, security research, or release review.
    - Cross-context handoff checkpoint when applicable.
-6. Explicit stop statement that implementation remains a separate, user-directed workflow. Name the options the user may start: `omo-ulw-execute <plan-path>` to run the waves, or `omo-review-loop <plan-path>` for implementation with a review-fix loop (recommended when unsure). Both read a plan file, so offer to write one when none was requested.
+6. On a plan request, an explicit stop statement that implementation remains a separate, user-directed workflow. On a change request or GitHub issue, start the recommended executor in the same turn after writing the final plan; for `omo-ulw-execute`, write the plan file first. When an executor invoked this skill, return the plan to it instead. In both cases, recommend one executor by the plan's size and name the others the user may start: `omo-implement` for one scoped pass on 1-2 files, `omo-review-loop <plan-path>` for several tasks or a change that needs review-fix rounds (recommended when unsure), or `omo-ulw-execute <plan-path>` for dependent waves across many files. The last two read a plan file, so offer to write one when none was requested.

@@ -16,6 +16,8 @@ Triggers: "implement and review", "review loop", "auto-review", "quality loop", 
 
 ## Coordinator Boundary
 
+Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
+
 The main context is coordinator-only (see `omo-guardrails`). It routes, records state, saves lane reports verbatim, and applies `omo-ralph-loop` transitions. Load that skill before dispatch and reuse an active TASK_ID/ledger; never recursively invoke a second controller. Implementation, review, QA, and validation commands go to sub-agents. Local tool/worker recovery rules come from `omo-guardrails`; all implementation/review iteration budgets and stall decisions come from `omo-ralph-loop`; implementation rules from `omo-implement` and `omo-programming`; final-gate semantics from `omo-review-work`. They are not restated here.
 
 ## Hard Boundaries

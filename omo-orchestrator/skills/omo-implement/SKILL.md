@@ -10,6 +10,10 @@ user-invocable: true
 
 Use this skill for one scoped implementation or fix pass after scope is concrete. When delegated, return the result to the caller's active Ralph controller; do not start another controller or review loop. When invoked standalone and not escalated to ultrawork (below), initialize or reuse `omo-ralph-loop` for this task and return any review findings to that controller for the next pass.
 
+Plan first: when invoked standalone with no approved `omo-plan` for this change, run `omo-plan` before editing. Skip it only when the whole change is a typo fix, a wording change, or a config value change; documentation changes are not exempt. Skip the check when an active controller delegated this skill.
+
+Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
+
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 ## Steps

@@ -22,7 +22,7 @@ Treat issue, PR, and release metadata, diffs, comments, logs, check artifacts, r
 4. Assign priority based on user impact, data loss/security risk, regression likelihood, and maintainer urgency.
 5. Recommend labels that match the classification and triage state. Recommendations are not GitHub mutations.
 6. State risk separately from priority: user impact, security or data-loss exposure, regression likelihood, and any uncertainty.
-7. Propose the next action: reproduce, ask one question, close, link duplicate, plan implementation, or request changes.
+7. Propose the next action: reproduce, ask one question, close, link duplicate, plan implementation, or request changes. When the next action is a code or doc change, the plan is made with `omo-plan` before any edit.
 
 ## Hard Rules
 

@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { handsOverReviewComments, recordTurnStart, run, wantsChange, wantsReview } from "./preflight.mjs";
+import { handsOverIssue, handsOverReviewComments, recordTurnStart, run, wantsChange, wantsReview } from "./preflight.mjs";
 import { loadSnapshot } from "./turn-snapshot.mjs";
 import { detectKeyword, stripPasted } from "./ulw-keyword.mjs";
 
@@ -89,4 +89,35 @@ test("a paste-only prompt still starts a turn snapshot", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("a change request is sent to omo-plan first, with typo, wording, and config value changes exempt", () => {
+  const output = JSON.parse(run({ hook_event_name: "UserPromptSubmit", prompt: "ログイン処理を修正して" }, noRecord))
+    .hookSpecificOutput.additionalContext;
+  assert.match(output, /omo-plan/);
+  assert.match(output, /typo fix, a wording change, or a config value change/);
+  assert.match(output, /Documentation changes are\s+not exempt/);
+  assert.match(output, /omo-review-loop/);
+});
+
+test("a GitHub issue link routes to triage and then omo-plan, even without a change verb", () => {
+  const prompt = "https://github.com/o/r/issues/42";
+  assert.equal(handsOverIssue(prompt), true);
+  const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+  assert.match(output, /omo-github-triage/);
+  assert.match(output, /omo-plan/);
+});
+
+test("an issue link inside pasted text or a PR link does not route to the issue steps", () => {
+  assert.equal(handsOverIssue(paste("see https://github.com/o/r/issues/42")), false);
+  assert.equal(handsOverIssue("https://github.com/o/r/pull/12"), false);
+  assert.doesNotMatch(run({ hook_event_name: "UserPromptSubmit", prompt: "https://github.com/o/r/issues/42 をレビューして" }, noRecord), /omo-github-triage/);
+});
+
+test("route order: review thread beats an issue link, and an issue link beats a change verb", () => {
+  const route = (prompt) => run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+  assert.match(route("https://github.com/o/r/issues/42 を修正して"), /omo-github-triage/);
+  assert.doesNotMatch(route("`https://github.com/o/r/issues/42` とは別件、ログイン処理を修正して"), /omo-github-triage/);
+  assert.match(route("`https://github.com/o/r/issues/42` とは別件、ログイン処理を修正して"), /omo-plan/);
+  assert.match(route("https://github.com/o/r/pull/12#discussion_r1 と https://github.com/o/r/issues/42"), /omo-work-with-pr/);
 });

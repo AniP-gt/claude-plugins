@@ -4,6 +4,7 @@
 // user did not ask for it. When it asks for a review, route it to omo-review, the single review entry, which
 // a model does not pick on its own for a plain "review this" request. When it hands over review comments
 // on an existing PR, ask for the follow-up steps (review, reply drafts, PR body) that a fix there skips.
+// Change requests and GitHub issue links are sent to omo-plan before the first edit.
 // ulw prompts are left to ulw-keyword.mjs, which loads a fuller workflow.
 // Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
 import { fileURLToPath } from "node:url";
@@ -40,6 +41,14 @@ export function wantsReview(prompt) {
   return REVIEW_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+// A GitHub issue link the user typed. Pasted text is ignored like the request patterns: a log or a
+// document that mentions an issue is not a request to work on it.
+const ISSUE_URL_PATTERN = /github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+/;
+
+export function handsOverIssue(prompt) {
+  return ISSUE_URL_PATTERN.test(userText(prompt));
+}
+
 export function wantsChange(prompt) {
   const text = userText(prompt);
   return CHANGE_PATTERNS.some((pattern) => pattern.test(text));
@@ -57,8 +66,29 @@ export function buildContext() {
     "3. Search the callers of every existing function, config key, or command you will modify.",
     `   \`node "${IMPACT_SCRIPT}" --symbol <name>\` lists callers and related tests in a few lines;`,
     "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
-    "If the change touches 3+ files, public or CLI behavior, persistence, or security, load",
-    "`omo-orchestrator:omo-implement`, which sizes the task and escalates to ultrawork when needed.",
+    ...PLAN_FIRST,
+    "</omo-preflight>",
+  ].join("\n");
+}
+
+// Every change settles its approach in omo-plan before the first edit. Only edits that cannot change
+// behavior skip it. Documentation is not exempt: describing behavior correctly often needs the source read.
+const PLAN_FIRST = [
+  "Before the first edit, load `omo-orchestrator:omo-plan` and settle the approach there. Skip it only when",
+  "the whole change is a typo fix, a wording change, or a config value change. Documentation changes are",
+  "not exempt: describing behavior correctly often needs the source read.",
+  "The plan names the executor by size, and its approval starts it: one scoped pass on 1-2 files ->",
+  "`omo-orchestrator:omo-implement`; several tasks or a change that needs review-fix rounds ->",
+  "`omo-orchestrator:omo-review-loop`; dependent waves across many files -> `omo-orchestrator:omo-ulw-execute`.",
+];
+
+export function buildIssueContext() {
+  return [
+    MARKER,
+    "This prompt hands over a GitHub issue to work on. If it does not, ignore this block.",
+    "Load `omo-orchestrator:omo-github-triage` first and read the issue: goal, reproduction, whether the premise",
+    "still holds in the current code, and the next action. When the next action is a code or doc change:",
+    ...PLAN_FIRST,
     "</omo-preflight>",
   ].join("\n");
 }
@@ -106,6 +136,7 @@ export function run(input, { env = process.env, record = recordTurnStart } = {})
   let context;
   if (handsOverReviewComments(input.prompt)) context = buildFollowUpContext();
   else if (wantsReview(input.prompt)) context = buildReviewContext();
+  else if (handsOverIssue(input.prompt)) context = buildIssueContext();
   else if (wantsChange(input.prompt)) context = buildContext();
   else return "";
   const output = {

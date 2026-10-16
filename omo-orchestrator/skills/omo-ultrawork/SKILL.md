@@ -2,7 +2,7 @@
 name: omo-ultrawork
 description: Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork.
 argument-hint: [goal]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
@@ -13,6 +13,8 @@ Claude Code adaptation of the oh-my-openagent ultrawork directive (`packages/pro
 Implementation skills can also enter this mode without the keyword; the decision rules are in `references/auto-escalation.md`.
 
 Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
+
+Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
 
 ## Bootstrap
 
@@ -35,7 +37,7 @@ You are not ready while you are making assumptions about requirements, are unsur
 
 ## Plan Agent (Non-Trivial Work)
 
-Size the scope first: count distinct surfaces, files, and steps. Any task with 2+ steps, multiple files, unclear scope, or an architecture decision requires `omo-planner` (use `omo-plan-consultant` first when intent is unclear). Execute in the exact wave order and parallel grouping the plan specifies, and run the verification it defines for each task. Use `SendMessage` to continue the same planner for clarifications or refinements instead of spawning a fresh one. When the plan is saved to a file (`.claude/omo/plans/*.md`), run `omo-plan-reviewer` once on that path before the first wave; skip it for inline plans and todo lists.
+Size the scope first: count distinct surfaces, files, and steps. Any task with 2+ steps, multiple files, unclear scope, or an architecture decision requires `omo-planner` (use `omo-plan-consultant` first when intent is unclear). When an approved `omo-plan` for this task exists in the conversation or a plan file, use it as the plan and skip the planner and the `omo-plan-reviewer` pass below; `omo-plan` already reviewed it. Execute in the exact wave order and parallel grouping the plan specifies, and run the verification it defines for each task. Use `SendMessage` to continue the same planner for clarifications or refinements instead of spawning a fresh one. When the plan is saved to a file (`.claude/omo/plans/*.md`), run `omo-plan-reviewer` once on that path before the first wave; skip it for inline plans and todo lists.
 
 ## Delegate By Default
 

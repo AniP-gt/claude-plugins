@@ -95,9 +95,9 @@ No third-party dependency in changed logic: `External Library Contract Check: N/
 
 ## Phase 1: Plan
 
-Skip when Phase -1 found a written plan, task, or spec that covers Goal, files, and Done when.
+Skip when Phase -1 found a written plan, task, or spec that covers Goal, files, and Done when. An approved `omo-plan` in the conversation counts as one, even when it was not saved to a file; write it into `SPEC` as is.
 
-Otherwise dispatch `omo-orchestrator:omo-planner` (read-only) with the task, GOAL/CONSTRAINTS, stack, and risk. For `high` or `critical` risk, run `omo-orchestrator:omo-plan-reviewer` once on the result; a `REJECT` goes back to the planner. The coordinator writes the approved plan into `SPEC`. When the user explicitly asked for a plan first, use the `omo-plan` skill and its approval gate instead.
+Otherwise dispatch `omo-orchestrator:omo-planner` (read-only) with the task, GOAL/CONSTRAINTS, stack, and risk. For `high` or `critical` risk, run `omo-orchestrator:omo-plan-reviewer` once on the result; a `REJECT` goes back to the planner. The coordinator writes the approved plan into `SPEC`. When no approved `omo-plan` exists and the change is not a typo, wording, or config value change, use the `omo-plan` skill and its approval gate instead of the planner.
 
 ## Phase 2: Implement
 
