@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 1.53.1 lets a project rule settle what an operator-facing message must carry beyond the target and cause (impact, next action, language). When a rule states it, `omo-implement` writes the message to the rule without asking, and `omo-reviewer` reports each missing part as a finding instead of an owner question. How often a repeated notification fires is still asked.
+
 Version 1.53.0 adds a run-invariant check to review: a condition that cannot change during a run (a run ID, an argument, a config value), checked per iteration or inside a per-item error handler, is reported with a suggestion to check it once before the loop, along with what the move changes (an empty selection now fails, setup before the loop is skipped). Per-item conditions stay in the loop.
 
 Version 1.52.1 clarifies rigorous review after independent scenario evaluation: an absent existing edit target blocks execution, while explicitly planned additions remain valid. An executability rejection blocks convergence regardless of severity or lane agreement. The upstream tip remains `c00a05835a6bb11944976263b4e945972adce538`; follow-up evidence is in `docs/reports/2026-10-21-omo-refresh-followup.md`.
