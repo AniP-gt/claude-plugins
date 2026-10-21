@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 1.54.1 makes `omo-work-with-pr` correct earlier replies. When a follow-up round changes a plan or explanation that an earlier reply on the same PR stated (for example "handled by operations" becomes a code fix), the skill searches the PR's earlier replies and drafts a follow-up in that thread, so the old reply does not stand as advice that is now wrong.
+
 Version 1.54.0 makes a real-surface check part of every change. Before any edit, the controller designs the QA scenarios (priority, behavior, surface, tool, local target, setup, steps, binary pass, evidence) and has `omo-reviewer` review the design until it returns `APPROVE` (at most 3 rounds, then the user decides); the implementer then runs the edit, the tests, and the approved scenarios as one flow. The new `skills/omo-implement/references/real-surface-qa.md` holds the design fields and the tool choice: `curl` against the local server for an HTTP API, Orca's embedded browser (`goto`, `snapshot`, `screenshot`) inside an Orca session, and otherwise the `playwright:playwright-step` skill when it is installed. `omo-implementer`, `omo-visual-qa`, `omo-ultrawork`, `omo-ulw-execute`, `omo-review-loop`, and `omo-plan` follow the same reference.
 
 Version 1.53.1 lets a project rule settle what an operator-facing message must carry beyond the target and cause (impact, next action, language). When a rule states it, `omo-implement` writes the message to the rule without asking, and `omo-reviewer` reports each missing part as a finding instead of an owner question. How often a repeated notification fires is still asked.
