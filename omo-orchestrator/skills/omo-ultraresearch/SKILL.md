@@ -104,6 +104,16 @@ Research converges when the declared evidence threshold is met, remaining leads 
 
 Do not close research while a `P0` or `P1` contradiction remains unresolved unless the output marks it `DISPUTED` and explains its decision impact. Also stop when the time or expansion budget is exhausted, when all applicable lanes have returned or been recorded as unavailable, or when additional leads cannot materially change the answer. Do not turn research into implementation or an automatic continuation loop.
 
+## Visual Evidence In The Reply
+
+For material quantitative or structural findings, include a visual specification or diagram source next to the claim it explains. Use a chart from a real data table for numerical comparisons, trends, or distributions; include that table with units and source or lineage. Use a diagram for architecture, dependencies, or process. If the evidence is structural only, do not invent measurements to satisfy a chart requirement. If neither kind of finding is material, state why a visual would not help.
+
+Each visual needs its claim ID, a caption explaining the finding and provenance (source location, version or capture date), and an accessible description of the key values or relationships. Separate unlike units into labeled panels or charts. Attribute source screenshots or video with a link and timestamp where relevant. Generated illustrations are labeled as illustrations and never substitute for measured evidence.
+
+Remain read-only: return the specification, data table, or Mermaid source in the reply. Do not write assets, install renderers, or launch a writable owner. If rendering needs a separate writable owner, hand off the exact source/data, intended destination format, and next rendering and inspection action. Label source-only output as not rendered unless this session observed the destination render it. A raw Mermaid block in HTML is not a rendered figure; a Mermaid block in a capable destination still needs observed rendering before claiming visual QA passed.
+
+When evaluating an existing report, a logo or decorative image, broken asset, or figure with either dimension explicitly zero does not count as visible evidence. Informative images require meaningful alt text; empty alt alone does not establish intentional decoration. For HTML decoration, use `alt=""` with explicit presentation semantics such as `role="presentation"`, and exclude it from evidence counts. Verify actual visibility and readable labels in the destination before claiming rendered verification; otherwise state the missing check.
+
 ## Output Contract
 
 Return:
@@ -113,3 +123,4 @@ Return:
 3. Parallel lane results, empirical-check results, source provenance, capture times, confidence, and limitations.
 4. The lead and expansion log, including rejected leads and each bounded budget outcome.
 5. The convergence or stop reason, unresolved P0 or P1 contradictions, and the recommended next decision or exact evidence needed.
+6. Visual evidence or specifications for material numerical and structural findings, with captions, accessible descriptions, provenance, rendering status, and any exact handoff needed; otherwise the reason no visual helps.

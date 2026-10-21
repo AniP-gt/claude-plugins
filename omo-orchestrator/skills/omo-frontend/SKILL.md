@@ -76,6 +76,10 @@ Write 1 to 2 sentences covering:
 
 For an expressive brief, sketch 2 to 3 genuinely different directions and pick the boldest one you can defend. Do not average them; the average is the generic default. For an operational brief, restraint is correct: clarity, density control, and state feedback carry the design. Details are in `references/aesthetics.md`.
 
+## Before The First Draft
+
+For rounded cards, callouts, tiles, alerts, and rows, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. It covers decoration as well as state, including pseudo-elements, inset shadows, and gradient substitutes. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
+
 ## Phase 4: Implement via omo-implementer
 
 Before delegation, select references as described below.
@@ -95,7 +99,7 @@ Record the source, mechanism, reuse decision, and missing behavior in the implem
 
 ## Phase 5: Verify
 
-1. **Token audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing).
+1. **Token and edge-stripe audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing). Inspect side borders, pseudo-elements, inset shadows, hard-stop gradients, and `border-image` for the same visual stripe; classify each hit against the aesthetics exceptions and verify it in rendered QA. This is a source inspection, not an automated linter pass.
 2. **Consistency checklist.** Every color is a token. Every spacing value is on the scale. Every component follows the existing composition pattern. Every interactive element has hover, active, focus-visible, and disabled states. Zero magic numbers for visual properties. Any NO means not done.
 3. **Rendered QA handoff.** Give `omo-visual-qa` the complete route, state, reference, project-requirement, and content-stress list. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison for a user-designated visual target; label mechanism-only references separately and verify their adaptations against the brief and existing design system.
 4. **Flatness check.** A bug-free render that reads generic next to the direction is still a failure. Raise the design (material, color ramp, type moment, the signature) and re-run QA on fresh evidence.

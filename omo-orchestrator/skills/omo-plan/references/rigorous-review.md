@@ -65,10 +65,15 @@ When an agent is unavailable, run that lane as a manual section with the same ga
 
 Do not downgrade a single-lane critical or high issue because no other lane agreed. Do not keep a blocker that fails gate 3 after verification. Record it as a note with the reason.
 
+After the first pass, keep a blocker ledger with stable IDs, the cited task, evidence, required change, and open or closed status. Later passes check those blockers and regressions from their fixes; admit a new blocker only when it passes the Lane Gates and the must-fix categories above. A repeated finding or a restatement of a closed blocker is not new progress. Do not expand the accepted scope to satisfy speculative hardening requests, even when several lanes repeat them. An approval with only non-blocking notes remaining counts as passed.
+
+Another pass requires progress in the previous pass: at least one genuinely new eligible blocker or confirmation that a ledger blocker closed. If a pass still rejects the plan but does neither, stop and report the unresolved blocker IDs and evidence; do not spend the remaining budget repeating the same review. Progress never extends the existing three-pass budget.
+
 Loop:
 
 ```text
 no MULTI and no single critical/high  -> exit, plan review passed
+rejected with no ledger progress      -> exit, report unresolved blockers
 otherwise                             -> revise plan, iteration += 1, rerun all lanes
 iteration == 3                        -> exit, report remaining issues as blockers
 ```

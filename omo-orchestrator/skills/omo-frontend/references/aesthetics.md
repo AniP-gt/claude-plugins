@@ -31,7 +31,7 @@ Match implementation complexity to the vision. Maximalist work needs elaborate l
 
 - Commit to a cohesive palette with roles (surface, text, border, accent, status). Dominant neutrals with one sharp accent beat timid, evenly spread palettes.
 - Build a real ramp: multiple perceptual stops (OKLCH works well), not one brand hex reused at varied opacity.
-- Accent marks the one or two most likely actions on a screen, on the control's background. Nothing decorative carries accent.
+- Accent marks the one or two most likely actions on a screen, on the control's background. A restrained accent heading or glyph can identify a group; avoid decorative edge stripes as described below.
 - Define light and dark values together when the product supports both.
 - Avoid: purple-to-blue gradients on white, rainbow gradients, every card a different tint.
 
@@ -58,7 +58,7 @@ Match implementation complexity to the vision. Maximalist work needs elaborate l
 ## Anti-Patterns
 
 - Freestyling without a direction: rounded-2xl on everything, three feature cards in a grid, generic font, lorem ipsum.
-- **Coloured accent border to mark state.** `border-l-2 border-primary` on a selected row, a primary outline on a focused card. Encode state with ink-alpha washes (hover, selected, active ramps), a glyph for selection, and tonal layering. `focus-visible` rings are the only coloured edge. Sweep out pre-existing instances on surfaces you touch.
+- **Coloured edges on rounded surfaces, for decoration or state.** A feature card with `border-top: 4px solid <accent>`, a callout with `border-l-4 border-primary`, or a selected row with an accent outline has the same problem. A `::before`/`::after` bar, inset `box-shadow`, hard-stop gradient band, or gradient `border-image` is not a workaround. Replace the stripe with a tonal surface, an accent heading, a leading glyph, or spacing; encode hover/selected/active state with ink-alpha washes and a selection glyph. Preserve keyboard `focus-visible` rings, input validation borders, neutral 1px hairlines/dividers, and table rules. Apply this to pre-existing instances on surfaces you touch, but retain an edge required by a user-designated visual target and record that reference exception.
 - Emojis as icons, in markup, alt text, or visible UI.
 - Decorative motion on non-interactive elements; hovers that change nothing.
 - Applying a named brand verbatim to a project that is not that brand. Extract tokens and layout grammar; never copy logos, trademarked imagery, or brand copy.
