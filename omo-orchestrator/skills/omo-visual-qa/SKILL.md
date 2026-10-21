@@ -15,7 +15,7 @@ Use this skill after changing a browser-rendered page or terminal/TUI surface. I
 1. Create a preflight inventory of the supplied rendered fixture or surface, access route or launch command, required states, viewports or terminal sizes, references, credentials, and available inspection tools. Mark every missing item before testing.
 2. Classify the target as `BROWSER_PAGE` or `TERMINAL_TUI`. If it has both surfaces, test each separately.
 3. List every required route, screen, tab, modal, state, viewport, terminal size, scroll position, color mode, and motion setting. Do not approve a sampled subset.
-4. Use a browser, terminal, renderer, or inspection tool already available in the current environment. Drive the real rendered surface. Reading source code is not visual evidence.
+4. Use a browser, terminal, renderer, or inspection tool already available in the current environment. For a browser page, pick it by `omo-implement` `references/real-surface-qa.md` (Tool Selection): Orca's embedded browser inside an Orca session, else the `playwright:playwright-step` skill when installed. Drive the real rendered surface. Reading source code is not visual evidence.
 5. For authenticated work, use an isolated or cloned test profile with only the access required for the check. Never use, inspect, copy, or alter a live user browser profile.
 6. Record unavailable tools, credentials, references, or surfaces as evidence gaps. Do not infer success from source code or an unrendered artifact.
 

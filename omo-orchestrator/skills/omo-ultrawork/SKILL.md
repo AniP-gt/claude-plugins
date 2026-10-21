@@ -58,7 +58,7 @@ Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (o
 
 Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
 
-Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), and a binary `Done when`. Without `Done when` the executor has no exit.
+Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), a binary `Done when`, and the real-surface QA design approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch. Without `Done when` the executor has no exit.
 
 Parallelize independent agent calls in one message. Read before change, never in parallel with it. Serialize same-file writes, shared mutable state, shared contracts, and named predecessors. Size the work as `LIGHT` or `HEAVY` once and only ratchet toward `HEAVY` when risk grows.
 

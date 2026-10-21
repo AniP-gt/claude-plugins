@@ -1,6 +1,6 @@
 ---
 name: omo-reviewer
-description: Independent PR-style reviewer for security, robustness, quality, goal alignment, scope control, and missing validation. Use after an implementation pass or inside a review gate; plans go to omo-plan-reviewer.
+description: Independent PR-style reviewer for security, robustness, quality, goal alignment, scope control, and missing validation. Use after an implementation pass, inside a review gate, or on a real-surface QA design before editing; plans go to omo-plan-reviewer.
 tools: Read, Grep, Glob, Bash, Skill
 skills:
   - omo-orchestrator:omo-guardrails

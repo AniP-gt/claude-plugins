@@ -141,6 +141,7 @@ Required sections: Goal / Stack / Issue or TASK_ID / Base branch / Files to modi
 - Implementation details include the 2a-pre2 and 2a-pre3 findings when they apply.
 - Test requirements (when tests are written): 100% coverage of changed and added code (statements, branches, functions, lines) and test cases per major branch (happy, error, edge).
 - Done when (when tests are written): the exact coverage command and "all tests pass".
+- Real-surface QA design: designed and approved before 2b by `../../omo-implement/references/real-surface-qa.md` (Design and Review); the design review does not use a Ralph iteration.
 
 ### 2b. Delegate
 

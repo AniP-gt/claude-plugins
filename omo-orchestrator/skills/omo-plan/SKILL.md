@@ -87,7 +87,7 @@ Every task must include executable QA. Each task row must state:
 - One failure-path or edge-case assertion when applicable.
 - Evidence location.
 
-Sequence by test necessity: a task that needs tests (see Intent And Decision Routing step 7) names the failing test to write first and the passing result to record afterward; a task that does not names the diagnostic or real-surface check instead. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
+Sequence by test necessity: a task that needs tests (see Intent And Decision Routing step 7) names the failing test to write first and the passing result to record afterward; a task that does not names the diagnostic instead. Every task also names at least one real-surface check (an artifact check only for docs- or comments-only tasks), sized to the change. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
 
 ## Bounded Plan Review
 
