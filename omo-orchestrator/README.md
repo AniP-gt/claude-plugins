@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 1.52.1 clarifies rigorous review after independent scenario evaluation: an absent existing edit target blocks execution, while explicitly planned additions remain valid. An executability rejection blocks convergence regardless of severity or lane agreement. The upstream tip remains `c00a05835a6bb11944976263b4e945972adce538`; follow-up evidence is in `docs/reports/2026-10-21-omo-refresh-followup.md`.
+
 Version 1.52.0 completes the portable refresh checked against upstream `c00a05835a6bb11944976263b4e945972adce538`. Research reports select charts or diagrams from actual evidence, carry provenance and accessible descriptions, and distinguish source-only output from observed rendering while preserving read-only ownership. Rigorous plan review tracks stable blocker IDs, stops a rejection loop without progress, and retains the three-pass budget. Evaluation and exclusions are recorded in `docs/reports/2026-10-21-omo-upstream-refresh.md` in the marketplace repository.
 
 Version 1.51.0 adapts frontend guidance from upstream oh-my-openagent through `5f6b6bbb3e`. `omo-frontend` catches decorative and state edge stripes before the first draft, including pseudo-elements, inset shadows, and gradient substitutes, while preserving keyboard focus, input validation, separators, and user-designated references. No upstream linter or runtime is installed.

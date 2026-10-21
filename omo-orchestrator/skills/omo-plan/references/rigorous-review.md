@@ -31,7 +31,7 @@ Record each note that applies in the plan scope section, with the paths to verif
 
 Paste these into every lane prompt with the full plan text. A single-line summary is not enough context.
 
-1. Verify before flagging. Check that referenced files, symbols, and APIs exist with Glob, Grep, or Read. A missing target is either `new addition required` or not a finding. Unverifiable concerns are not flagged.
+1. Verify before flagging. Check that referenced files, symbols, and APIs exist with Glob, Grep, or Read. An explicitly planned new target is `new addition required`, not a missing-reference finding. A task that claims to modify an existing target that is verified absent is an executability blocker: require a verified reference or an explicit creation task with integration points. Unverifiable concerns are not flagged.
 2. Domain scope. Judge the product behavior users rely on. Ignore incidental harness, bot, or review-tool work unless the plan targets that tooling.
 3. Applicability and proportionality. Block only when the risk follows from the exact planned predicate or path, is reachable in normal operation, lacks an existing mitigation, and needs the proposed fix. Theoretical or manual-only risks become notes unless normal operation can corrupt data, expose security, break a user flow, or leave unrecoverable state.
 4. Verified non-issues go to Notes with the disproving predicate or contract, never to Issues.
@@ -60,6 +60,7 @@ When an agent is unavailable, run that lane as a manual section with the same ga
 | Category | Definition | Action |
 |---|---|---|
 | MULTI | two or more lanes flag the same concern | must fix |
+| Executability REJECT | verified blocking reference, startability, or QA failure from the executability lane | must fix regardless of severity or agreement from other lanes |
 | Single, critical or high | one lane, severity critical or high, passes gate 3 | must fix |
 | Single, medium or low | one lane only | fix when cheap, otherwise record in the plan notes |
 
@@ -72,7 +73,7 @@ Another pass requires progress in the previous pass: at least one genuinely new 
 Loop:
 
 ```text
-no MULTI and no single critical/high  -> exit, plan review passed
+Exec OKAY, no MULTI, no single critical/high -> exit, plan review passed
 rejected with no ledger progress      -> exit, report unresolved blockers
 otherwise                             -> revise plan, iteration += 1, rerun all lanes
 iteration == 3                        -> exit, report remaining issues as blockers
