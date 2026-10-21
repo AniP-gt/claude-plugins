@@ -16,7 +16,7 @@ The controller writes the QA design before any edit, from the plan, the risk map
 - Pass: a binary observable (status code and body field, visible text, exit code, DB row, log line).
 - Evidence: where the output, screenshot, or transcript is saved.
 
-Cover each changed behavior with at least one scenario, add a regression scenario for unchanged neighboring behavior that has business impact, and add the failure path the change touches (invalid input, permission, timeout). Keep the count proportional: a one-line fix may need two scenarios, a new endpoint more.
+Cover each changed behavior with at least one scenario, add a regression scenario for unchanged neighboring behavior that has business impact, and add the failure path the change touches (invalid input, permission, timeout). Keep the count proportional: a one-line fix may need two scenarios, a new endpoint more. When the user agreed on a list of targets (fields to mask, cases to handle), every item on the list is a changed behavior: cover each one, out-of-scope items included as regression rows, or name it as uncovered. When you give the user commands to check it themselves, end with which agreed items those commands cover and which they do not, with commands for the rest.
 
 An approved `omo-plan` already holds QA rows for its tasks. Reuse them as the design: fill in only the fields above that they lack (usually Priority, Target, Setup, and the regression row), and send only those additions through step 2.
 
