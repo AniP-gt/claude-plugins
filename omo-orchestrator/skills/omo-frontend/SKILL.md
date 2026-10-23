@@ -1,6 +1,6 @@
 ---
 name: omo-frontend
-description: UI/UX and design-system workflow with source and reuse checks. Use for pages, components, styling, layout, motion, tokens, or themes, with or without mockups.
+description: UI/UX and design-system workflow with source and reuse checks. Use for pages, components, HTML/CSS/SVG reports, figures, slides, styling, layout, motion, tokens, or themes, with or without mockups.
 argument-hint: [ui-goal]
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
@@ -78,7 +78,7 @@ For an expressive brief, sketch 2 to 3 genuinely different directions and pick t
 
 ## Before The First Draft
 
-For rounded cards, callouts, tiles, alerts, and rows, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. It covers decoration as well as state, including pseudo-elements, inset shadows, and gradient substitutes. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
+For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
 
 ## Phase 4: Implement via omo-implementer
 

@@ -29,6 +29,7 @@ Scope / exclusions / non-goals:
 Required lanes and browsing status:
 Evidence threshold and stop conditions:
 Expected output:
+Reference comparison: required / inapplicable; source and moments or viewpoints
 Claims:
 - C1 | P0/P1/P2 | decision impact | question to resolve
 ```
@@ -115,6 +116,10 @@ Remain read-only: return the specification, data table, or Mermaid source in the
 When evaluating an existing report, a logo or decorative image, broken asset, or figure with either dimension explicitly zero does not count as visible evidence. Informative images require meaningful alt text; empty alt alone does not establish intentional decoration. For HTML decoration, use `alt=""` with explicit presentation semantics such as `role="presentation"`, and exclude it from evidence counts. Verify actual visibility and readable labels in the destination before claiming rendered verification; otherwise state the missing check.
 
 ## Output Contract
+
+Return the report itself in the reply, including the answer, evidence, sources, and limitations; a list of artifact paths or a demonstrated product does not replace the report. If this session has an inline HTML display tool that can accept supplied content without file writes, show an inline edition from the same synthesis and evidence before any artifact paths. Otherwise deliver the chat-readable report and state the display limitation. Do not install a renderer or create files to satisfy inline delivery. A shortened research pass still owes this report.
+
+For research evaluating a visual reproduction, compare actual source frames or captures against output captures at matching moments and viewpoints. Include side-by-side pairs and a critique of each pair in the report; identify the largest differences and retain first and final comparisons when supplied by a writable owner. A video reference needs an actual playable clip around the chosen moment when motion is material, not just a still frame. Keep the source URL/file and timestamps. If extraction, capture, or repair needs writes, return an exact handoff to the caller; do not perform the writes or launch an owner. Mark missing comparisons unverified and request bounded repair and recapture from the owner. Checking the output only against itself never verifies reproduction fidelity, even on a shortened pass.
 
 Return:
 
