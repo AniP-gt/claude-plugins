@@ -80,3 +80,9 @@ EのcriticalとAの不足承認判定を満たすため、同じ項目へ `A rec
 実行結果: 実装コミット `da302a9` を作成した。`git push origin main` はPreToolUse hookに `Blocked by Claude settings port: git push is denied.` として拒否され、リモートへは反映できなかった。制限の迂回は行っていない。
 
 marketplaceはローカルフォルダ参照のため、push拒否後も許可済みの更新を実行した。`claude plugin update omo-orchestrator@AniP-gt --scope user --json` と `--scope local --json` は両方成功し、1.57.0から1.58.0へ更新された。再起動で適用される。
+
+## 同日再確認
+
+ユーザーの再依頼で upstream の `dev` に `git pull --ff-only` を実行し、Already up to date を確認した。HEAD は引き続き `38d992afcec512c518973c6debac8d5221d7f0c2`。既存の1.58.0と比較対象が一致し、新しい移植対象はなかった。指示本文は変更せず、empirical-prompt-tuningの再評価も行っていない。上記の評価結果は前回実行の記録であり、今回の測定値として扱わない。
+
+開始時の作業ツリーはクリーンで、mainには未pushコミットが3件あった。インストール済みuser scopeは1.58.0で有効。今回のセッションにもclaude-pluginsのpushとプラグイン更新が明示的に許可されているため、この確認記録をコミットし、通常push後に更新コマンドを実行する。
