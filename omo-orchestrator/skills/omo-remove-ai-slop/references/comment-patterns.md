@@ -2,6 +2,8 @@
 
 Comments explain WHY, not WHAT. Use this to classify comments added in the diff under review.
 
+This file is the default. When the project has comment rules (`.claude/rules/*comment*.md`, CLAUDE.md / AGENTS.md, a style guide) or a comment checker, follow them first: run the checker, and let their line limits, allowed kinds, and citation formats override the patterns here.
+
 ## How To Check
 
 1. List changed files: `git diff --name-only` (or the files from recent edits).
@@ -119,7 +121,7 @@ Summary: removed N restatements, N doc blocks, N commented-out blocks; kept N WH
 
 ## Project Rule Snippet
 
-Suggest this for the project's CLAUDE.md / AGENTS.md when the user wants ongoing enforcement:
+Suggest this for the project's CLAUDE.md / AGENTS.md only when the project has no comment rules yet and the user wants ongoing enforcement:
 
 ```markdown
 ## Comment Rules

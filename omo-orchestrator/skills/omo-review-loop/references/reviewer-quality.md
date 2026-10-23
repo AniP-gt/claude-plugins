@@ -83,7 +83,10 @@ All stacks:
   Model.find_by(...)`) and validates mixes responsibilities; suggest
   `before_validation` or a memoized reader. Warning. A hidden behavior risk is a
   separate finding.
-- Comment quality: request comments only for non-obvious intent, domain branching,
+- Comment quality: the project's comment rules (line limits, banned kinds, phrase
+  lists, citation formats) and any comment checker it ships decide first; run the
+  checker on changed files and cite the rule. The rest is the default. Request
+  comments only for non-obvious intent, domain branching,
   memoized derivation, complex data relationships, or methods easily confused with
   similarly named neighbors. Explain why or the invariant, not each line.
 - Domain constants: repeated status/level/type literals when a nearby constant, enum,
@@ -106,9 +109,10 @@ Principle: if in doubt, do not flag. A false negative beats breaking code.
    `# Note: this is important` with no reason.
    Keep: why-comments (business logic, edge cases, workarounds), ticket links,
    non-obvious algorithm or regex explanations, comments matching existing style, and
-   detailed comments on the role or processing of a variable, method, or class
-   (allowed to reduce cognitive load). Test: can I grasp the intent from the comment
-   without reading the code? Yes -> keep.
+   short comments on the role of a variable, method, or class that its name does not
+   convey. Test: can I grasp the intent from the comment without reading the code?
+   Yes -> keep. The project's comment rules override this list (for example a line
+   limit, or a rule that history and ticket links belong in commits and PRs).
 2. Over-defensive code
    Flag: null checks on values that cannot be null, `x is not None and x.attr is not
    None` on guaranteed values, try/except around code that cannot raise,
@@ -118,13 +122,12 @@ Principle: if in doubt, do not flag. A false negative beats breaking code.
    Keep: boundary validation (user input, external responses), I/O error handling,
    null checks on nullable DB fields, type assertions in tests.
 3. Prose slop and unreachable references (comments, YARD, docs, spec descriptions)
-   Flag per gate 19. For Japanese prose this includes coined literal translations
-   (「選定窓」「飢餓状態」「救済投入する」), metaphors (「食う」「取り合う」「巻き添え」
-   「並走」「吸収」「自然回復」「無害に終わる」), direction-only framing (「危険側に倒す」
-   without the fact), bare English or stiff calques (「precedent」「字句スコープ」「正しさ」
-   「踏襲」), and narration of how gem internals were verified.
-   Do not flag domain terms matching the issue title or class names, or single words
-   already common in the repo (`git grep -c`; this never covers a listed phrase).
+   Flag per gate 19: coined literal translations, metaphors or personification,
+   direction-only framing without the fact, bare foreign words or stiff calques, and
+   narration of how library internals were verified. Use the project's phrase list
+   when one exists. Do not flag domain terms matching the issue title or class names,
+   or single words already common in the repo (`git grep -c`; this never covers a
+   phrase on the project's list).
    Prose slop follows the MINOR/MAJOR rule below and never becomes Blocking, even when
    a project rule records its origin.
 4. Deep nesting (2+ levels)
