@@ -1,10 +1,10 @@
 # Ultrawork Auto-Escalation
 
-Implementation skills (`omo-implement`, `omo-refactor`, `omo-debugging`, `omo-remove-ai-slop`, `omo-remove-deadcode`, `omo-frontend`) may enter ultrawork mode on their own judgment, without the `ulw` keyword. This file is the single source for that decision.
+Implementation skills (`omo-implement`, `omo-programming` (modes `refactor`, `debugging`, `remove-deadcode`), `omo-remove-ai-slop`, `omo-frontend`) may enter ultrawork mode on their own judgment, without the `ulw` keyword. This file is the single source for that decision.
 
 ## When the check runs
 
-Run the check once, at the start of the task, after reading enough context to size it. Skip it entirely when the skill was delegated by an active controller: `omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-review-loop`, `omo-ralph-loop`, or `omo-orchestrate`. A delegated skill returns to its caller and never starts ultrawork, so controllers do not nest.
+Run the check once, at the start of the task, after reading enough context to size it. Skip it entirely when the skill was delegated by an active controller: `omo-ultrawork` (including modes `ulw-execute` and `mass-ulw`), `omo-review` (mode `review-loop`), `omo-ralph-loop`, or `omo-orchestrate`. A delegated skill returns to its caller and never starts ultrawork, so controllers do not nest.
 
 ## Escalate when any applies
 
@@ -27,7 +27,7 @@ When both lists match, the stay list wins only for an explicit user request; oth
 
 1. Print one line before anything else: `Ultrawork auto-escalation: <the matching condition>`.
 2. Load `omo-ultrawork` and follow its Bootstrap from step 1. Ultrawork now owns the task, including the `omo-ralph-loop` ledger; do not also start a controller from the original skill.
-3. Keep the original skill's workflow as the per-task rules inside ultrawork briefs (for example, `omo-debugging`'s reproduce-first and root-cause proof, `omo-refactor`'s behavior lock).
+3. Keep the original skill's workflow as the per-task rules inside ultrawork briefs (for example, the `debugging` mode's reproduce-first and root-cause proof, the `refactor` mode's behavior lock).
 
 ## Mid-task ratchet
 

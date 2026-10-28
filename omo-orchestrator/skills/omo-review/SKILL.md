@@ -1,8 +1,8 @@
 ---
 name: omo-review
-description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes. Use proactively after editing 2+ files or before calling work done.
-argument-hint: [diff-or-goal]
-allowed-tools: Read, Grep, Glob, Bash, Task, Skill
+description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes. Use proactively after editing 2+ files or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
+argument-hint: [mode] [diff-or-goal]
+allowed-tools: Read, Grep, Glob, Bash, Task, Skill, Edit, Write, Agent, TodoWrite
 user-invocable: true
 ---
 
@@ -10,14 +10,32 @@ user-invocable: true
 
 Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Treat it as a PR-style gate with one completion state: `APPROVE`.
 
+## Modes
+
+Selection, in this order:
+
+1. When the first word of the arguments is a mode name below, use that mode and treat the rest as its goal.
+2. Otherwise, when the brief has a `MODES: omo-review/<mode>` line, use that mode.
+3. Otherwise, pick by the "Use when" triggers; when none fits, follow the default flow in this file. An unknown first word is part of the goal, not a mode.
+
+Paths: a mode's procedure is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. When the variable is not expanded, use the Base directory shown when this skill loaded, plus `modes/<mode>/`. Inside a MODE.md, a bare `references/…` path is relative to that mode's directory. A skill-qualified path (`` `omo-x` `references/y.md` ``) is relative to that skill. A `skills/<name>/…` path is relative to the plugin root.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `review-work` | - | replaces | Final review gate that controllers and `review-loop` call after implementation: reuses QA evidence, returns `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` |
+| `review-loop` | - | replaces | Implement + review until it passes: implementer, parallel reviewer lanes, synthesis judge, and a final gate |
+| `pre-publish-review` | - | replaces | Pre-publish or release review of unpublished changes (review-only, release-focused) |
+
+"replaces" means: follow the MODE.md as the procedure. The rest of this file applies only where the MODE.md names it.
+
 ## Entry Point
 
 This is the one review entry; other review skills are stages it or a controller calls.
 
-- Inside an active controller (`omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`, `omo-review-loop`), the controller's final gate already runs its own omo gate and a review-only `self-review`; do not start a second review.
-- When the user asks for implementation plus review until it passes, route to `omo-review-loop`.
+- Inside an active controller (`omo-ultrawork` including its modes `ulw-execute` and `mass-ulw`, `omo-ralph-loop`, the `omo-review` mode `review-loop`), the controller's final gate already runs its own omo gate and a review-only `self-review`; do not start a second review.
+- When the user asks for implementation plus review until it passes, route to the `review-loop` mode (see Modes).
 - Otherwise, review the current local changes in two lanes, one after the other, so that no lane reads a tree another lane is changing. `review-pr` never runs here; it is for GitHub PRs and only the user invokes it. The second lane edits the working tree; it never commits, pushes, or posts.
-  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review-work` instead, which adds the QA lane. Make no edits while it runs. The `omo-reviewer` dispatch carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies it otherwise.
+  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review` with args `review-work …` instead (the `review-work` mode), which adds the QA lane. Make no edits while it runs. The `omo-reviewer` dispatch carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies it otherwise.
   2. self-review lane after the omo lane returns: when `self-review` is in the available skills list, dispatch an `omo-external-reviewer` agent naming `self-review`, with this contract and without `--dry-run`:
 
      ```
@@ -44,7 +62,7 @@ This is the one review entry; other review skills are stages it or a controller 
      ```
 
      When `self-review` is not listed, record `self-review: SKIPPED (self-review unavailable)`.
-- Merge both results with `references/outer-gate.md` § 6c and § 6d of `omo-review-loop`: the stricter verdict decides, using the self-review lane's final (re-review) verdict, and directives are deduplicated by file and defect mechanism. Treat each omo-lane finding that the self-review fix log addresses as fixed only after re-reading the changed lines, then take the omo lane's verdict from its findings that are still open: when none of its blocking findings remain, it counts as `APPROVE` (or stays `INCONCLUSIVE` while an evidence gap remains). Re-run the validation for every file in the agent's `CHANGED FILES`. When the omo lane ran `omo-review-work` with QA evidence and the self-review lane changed files, re-run the QA scenarios those files affect before approving. Remaining findings, `NEEDS DECISION` items, any `ask` that changes behavior or a contract, and any `CONTRACT DEVIATIONS` go back to the caller.
+- Merge both results with `omo-review` `modes/review-loop/references/outer-gate.md` § 6c and § 6d: the stricter verdict decides, using the self-review lane's final (re-review) verdict, and directives are deduplicated by file and defect mechanism. Treat each omo-lane finding that the self-review fix log addresses as fixed only after re-reading the changed lines, then take the omo lane's verdict from its findings that are still open: when none of its blocking findings remain, it counts as `APPROVE` (or stays `INCONCLUSIVE` while an evidence gap remains). Re-run the validation for every file in the agent's `CHANGED FILES`. When the omo lane ran the `review-work` mode with QA evidence and the self-review lane changed files, re-run the QA scenarios those files affect before approving. Remaining findings, `NEEDS DECISION` items, any `ask` that changes behavior or a contract, and any `CONTRACT DEVIATIONS` go back to the caller.
 
 ## Review Areas
 

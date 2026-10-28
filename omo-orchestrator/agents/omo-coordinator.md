@@ -34,7 +34,7 @@ Strict main-context rule: remain an orchestrator only. Do not implement, edit fi
 - Sub-agents are stateless: put prior findings, decisions, and constraints in each prompt's context section. After a verified step passes, dispatch the next ready step without asking the user to continue.
 - Require a worker to report, not opportunistically fix, work found outside its scope. Record discovered work, decide whether it is required for the stated outcome, and add a scoped dependency-checked task before dispatching it.
 - Feed blocking review findings to `omo-ralph-loop`; reserve its next shared iteration before dispatching the implementer, then re-run the relevant review gate within that pass.
-- Route hard or high-risk plans to `omo-hyperplan` before implementation.
+- Route hard or high-risk plans to `omo-plan` with args `hyperplan …` before implementation.
 - Route release or PR lifecycle work through unpublished-change analysis, pre-publish review, or PR handoff workflows when those gates are part of done.
 - Route security-sensitive investigations to exploitability-first security research instead of ordinary review when a vulnerability claim must be proven.
 - Escalate repeated blockers to `omo-reviewer` for independent analysis or `omo-oracle` for hard debugging, after the owner reverts to the last known working state, then ask the user one precise question if product judgment or external constraints are missing.

@@ -16,9 +16,9 @@ Ultrawork escalation: when invoked standalone, size the task first and decide wh
 
 When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions.
 
-The hand-off to `/omo-remove-deadcode` becomes loading that skill with the Skill tool inside a sub-agent, not a dispatch.
+The hand-off to the `remove-deadcode` mode of `omo-programming` becomes loading that mode (the Skill tool with `omo-programming` and args `remove-deadcode`, or its MODE.md via a `MODES:` line) inside a sub-agent, not a dispatch.
 
-Only omo-implementer loads `omo-remove-deadcode` (it is `omo-implementer only`). Inside any other sub-agent, do not load it; return the deletion candidates with their reachability evidence to the caller instead.
+Only omo-implementer loads the `remove-deadcode` mode of `omo-programming` (it is `omo-implementer only`). Inside any other sub-agent, do not load it; return the deletion candidates with their reachability evidence to the caller instead.
 
 ## Cleanup Priorities
 
@@ -28,7 +28,7 @@ Only omo-implementer loads `omo-remove-deadcode` (it is `omo-implementer only`).
 4. Reduce needless indirection, nesting, and placeholder abstractions.
 5. Tighten names, types, and control flow.
 6. Re-verify after each cleanup cluster.
-7. For deletion candidates, follow `/omo-remove-deadcode`, the canonical reachability policy.
+7. For deletion candidates, follow the `remove-deadcode` mode of `omo-programming`, the canonical reachability policy.
 
 ## Cleanup Clusters And Evidence
 
@@ -44,7 +44,7 @@ Validation after cleanup: command or procedure, result, evidence location
 Removed patterns and retained exceptions:
 ```
 
-For a deletion candidate, hand off to `/omo-remove-deadcode` with the candidate path or symbol, reachability evidence, protected validation target, uncertainty, and next exact action. Record the handoff outcome before claiming that deletion is complete.
+For a deletion candidate, hand off to the `remove-deadcode` mode of `omo-programming` with the candidate path or symbol, reachability evidence, protected validation target, uncertainty, and next exact action. Record the handoff outcome before claiming that deletion is complete.
 
 ## Targets
 
@@ -71,4 +71,4 @@ For a deletion candidate, hand off to `/omo-remove-deadcode` with the candidate 
 
 ## Delivery Contract
 
-Report each cleanup cluster, what patterns were removed, which files changed, the before and after validation fields, and any `/omo-remove-deadcode` handoff record.
+Report each cleanup cluster, what patterns were removed, which files changed, the before and after validation fields, and any `remove-deadcode` mode handoff record.

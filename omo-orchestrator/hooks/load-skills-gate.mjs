@@ -31,9 +31,16 @@ const MAIN_ONLY_ROW = /^\|\s*`([^`\s|]+)`\s*\|\s*main-only\s*\|/;
 const SKILL_ROW = /^\|\s*`([^`\s|]+)`\s*\|[^|]*\|([^|]*)\|/;
 const IMPLEMENTER_ONLY_MARKER = "omo-implementer only";
 
+// MODES label: the colon is required on a label line; only the uppercase `## MODES` heading takes its value from the next line.
+const MODES_LABEL_PATTERN = /^MODES(?![A-Za-z0-9_])/i;
+const MODES_COLON_PATTERN = /^[*_`]*\s*:[*_`\s]*/;
+const MODES_HEADING_PATTERN = /^MODES[*_`\s]*$/;
+
 const withoutPrefix = (name) => (name.startsWith(PLUGIN_PREFIX) ? name.slice(PLUGIN_PREFIX.length) : name);
 // A listed name matches the catalog case-insensitively, without a leading slash or the plugin prefix.
-const normalizeName = (name) => withoutPrefix(name.toLowerCase().replace(/^\/+/, ""));
+const bareName = (name) => withoutPrefix(name.toLowerCase().replace(/^\/+/, ""));
+// A skill name ends at the first `/` or `:`; what follows is a mode (`skill/mode`, `skill:mode`), not part of the skill.
+const normalizeName = (name) => bareName(name).split(/[/:]/, 1)[0];
 
 export function mainOnlySkills(catalogText) {
   const names = new Set();
@@ -100,13 +107,52 @@ export function loadSkillsValues(prompt) {
 
 // Names are split on commas, semicolons, and whitespace, so a list the controller writes without commas is still checked.
 // Markdown emphasis and quote characters around an item are stripped, so `**omo-plan**` is still read as omo-plan.
+function listItems(text) {
+  return text
+    .split(/[\s,;]+/)
+    .map((item) => bareName(item.trim().replace(/^[*_`'"]+/, "").replace(/[*_`'"]+$/, "")))
+    .filter((item) => item !== "");
+}
+
+// The skill of each LOAD_SKILLS item; a mode written after it (`omo-programming/debugging`) is cut off.
 function skillNames(value) {
   if (!value.startsWith("[")) return [];
-  return value
-    .slice(1, -1)
-    .split(/[\s,;]+/)
-    .map((item) => normalizeName(item.trim().replace(/^[*_`'"]+/, "").replace(/[*_`'"]+$/, "")))
+  return listItems(value.slice(1, -1))
+    .map(normalizeName)
     .filter((item) => item !== "");
+}
+
+// Every `MODES:` entry in the prompt as { entry, parent }: `MODES: a/b, c/d` on one line (label case-insensitive, colon
+// required, same lead-in tolerance as LOAD_SKILLS), or a `## MODES` heading whose value is on the next non-empty line.
+// A MODES line asks a worker to load a mode of a skill, so its parent skill is held to the same Who rules as LOAD_SKILLS.
+export function findModes(prompt) {
+  const lines = prompt.split("\n").map((line) => line.trim());
+  const found = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const lead = LEAD_PATTERN.exec(lines[i])[0];
+    const rest = lines[i].slice(lead.length);
+    if (!MODES_LABEL_PATTERN.test(rest)) continue;
+    const afterLabel = rest.slice("MODES".length);
+    let valueText;
+    if (MODES_COLON_PATTERN.test(afterLabel)) {
+      valueText = afterLabel.replace(MODES_COLON_PATTERN, "");
+    } else if (lead.includes("#") && MODES_HEADING_PATTERN.test(rest)) {
+      let next = i + 1;
+      while (next < lines.length && lines[next] === "") next += 1;
+      const nextLine = lines[next] ?? "";
+      // A following heading or label line is not the value; a label line is read in its own turn of the loop.
+      if (nextLine.startsWith("#") || MODES_LABEL_PATTERN.test(nextLine.slice(LEAD_PATTERN.exec(nextLine)[0].length))) continue;
+      valueText = nextLine;
+      i = next;
+    } else {
+      continue;
+    }
+    for (const entry of listItems(valueText.replace(/[[\]]/g, " "))) {
+      const parent = normalizeName(entry);
+      if (parent !== "") found.push({ entry, parent });
+    }
+  }
+  return found;
 }
 
 function deny(reason) {
@@ -133,6 +179,12 @@ function malformedReason(line) {
   ].join("\n");
 }
 
+// One reason line per source that has offenders: `LOAD_SKILLS names <what>: a, b.` and `MODES names <what>: c/d.`
+const namedLines = (what, fromList, fromModes) =>
+  [["LOAD_SKILLS", fromList], ["MODES", fromModes]]
+    .filter(([, names]) => names.length > 0)
+    .map(([label, names]) => `${label} names ${what}: ${names.join(", ")}.`);
+
 export function run(input, { env = process.env, catalogText } = {}) {
   if (typeof input !== "object" || input === null) return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "PreToolUse") return "";
@@ -149,14 +201,17 @@ export function run(input, { env = process.env, catalogText } = {}) {
   if (found.value === undefined) return deny(malformedReason(found.line));
   // The first label is the answer, but a worker may also act on a later one, so restricted names are checked on every readable label.
   const listed = all.flatMap((entry) => (entry.value === undefined ? [] : skillNames(entry.value)));
+  // A MODES line loads a mode of its parent skill, so the parent is checked like a LOAD_SKILLS name; the entry is quoted as written.
+  const modes = findModes(toolInput.prompt);
   const mainOnly = mainOnlySkills(catalogText);
   const named = [...new Set(listed.filter((name) => mainOnly.has(name)))];
-  if (named.length > 0) {
+  const namedModes = [...new Set(modes.filter(({ parent }) => mainOnly.has(parent)).map(({ entry }) => entry))];
+  if (named.length > 0 || namedModes.length > 0) {
     return deny(
       [
-        `LOAD_SKILLS names main-only skill(s): ${named.join(", ")}.`,
+        ...namedLines("main-only skill(s)", named, namedModes),
         "A main-only skill is a workflow the main context runs; a worker cannot dispatch further workers.",
-        "Read skills/omo-orchestrate/references/skill-catalog.md, keep only worker and both rows, update `LOAD_SKILLS: [..]` (or use `LOAD_SKILLS: none`), and resend.",
+        "Read skills/omo-orchestrate/references/skill-catalog.md, keep only worker and both rows, update `LOAD_SKILLS: [..]` and `MODES: ..` (or use `LOAD_SKILLS: none` and drop the MODES line), and resend.",
         "Never name a main-only skill. Set OMO_LOAD_SKILLS_GATE=off to disable this gate.",
       ].join("\n"),
     );
@@ -164,12 +219,13 @@ export function run(input, { env = process.env, catalogText } = {}) {
   if (!READ_ONLY_WORKERS.has(withoutPrefix(toolInput.subagent_type))) return "";
   const implementerOnly = implementerOnlySkills(catalogText);
   const restricted = [...new Set(listed.filter((name) => implementerOnly.has(name)))];
-  if (restricted.length === 0) return "";
+  const restrictedModes = [...new Set(modes.filter(({ parent }) => implementerOnly.has(parent)).map(({ entry }) => entry))];
+  if (restricted.length === 0 && restrictedModes.length === 0) return "";
   return deny(
     [
-      `LOAD_SKILLS names skill(s) that are for omo-implementer only: ${restricted.join(", ")}.`,
+      ...namedLines("skill(s) that are for omo-implementer only", restricted, restrictedModes),
       "The catalog marks them `omo-implementer only` because they pre-approve unrestricted Bash or a launcher, and a skill's allowed-tools applies inside the sub-agent that loads it.",
-      "Remove them from `LOAD_SKILLS: [..]` for omo-researcher, omo-reviewer, and omo-planner (or use `LOAD_SKILLS: none`), or dispatch the work to omo-implementer, and resend.",
+      "Remove them from `LOAD_SKILLS: [..]` and `MODES: ..` for omo-researcher, omo-reviewer, and omo-planner (or use `LOAD_SKILLS: none`), or dispatch the work to omo-implementer, and resend.",
       "Set OMO_LOAD_SKILLS_GATE=off to disable this gate.",
     ].join("\n"),
   );

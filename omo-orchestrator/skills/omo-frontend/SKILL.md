@@ -41,7 +41,7 @@ Classify the brief before anything else.
 - **Reference.** A user-designated visual target (screenshot, mockup, Figma export, named live site) is the visual contract. Match its layout, spacing, copy, states, and responsive intent unless the user accepts a deviation. Extract tokens from it; never copy logos or trademarked assets. A catalog selected to study a mechanism is not a visual target: adapt it to the project's existing design system.
 - **Kind.** New build, redesign of existing UI (audit weak spots first, then fix surgically), or a design-system task.
 
-For a standalone chart, table, or explanatory diagram with no existing application, route to `omo-visualize`. Its artifact contract replaces Phase 1's application discovery and Phase 2's application branches; use this skill's hierarchy, accessibility, direction, and implementer brief where applicable. Visualizations inside an existing application still follow every phase below.
+For a standalone chart, table, or explanatory diagram with no existing application, route to `omo-visual-qa` mode `visualize`. Its artifact contract replaces Phase 1's application discovery and Phase 2's application branches; use this skill's hierarchy, accessibility, direction, and implementer brief where applicable. Visualizations inside an existing application still follow every phase below.
 
 If the request is still ambiguous after two reads, ask one focused question ("minimal or premium?") before loading anything.
 
@@ -80,7 +80,7 @@ For an expressive brief, sketch 2 to 3 genuinely different directions and pick t
 
 ## Before The First Draft
 
-For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
+For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visual-qa` mode `visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
 
 ## Phase 4: Implement via omo-implementer
 

@@ -1,14 +1,29 @@
 ---
 name: omo-programming
-description: Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files.
+description: Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files. Modes: debugging (crash, silent failure, hang, wrong response, memory leak, async misbehavior), refactor (refactor, simplify, extract, restructure, modernize), remove-deadcode (dead, unused, unreachable code).
 argument-hint: [task]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
 
 # OMO Programming
 
 Use this skill when writing or editing production code.
+
+## Modes
+
+This skill has three modes. Each mode's procedure lives in `modes/<mode>/MODE.md`.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `debugging` | - | adds to | crash, silent failure, hang, wrong response, memory leak, async misbehavior |
+| `refactor` | - | adds to | refactor, simplify, extract, restructure, modernize |
+| `remove-deadcode` | - | adds to | dead, unused, unreachable code |
+
+- "adds to" means this file's policy stays in force and the MODE.md adds its procedure.
+- Selection: (a) when the first word of the arguments is a mode name, use that mode; (b) otherwise, when the brief has a `MODES:` line, use the mode it names; (c) otherwise, pick a mode by the Use-when triggers, and when none fits, follow this file's default flow. An unknown first word is part of the goal, not a mode.
+- Worker rule: a `MODES: omo-programming/<mode>` line in the brief, or a matching trigger even without that line, means Read that mode's MODE.md before working.
+- Path: the MODE.md path is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, use the Base directory shown when this skill was loaded plus `modes/<mode>/`. When this skill was preloaded and no Base directory is visible, call the Skill tool on `omo-programming` to get it. Inside a MODE.md, a bare `references/…` path is relative to that mode's directory (`modes/<mode>/`). A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
 
 ## Policy
 

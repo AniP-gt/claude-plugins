@@ -29,7 +29,7 @@ Delegation boundary: use `Task` only when a suitable sub-agent and required tool
    Use the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
 9. For changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs, run the full delegated loop: implement, validate with the plan's executable QA scenarios, review, fix confirmed blocking findings, then re-review and perform final verification.
 10. Require implementers to use QA scenarios from the approved plan during implementation and final verification. The ledger must preserve the tool, exact steps, assertion, and evidence location for every executed scenario.
-11. Escalate hard or high-risk plans to `omo-hyperplan` before implementation.
+11. Escalate hard or high-risk plans to `omo-plan` mode `hyperplan` before implementation.
 12. For release work, run unpublished-change analysis and pre-publish review before any publish, merge, or handoff claim.
 13. Use a PR-style final gate when the change is intended to be merged or shared: only `APPROVE` permits completion. `REQUEST_CHANGES` feeds the next fix pass, and `INCONCLUSIVE` blocks completion until its evidence gap or decision is resolved.
 14. Require evidence in each phase: file paths, symbols, test names, diagnostics, command output, or direct code references.

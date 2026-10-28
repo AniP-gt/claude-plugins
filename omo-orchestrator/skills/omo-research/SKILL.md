@@ -1,14 +1,32 @@
 ---
 name: omo-research
-description: Read-only OMO-style research for codebase structure, existing patterns, library references, and bug hypotheses. Use when a question needs codebase or library investigation before anything is decided or changed.
+description: Read-only OMO-style research for codebase structure, existing patterns, library references, and bug hypotheses. Use when a question needs codebase or library investigation before anything is decided or changed. Modes: ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, debt audit, code health), security-research (security review, vulnerability research, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, unpublished changes, changelog).
 argument-hint: [question]
-allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *)
+allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *), TodoWrite, Task
 user-invocable: true
 ---
 
 # OMO Research
 
 Use this skill when the next action depends on understanding existing code or reference material.
+
+## Modes
+
+Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill. The flow below is the default when no mode applies.
+
+- Selection: (a) if the first word of the arguments is a mode name, use that mode and treat the rest as the goal; (b) otherwise, if the brief has a `MODES:` line, use the modes it names; (c) otherwise judge by the "Use when" triggers in the table, and fall back to the default flow below when none fits. An unknown first word is part of the goal, so use the default flow.
+- Workers: a `MODES: omo-research/<mode>` line in the brief, or a trigger in the table that matches the task even without that line, means Read that MODE.md and follow it. This also applies when this skill was preloaded through `LOAD_SKILLS`.
+- Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-research` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
+- Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
+- Permissions: `ultraresearch` and `tech-debt-audit` need Bash and Write beyond this skill's `allowed-tools`. In the main context those commands ask for permission.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `ultraresearch` | - | replaces, main-only | exhaustive or saturation research on a decision-critical question; hook keyword `ulw research` |
+| `tech-debt-audit` | - | replaces, main-only | tech debt, debt audit, or code health, written to a `TECH_DEBT_AUDIT.md` report |
+| `security-research` | - | adds to | security review, vulnerability research, exploitability, threat model |
+| `coding-agent-sessions` | - | adds to | finding past sessions, transcripts, or subagent runs |
+| `get-unpublished-changes` | - | adds to | changes since the last release, unpublished changes, changelog |
 
 ## Inside A Sub-Agent
 

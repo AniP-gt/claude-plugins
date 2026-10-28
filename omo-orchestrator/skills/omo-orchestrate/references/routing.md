@@ -10,10 +10,10 @@ Use this before the first delegation of a request. State the routing decision in
 | "implement X", "add Y", "create Z" | Implementation | plan when the planning threshold applies, then `omo-implementer` |
 | "look into X", "check Y", "investigate" | Investigation | `omo-researcher`, report findings; no edits |
 | "what do you think about X?" | Evaluation | evaluate, propose, then wait for user confirmation before any edit |
-| "I'm seeing error X", "Y is broken" | Fix | diagnose root cause (`omo-debugging`), then a minimal fix; no refactor while fixing |
-| "refactor", "improve", "clean up" | Open-ended change | codebase assessment first, then propose an approach (`omo-refactor`, `omo-remove-ai-slop`) |
+| "I'm seeing error X", "Y is broken" | Fix | diagnose root cause (`omo-programming` mode `debugging`), then a minimal fix; no refactor while fixing |
+| "refactor", "improve", "clean up" | Open-ended change | codebase assessment first, then propose an approach (`omo-programming` mode `refactor`, `omo-remove-ai-slop`) |
 | "write tests", "test cases for X", "add specs" for existing code | Test design | `omo-test-design`: detect the existing spec style, derive cases, approve the case table, then write specs. A feature or fix that also needs tests stays Implementation; `omo-implement` calls `omo-test-design` itself |
-| "review this", PR link | Review | `omo-reviewer` or `omo-review`; implement plus review goes to `omo-review-loop` |
+| "review this", PR link | Review | `omo-reviewer` or `omo-review`; implement plus review goes to `omo-review` mode `review-loop` |
 
 ## Request size
 
@@ -58,11 +58,11 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | External library docs, upstream source | `omo-librarian` |
 | PDF, image, diagram content | `omo-media-reader` |
 | Pre-planning gap analysis | `omo-plan-consultant` |
-| File-level plan | `omo-planner`; hard or risky work: `omo-hyperplan` |
+| File-level plan | `omo-planner`; hard or risky work: `omo-plan` mode `hyperplan` |
 | Plan executability check (a written plan file or omo-plan draft; not todo lists) | `omo-plan-reviewer` |
 | Implementation and fixes | `omo-implementer` |
-| Standalone visual explanation, chart, table, or diagram | `omo-visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
-| Implement plus review loop | `omo-review-loop` |
+| Standalone visual explanation, chart, table, or diagram | `omo-visual-qa` mode `visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
+| Implement plus review loop | `omo-review` mode `review-loop` |
 | Change review | `omo-reviewer` |
 | Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |

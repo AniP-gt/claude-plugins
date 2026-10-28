@@ -22,7 +22,7 @@ For a final-gate review, require real-surface QA evidence from the final tree. A
 
 Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits) or `omo-implementer only` (it pre-approves unrestricted Bash or a launcher); you cannot dispatch sub-agents, so a `both` skill is used for its method only.
 
-- `omo-security-research`: the change is a security review, vulnerability research, exploitability audit, or threat model validation
+- `omo-research` mode `security-research`: the change is a security review, vulnerability research, exploitability audit, or threat model validation — load `omo-research` with the Skill tool and Read its `modes/security-research/MODE.md`
 - `omo-test-design`: judging whether tests cover several conditions, boundaries, or states
 - `omo-visual-qa`: a UI change needs fresh visual evidence or a question whether a page, component, or TUI looks right
 - `omo-remove-ai-slop`: to judge slop patterns in AI-generated changes

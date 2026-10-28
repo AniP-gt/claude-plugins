@@ -15,13 +15,13 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 
 ## Skills
 
-Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits); you cannot dispatch sub-agents, so a `both` skill is used for its method only.
+Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits); you cannot dispatch sub-agents, so a `both` skill is used for its method only. A `MODES: <parent>/<mode>` line in the brief means read that mode's `MODE.md`.
 
 - `omo-test-design`: tests are needed and the cases are not obvious (several conditions, boundaries, or states)
-- `omo-debugging`: a crash, silent failure, hang, wrong response, memory leak, or async misbehavior needs a root cause
-- `omo-refactor`: refactor, simplify, extract, restructure, or modernize code without changing behavior
+- `omo-programming` mode `debugging`: a crash, silent failure, hang, wrong response, memory leak, or async misbehavior needs a root cause — Read `modes/debugging/MODE.md` of the preloaded omo-programming (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-programming if neither is visible), even when the brief has no `MODES:` line
+- `omo-programming` mode `refactor`: refactor, simplify, extract, restructure, or modernize code without changing behavior — Read `modes/refactor/MODE.md` of the preloaded omo-programming (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-programming if neither is visible), even when the brief has no `MODES:` line
 - `omo-frontend`: the task touches pages, components, styling, layout, motion, tokens, or themes
-- `omo-remove-deadcode`: remove dead, unused, or unreachable code
+- `omo-programming` mode `remove-deadcode`: remove dead, unused, or unreachable code — Read `modes/remove-deadcode/MODE.md` of the preloaded omo-programming (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-programming if neither is visible), even when the brief has no `MODES:` line
 - `omo-remove-ai-slop`: clean up AI-generated patterns in recent changes
 - `omo-ast-grep`: search by syntax shape or run a codemod or YAML lint rule across files
 - `omo-visual-qa`: any UI build or change needs fresh visual evidence

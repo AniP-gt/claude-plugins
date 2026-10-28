@@ -1,6 +1,6 @@
 ---
 name: omo-plan
-description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use when the user asks for a plan, and proactively before the first edit of any change request or GitHub issue, except a typo, wording, or config value change.
+description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use when the user asks for a plan, and proactively before the first edit of any change request or GitHub issue, except a typo, wording, or config value change. Modes: start-work (kick off non-trivial work), hyperplan / hpp (adversarial plan for hard, high-risk work).
 argument-hint: [goal]
 allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite, AskUserQuestion
 user-invocable: true
@@ -12,6 +12,23 @@ Use on an explicit user request for a plan, and before the first edit of any cha
 
 Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and gap analysis when available, explore before planning, never implement product changes, and produce one decision-complete plan that another agent can execute without reinterpreting the goal. This is a content-only workflow. It creates no hooks or runtime automation. Execution starts only through the approval scope in Planning Boundary step 8.
 
+## Modes
+
+Selection rule, in order:
+
+1. If the first word of the args is a mode name or its one-word alias in the table below, use that mode.
+2. Otherwise, if the brief carries a `MODES:` line naming a mode of this skill, use that mode.
+3. Otherwise, pick by the trigger words in the "Use when" column. If none fits, follow this file's default flow. An unknown first word is part of the goal text, so follow the default flow.
+
+Path rule: read the mode procedure from `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. When the variable is not expanded, add `modes/<mode>/` to the Base directory shown when this skill was loaded. Inside a MODE.md, a bare `references/…` path is relative to that mode's directory (`modes/<mode>/`). A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `start-work` | - | replaces | kick off non-trivial work |
+| `hyperplan` | `hpp` | replaces | hyperplan, hpp, adversarial plan for hard high-risk work |
+
+"Replaces" means the MODE.md is the procedure for that flow. This file applies only where the MODE.md names it.
+
 ## Planning Boundary
 
 1. State that planning mode is active and that this workflow will not edit product code, dispatch implementation, or run implementation commands.
@@ -21,7 +38,7 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 5. Name affected users, state their concrete `IS-*` ideal-state rows, and record each current shortfall as a `GAP-*` row before questions or the approval brief.
 6. Show a visible draft before the approval gate. The draft must include the intent verdict, evidence, assumptions, decisions, open blockers, affected users, `IS-*` rows, `GAP-*` rows, proposed scope, and the next planning action.
 7. Do not present an executable final plan before the user explicitly approves the draft or approval brief.
-8. The approval scope depends on how planning started. On a plan request (the user asked for a plan or a work breakdown), approval authorizes writing the final plan only; it never authorizes implementation, delegation of implementation, edits, or execution commands, and a separate user-directed workflow starts execution. On a change request or a GitHub issue (planning entered before the first edit), approval also authorizes starting the executor the brief recommends, for the approved scope only. When an executor (`omo-implement`, `omo-review-loop`, `omo-ulw-execute`, or another controller) invoked this skill, approval returns the plan to that caller, which continues; do not start a different executor.
+8. The approval scope depends on how planning started. On a plan request (the user asked for a plan or a work breakdown), approval authorizes writing the final plan only; it never authorizes implementation, delegation of implementation, edits, or execution commands, and a separate user-directed workflow starts execution. On a change request or a GitHub issue (planning entered before the first edit), approval also authorizes starting the executor the brief recommends, for the approved scope only. When an executor (`omo-implement`, `omo-review` mode `review-loop`, `omo-ultrawork` mode `ulw-execute`, or another controller) invoked this skill, approval returns the plan to that caller, which continues; do not start a different executor.
 
 ## Intent And Decision Routing
 
@@ -41,7 +58,7 @@ Act as a planning consultant. Use `omo-plan-consultant` for read-only intent and
 2. The brief must name the goal, non-goals, chosen defaults, owner decisions, proposed files or systems, dependency shape, QA approach, blockers, and the approval scope: `Approval writes the plan only. It does not authorize implementation.` on a plan request, `Approval starts <executor> on this scope.` on a change request or GitHub issue, or `Approval returns this plan to <caller>.` when an executor invoked this skill.
 3. If a decision-changing question remains, ask that question before the brief and wait for the answer. Don't substitute an unapproved default for an owner decision.
 4. After the brief, request approval even when no owner question remains, unless the user has already explicitly authorized this approach and scope. Use Claude Code's `AskUserQuestion` when available, with a clear approval question and the recommended option first. Otherwise ask in chat and state that the question tool is unavailable. Use only parameters exposed by the current tool; do not copy another runtime's `required` or wait flags. A timed-out, dismissed, or unavailable answer is not approval, even if a tool advises proceeding on best judgment. Keep the visible draft's state `awaiting-approval`, report the pending decision, and end the turn without a final executable plan. This pending-status response replaces the usual question-or-brief ending on an unanswered gate. Optional reversible defaults do not replace approval. Honor explicit authorization already given for this scope; do not ask for the same permission again. An initial request to make a plan alone is not approval of an unseen approach.
-5. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file or the approved executor is `omo-ulw-execute`, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
+5. After the user approves, return one final decision-complete plan in the current response. Write it to `.claude/omo/plans/<task-slug>.md` only when the user requests a plan file or the approved executor is `omo-ultrawork` mode `ulw-execute`, then state that path. When the user asks for a task file for one already-researched task, use the layout and path in `references/task-file.md` instead. Do not reduce the requested scope unless the user requested the reduction.
 6. If the user changes scope before approval, update and show the draft again. If scope changes after approval, return to the approval gate for the changed portion.
 
 ## Final Plan Requirements
@@ -92,7 +109,7 @@ Sequence by test necessity: a task that needs tests (see Intent And Decision Rou
 ## Bounded Plan Review
 
 1. Review the draft with `omo-plan-reviewer` when available. It checks references, task startability, executable QA, affected-user coverage, `IS-*` task and QA mapping, `GAP-*` closure, and whether the approach reaches the ideal state.
-2. Escalate hard, high-risk, ambiguous, security-sensitive, release-facing, or cross-system work to `omo-hyperplan` before the approval brief.
+2. Escalate hard, high-risk, ambiguous, security-sensitive, release-facing, or cross-system work to `omo-plan` mode `hyperplan` before the approval brief.
 3. Use one independent read-only critique when `omo-plan-reviewer` is unavailable. Keep plan review bounded to one initial pass and at most two materially different revisions. `omo-plan-reviewer` returns `OKAY` or `REJECT`; reserve `omo-reviewer` and its `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` lifecycle for implementation and PR-style review. The rigorous review lanes are the one exception, and they return lane findings instead of a lifecycle verdict.
 4. For `RISK_LEVEL` `critical` or `high`, or when the user asks for a thorough review, replace step 1 with the six-lane rigorous review in `references/rigorous-review.md`. It keeps the same budget and adds convergence rules and a loop history table to the approval brief.
 5. A review finding needs evidence from a file, symbol, contract, test, command, or documented assumption. Keep verified non-issues separate from findings.
@@ -134,4 +151,4 @@ The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewr
    - Plan review result: iterations, verdict, and remaining issues.
    - Escalation decision: normal plan, hyperplan, security research, or release review.
    - Cross-context handoff checkpoint when applicable.
-6. On a plan request, an explicit stop statement that implementation remains a separate, user-directed workflow. On a change request or GitHub issue, start the recommended executor in the same turn after writing the final plan; for `omo-ulw-execute`, write the plan file first. When an executor invoked this skill, return the plan to it instead. In both cases, recommend one executor by the plan's size and name the others the user may start: `omo-implement` for one scoped pass on 1-2 files, `omo-review-loop <plan-path>` for several tasks or a change that needs review-fix rounds (recommended when unsure), or `omo-ulw-execute <plan-path>` for dependent waves across many files. The last two read a plan file, so offer to write one when none was requested.
+6. On a plan request, an explicit stop statement that implementation remains a separate, user-directed workflow. On a change request or GitHub issue, start the recommended executor in the same turn after writing the final plan; for `omo-ultrawork` mode `ulw-execute`, write the plan file first. When an executor invoked this skill, return the plan to it instead. In both cases, recommend one executor by the plan's size and name the others the user may start: `omo-implement` for one scoped pass on 1-2 files, `omo-review` with args `review-loop <plan-path>` for several tasks or a change that needs review-fix rounds (recommended when unsure), or `omo-ultrawork` with args `ulw-execute <plan-path>` for dependent waves across many files. The last two read a plan file, so offer to write one when none was requested.

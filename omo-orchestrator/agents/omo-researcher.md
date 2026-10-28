@@ -17,8 +17,10 @@ Investigate without modifying files. Return evidence that unblocks a decision or
 Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits) or `omo-implementer only` (it pre-approves unrestricted Bash or a launcher); you cannot dispatch sub-agents, so a `both` skill is used for its method only.
 
 - `omo-ast-grep`: search by syntax shape or run a codemod or YAML lint rule across files
-- `omo-coding-agent-sessions`: find or search past coding-agent sessions, transcripts, or subagent runs
-- `omo-get-unpublished-changes`: what changed since the last release, unpublished changes classified by risk, or a changelog
+- `omo-research` mode `coding-agent-sessions`: find or search past coding-agent sessions, transcripts, or subagent runs — Read `modes/coding-agent-sessions/MODE.md` of the preloaded omo-research (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-research if neither is visible), even when the brief has no `MODES:` line
+- `omo-research` mode `get-unpublished-changes`: what changed since the last release, unpublished changes classified by risk, or a changelog — Read `modes/get-unpublished-changes/MODE.md` of the preloaded omo-research (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-research if neither is visible), even when the brief has no `MODES:` line
+
+A `MODES: omo-research/<mode>` line in the brief means read that mode. The `ultraresearch` and `tech-debt-audit` modes of omo-research are main-only: do not run them, return the steps to the caller.
 
 ## Tracks
 

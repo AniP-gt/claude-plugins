@@ -66,5 +66,5 @@ Write the file only after approval. Create the directory when missing and state 
 Name the file path and the options the user may start. Approval of the task file does not start any of them.
 
 - `omo-orchestrator:omo-implementer` via `Agent(subagent_type="omo-orchestrator:omo-implementer", prompt="LOAD_SKILLS: none\nImplement per <path>")`. Replace `none` with `[...]` chosen from `omo-orchestrate` `references/skill-catalog.md` when a row applies; a PreToolUse hook denies the dispatch without the line.
-- `omo-review-loop <path>` for implementation with a review-fix loop. With the `docs` layout it finds `task.md` in the issue directory.
-- `omo-ulw-execute <path>` to run it with an evidence ledger.
+- `omo-review` with args `review-loop <path>` for implementation with a review-fix loop. With the `docs` layout it finds `task.md` in the issue directory.
+- `omo-ultrawork` with args `ulw-execute <path>` to run it with an evidence ledger.

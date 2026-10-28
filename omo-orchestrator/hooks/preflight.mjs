@@ -79,14 +79,15 @@ const PLAN_FIRST = [
   "not exempt: describing behavior correctly often needs the source read.",
   "The plan names the executor by size, and its approval starts it: one scoped pass on 1-2 files ->",
   "`omo-orchestrator:omo-implement`; several tasks or a change that needs review-fix rounds ->",
-  "`omo-orchestrator:omo-review-loop`; dependent waves across many files -> `omo-orchestrator:omo-ulw-execute`.",
+  "`omo-orchestrator:omo-review` with args `review-loop <plan-path>`; dependent waves across many files ->",
+  "`omo-orchestrator:omo-ultrawork` with args `ulw-execute <plan-path>`.",
 ];
 
 export function buildIssueContext() {
   return [
     MARKER,
     "This prompt hands over a GitHub issue to work on. If it does not, ignore this block.",
-    "Load `omo-orchestrator:omo-github-triage` first and read the issue: goal, reproduction, whether the premise",
+    "Load `omo-orchestrator:omo-work-with-pr` with args `github-triage <issue-url>` first and read the issue: goal, reproduction, whether the premise",
     "still holds in the current code, and the next action. When the next action is a code or doc change:",
     ...PLAN_FIRST,
     "</omo-preflight>",

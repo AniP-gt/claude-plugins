@@ -13,6 +13,43 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 2.0.0 merges 17 rarely used skills into 7 parent skills, so the plugin now lists 19 skills instead of 36. Each merged skill is a mode: its procedure moved from `skills/omo-<mode>/SKILL.md` to `skills/<parent>/modes/<mode>/MODE.md` (frontmatter removed; the first line records the upstream path and the old `allowed-tools`), and its `references/` moved to `modes/<mode>/references/`. A mode is not a skill: it does not appear in the skill list and has no slash command of its own. Each parent's `SKILL.md` starts with a `## Modes` section that says how to pick a mode and whether the mode replaces the parent's own flow or adds to it. The old slash names of the 17 skills (first column of the table below) are gone, with no aliases, so this is a breaking change.
+
+Call a mode with the parent skill and the mode name as the first word of the arguments, for example `/omo-research ultraresearch <question>`, `/omo-review review-loop <goal>`, or `/omo-plan start-work <task>`. Two modes also have a one-word alias: `mulw` for `mass-ulw` and `hpp` for `hyperplan` (`/omo-ultrawork mulw <task>`, `/omo-plan hpp <goal>`). A first word that is not a mode name is part of the goal and the parent runs its default flow. Without a mode word, the parent picks a mode from the trigger words in its description, or runs its default flow when none fits. The hook keywords follow the same path (see [Ulw Keyword Trigger](#ulw-keyword-trigger)): `ulw execute` loads `omo-ultrawork` with `ulw-execute`, `mulw` loads it with `mass-ulw`, and `ulw research` loads `omo-research` with `ultraresearch`.
+
+Controllers ask a sub-agent for a mode with a `MODES: <parent>/<mode>[, <parent>/<mode>]` line after `LOAD_SKILLS`; the brackets of `LOAD_SKILLS` carry parent names only. The worker reads `skills/<parent>/modes/<mode>/MODE.md` (relative to the parent's base directory). It also reads a mode on its own when its agent definition lists the mode and the task matches the trigger words. The LOAD_SKILLS gate checks the parents on the `MODES:` line with the same rules as `LOAD_SKILLS` and normalizes `parent:mode` and `parent/mode` to the parent name. A stale brief that still names an old skill in `LOAD_SKILLS` passes the gate, because the gate only denies names that the catalog marks main-only or implementer-only; the load then fails and no permission is added. One gate decision changes: the `ultraresearch` and `tech-debt-audit` skills used to be denied in `LOAD_SKILLS` as main-only, and the modes of the same names are no longer denied. They live inside `omo-research`, which workers may load. A worker that reads one does not run it and returns the steps to the main context, since `omo-researcher` has no Task tool to fan out.
+
+Permission changes, because the allowed tools of a parent are now the union of what its modes needed:
+
+- `omo-review` gains `Edit`, `Write`, `Agent`, and `TodoWrite` (from `review-loop`). It is a main-only skill that workers do not read, and it already pre-approved unrestricted `Bash`, so the effective reach does not grow.
+- `omo-ultrawork` gains `AskUserQuestion` (from `mass-ulw`).
+- `omo-programming` gains `Task` and `Skill`, the range the former `debugging`, `refactor`, and `remove-deadcode` skills had. `omo-implementer` has no Task tool.
+- `omo-research` gains `TodoWrite` and `Task` only. It gets no unrestricted `Bash` and no `Write`, so in the main context `ultraresearch` and `tech-debt-audit` now ask for permission before Bash commands and before writing `TECH_DEBT_AUDIT.md`. A reviewer that loads `omo-research` for `security-research` also gets `Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *)`, which writes no files.
+- `omo-visual-qa` keeps its allowed tools, because read-only workers load it. The `visualize` mode therefore loses the `Edit`, `Write`, `Task`, and `Skill` pre-approval of the old skill and asks for permission in the main context.
+- `omo-plan` and `omo-work-with-pr` are unchanged, since their modes needed a subset of the parent's tools.
+
+Migration table:
+
+| Old skill (`skills/omo-<mode>/SKILL.md`) | Parent skill | Mode | Mode file |
+| --- | --- | --- | --- |
+| `omo-ulw-execute` | `omo-ultrawork` | `ulw-execute` | `skills/omo-ultrawork/modes/ulw-execute/MODE.md` |
+| `omo-mass-ulw` | `omo-ultrawork` | `mass-ulw` (alias `mulw`) | `skills/omo-ultrawork/modes/mass-ulw/MODE.md` |
+| `omo-review-work` | `omo-review` | `review-work` | `skills/omo-review/modes/review-work/MODE.md` |
+| `omo-review-loop` | `omo-review` | `review-loop` | `skills/omo-review/modes/review-loop/MODE.md` |
+| `omo-pre-publish-review` | `omo-review` | `pre-publish-review` | `skills/omo-review/modes/pre-publish-review/MODE.md` |
+| `omo-start-work` | `omo-plan` | `start-work` | `skills/omo-plan/modes/start-work/MODE.md` |
+| `omo-hyperplan` | `omo-plan` | `hyperplan` (alias `hpp`) | `skills/omo-plan/modes/hyperplan/MODE.md` |
+| `omo-github-triage` | `omo-work-with-pr` | `github-triage` | `skills/omo-work-with-pr/modes/github-triage/MODE.md` |
+| `omo-debugging` | `omo-programming` | `debugging` | `skills/omo-programming/modes/debugging/MODE.md` |
+| `omo-refactor` | `omo-programming` | `refactor` | `skills/omo-programming/modes/refactor/MODE.md` |
+| `omo-remove-deadcode` | `omo-programming` | `remove-deadcode` | `skills/omo-programming/modes/remove-deadcode/MODE.md` |
+| `omo-ultraresearch` | `omo-research` | `ultraresearch` | `skills/omo-research/modes/ultraresearch/MODE.md` |
+| `omo-tech-debt-audit` | `omo-research` | `tech-debt-audit` | `skills/omo-research/modes/tech-debt-audit/MODE.md` |
+| `omo-security-research` | `omo-research` | `security-research` | `skills/omo-research/modes/security-research/MODE.md` |
+| `omo-coding-agent-sessions` | `omo-research` | `coding-agent-sessions` | `skills/omo-research/modes/coding-agent-sessions/MODE.md` |
+| `omo-get-unpublished-changes` | `omo-research` | `get-unpublished-changes` | `skills/omo-research/modes/get-unpublished-changes/MODE.md` |
+| `omo-visualize` | `omo-visual-qa` | `visualize` | `skills/omo-visual-qa/modes/visualize/MODE.md` |
+
 Version 1.60.0 adapts source-conversion integrity and explicit source refresh from upstream oh-my-openagent `ad3cb2e28d`. `omo-ultraresearch` compares material extracted numbers and quotations with their original sentences or table cells, isolates altered extraction, records the representation and revision behind locators, and rechecks dependent claims when a source changes. Unreadable captures leave dependent facts unchecked while independent valid support survives. The skill stays read-only; no upstream ledger tools or snapshot runtime are installed. Evaluation and exclusions are recorded in `docs/reports/2026-10-28-omo-source-fidelity/` in the marketplace repository.
 
 Version 1.59.0 refreshes portable research and frontend guidance against upstream oh-my-openagent `79d797838381957c58035425730bdf61c3192f03`. `omo-ultraresearch` traces numbers and quotations, checks compatible populations and units before arithmetic, preserves qualifiers, and verifies meaning against each final output edition; unread claims remain unverified. Its records stay in the reply under the existing read-only contract. `omo-frontend` inventories required content, captures existing screens before edits, removes unsupported proof and purposeless repetition, and scopes repair passes while preserving required fields and functional states. Upstream report tooling, installers, runtime, and design libraries are not installed. Evaluation and exclusions are recorded in `docs/reports/2026-10-28-omo-upstream-refresh.md` in the marketplace repository.
@@ -95,13 +132,24 @@ Version 1.26.0 refreshes portable planning and execution contracts against upstr
 
 ## Included Skills
 
+The plugin ships 19 skills. Seventeen former skills are modes inside seven of them (migration table in Version 2.0.0 above); call a mode as `/omo-<parent> <mode> …`.
+
 - `omo-orchestrate`: main workflow for complex multi-step work.
 - `omo-plan`: file-level planning with an approval brief before the executable plan, dependency matrix, QA scenarios, blockers, and verification commands. Approval writes the plan only. It does not authorize implementation.
+  - Mode `start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
+  - Mode `hyperplan` (alias `hpp`): adversarial planning for hard, risky, or ambiguous work.
 - `omo-implement`: one scoped implementation/fix pass with exploration, minimal edits, real-surface QA, and validation; further passes belong to Ralph.
 - `omo-research`: read-only local/codebase research workflow.
+  - Mode `ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions. Main context only.
+  - Mode `tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`. Main context only.
+  - Mode `security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
+  - Mode `coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
+  - Mode `get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
+  - Mode `review-work`: post-implementation review gate with evidence-based `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` outcomes.
+  - Mode `review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and the final `review-work` gate (plus `self-review` when installed) returns a verdict to Ralph. All implementation, feedback, QA repair, and gate retries share Ralph's default 20-iteration budget; only independent final APPROVE completes the task. Rebuilt from the personal `implementation-review-loop` skill.
+  - Mode `pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
-- `omo-hyperplan`: adversarial planning for hard, risky, or ambiguous work.
 - `omo-ralph-loop`: sole manual continuation controller for implementation, repair, review, validation, and handoff; one shared default budget of 20 iterations.
 - `omo-handoff`: manual durable handoff workflow for a task-linked append-only phase ledger, plus a short fresh-session brief (decisions changed, code state, failed directions, unverified items) that can start the next Claude session through the Orca CLI.
 
@@ -110,30 +158,21 @@ Version 1.26.0 refreshes portable planning and execution contracts against upstr
 These are LazyCodex-inspired Claude Code translations. They are content-only prompts, not runtime hooks or automation.
 
 - `omo-programming`: implementation policy for type safety, minimal diffs, tests, diagnostics, and honest validation.
-- `omo-start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
+  - Mode `debugging`: hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verification.
+  - Mode `refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
+  - Mode `remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
 - `omo-ultrawork`: ultrawork (`ulw`) mode ported from the upstream ultrawork directive: `ULTRAWORK MODE ENABLED!` bootstrap, binding goal block, skill survey, mandatory planner for non-trivial work, delegate-by-default, scenario contract, durable notepad, manual QA mandate, reviewer gate, and zero-tolerance completion rules.
-- `omo-review-work`: post-implementation review gate with evidence-based `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` outcomes.
-- `omo-debugging`: hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verification.
-- `omo-refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
+  - Mode `ulw-execute`: runs a written plan wave by wave through sub-agents with an evidence ledger, independently verified done claims, and a final `review-work` gate. The orchestrator never implements. Ported from upstream `ulw-execute`.
+  - Mode `mass-ulw` (alias `mulw`): splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
 - `omo-remove-ai-slop`: regression-first cleanup for AI-generated comments, complexity, duplication, and weak abstractions.
-- `omo-ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions.
-- `omo-coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
 - `omo-visual-qa`: manual rendered-surface QA for browser pages and terminal TUIs, requiring fresh visual evidence and an `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` verdict.
-- `omo-visualize`: traceable standalone HTML/SVG charts, tables, and diagrams with self-contained assets, readable static content, explicit empty/error states, and rendered QA; existing application charts retain the frontend design-system gate.
-- `omo-get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
-- `omo-pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
+  - Mode `visualize`: traceable standalone HTML/SVG charts, tables, and diagrams with self-contained assets, readable static content, explicit empty/error states, and rendered QA; existing application charts retain the frontend design-system gate.
 - `omo-work-with-pr`: end-to-end PR lifecycle workflow from issue understanding through review and validation.
-- `omo-security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
-- `omo-github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
-- `omo-remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
+  - Mode `github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
 - `omo-git-master`: git workflow for atomic commits, rebase and squash, and history archaeology. Detects commit style and language from existing history instead of assuming a convention.
 - `omo-init-deep`: explicit, content-only generation and maintenance of a hierarchical Claude Code rule set for a Git worktree.
-- `omo-ulw-execute`: runs a written plan wave by wave through sub-agents with an evidence ledger, independently verified done claims, and a final `omo-review-work` gate. The orchestrator never implements. Ported from upstream `ulw-execute`.
-- `omo-mass-ulw`: splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
-- `omo-tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`.
 - `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
 - `omo-frontend`: UI and UX work plus the design-system workflow (analyze the existing system, build tokens if missing, implement through `omo-implementer` with a token-level brief, verify with `omo-visual-qa`). Merges the former personal `frontend-ui-ux` and `visual-engineering` skills with portable ideas from upstream `frontend`.
-- `omo-review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and the final `omo-review-work` gate (plus `self-review` when installed) returns a verdict to Ralph. All implementation, feedback, QA repair, and gate retries share Ralph's default 20-iteration budget; only independent final APPROVE completes the task. Rebuilt from the personal `implementation-review-loop` skill.
 - `omo-test-design`: test case design that follows the project's existing spec style (RSpec, Jest, Vitest), with black-box and white-box techniques, domain risk checklists, a prioritized case table for approval, and specs written and run afterward.
 - `omo-lsp-setup`: detects which language servers a project needs, proposes install commands, wires a Claude Code LSP plugin, and verifies the server answers. Never installs without asking. Ported from upstream `lsp-setup`.
 
@@ -233,12 +272,12 @@ Version 1.2.0 ports the upstream `ultrawork` UserPromptSubmit hook and the keywo
 | --- | --- |
 | `ulw` or `ultrawork` | `omo-ultrawork` |
 | `ulw plan` | `omo-plan` |
-| `ulw research` | `omo-ultraresearch` |
+| `ulw research` | `omo-research` with the `ultraresearch` mode |
 | `ulw loop` | `omo-ralph-loop` |
-| `ulw execute` | `omo-ulw-execute` |
-| `mass ulw` (also `ulw mass`, `mulw`) | `omo-mass-ulw`, or both skills when combined with another mode |
+| `ulw execute` | `omo-ultrawork` with the `ulw-execute` mode |
+| `mass ulw` (also `ulw mass`, `mulw`) | `omo-ultrawork` with the `mass-ulw` mode; combined with another keyword, the hook keeps that keyword's load and also points at the `mass-ulw` mode file |
 
-Text the user pasted (`<pasted_content>` blocks) is ignored, so a pasted report that mentions `ulw` does not start a mode. Detection rules match upstream: case does not matter; a space, a hyphen, or no gap all count (`ulw-plan`, `ulwplan`); only whole ASCII words count, so `ulwx` does nothing while `ulwで` still triggers; text inside `inline code` or a fenced code block is ignored. If the user is only discussing the keyword, the injected block tells Claude to carry on normally. Keywords combine: `mass ulw research` loads `omo-ultraresearch` together with `omo-mass-ulw`.
+Text the user pasted (`<pasted_content>` blocks) is ignored, so a pasted report that mentions `ulw` does not start a mode. Detection rules match upstream: case does not matter; a space, a hyphen, or no gap all count (`ulw-plan`, `ulwplan`); only whole ASCII words count, so `ulwx` does nothing while `ulwで` still triggers; text inside `inline code` or a fenced code block is ignored. If the user is only discussing the keyword, the injected block tells Claude to carry on normally. Keywords combine: `mass ulw research` loads `omo-research` with `ultraresearch` and also points at the `mass-ulw` mode file of `omo-ultrawork`. For a mode keyword the hook names the Skill call (the parent plus the mode as the first word of the args) and the absolute path of the `MODE.md` to read when the Skill tool is unavailable.
 
 The hook is `hooks/hooks.json` plus `hooks/ulw-keyword.mjs`: a dependency-free Node script that reads the hook JSON from stdin, writes `hookSpecificOutput.additionalContext` only on a match, never touches the network or files, and exits 0 on any input. It needs `node` on `PATH`; without it the hook silently does nothing and `/omo-ultrawork` still works manually.
 
@@ -252,8 +291,8 @@ printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}
 
 Version 1.20.0 adds two hooks so that hidden impact gets checked even when the user never asks for planning or review. Version 1.21.0 makes the gate read changed files from git instead of only the transcript.
 
-- `hooks/load-skills-gate.mjs` (PreToolUse, matcher `Agent|Task`): denies a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner` whose prompt has no `LOAD_SKILLS: [...]` / `LOAD_SKILLS: none` line, or whose list names a skill the catalog marks `main-only`; for `omo-researcher`, `omo-reviewer`, and `omo-planner` it also denies a skill whose catalog When cell says `omo-implementer only` (the six skills that keep unrestricted Bash or a launcher pre-approval). Both sets are read from `skills/omo-orchestrate/references/skill-catalog.md` on each call; an unreadable catalog or malformed input lets the dispatch through. `OMO_LOAD_SKILLS_GATE=off` disables it. Tests: `node --test omo-orchestrator/hooks/load-skills-gate.test.mjs`.
-- `hooks/preflight.mjs` (UserPromptSubmit): when a prompt asks for a code change (Japanese or English change verbs such as 実装, 修正, fix, add, refactor), it injects a short `<omo-preflight>` checklist: who else is affected, up to three undefined or contradictory cases, and a caller search for every existing unit about to change. Since 1.45.0 it also sends the change to `omo-plan` before the first edit (typo, wording, and config value changes excepted) and names the executor to pick by size after approval. A GitHub issue link the user typed routes to `omo-github-triage` and then `omo-plan`. When a prompt asks for a review (レビュー, 監査, review, audit), it instead tells Claude to load `omo-review`, the single review entry, and to follow each changed value past the diff: who reads a status the change now writes, what the old failure path did, and whether a repeated call is safe. A model does not choose `omo-review` on its own for a plain review request, so this routing is what makes review requests use it. Prompts that name a reviewer (`review-pr`, `code-review`, `self-review`), slash commands, and prompts with a `ulw` keyword are left alone. Version 1.25.0 adds a third route, checked first: when the prompt carries a link to a PR review thread (`/pull/<n>#discussion_r<id>`, `#pullrequestreview-<id>`) or a review thread id (`PRRT_...`), even inside pasted content, it points Claude at the follow-up section of `omo-work-with-pr` and asks for an `omo-review` run on the whole branch diff, one reply draft per handled comment, and a PR body draft before the work is called done. Review tools hand over the comments to address as a paste, and fixes made that way used to end with "should I also review, update the body, or reply?". Apart from that route, text inside code spans, injected system or task blocks, and pasted content (`<pasted_content>`) is ignored. Pasted content still counts as user input for turn tracking. Tests: `node --test omo-orchestrator/hooks/pasted.test.mjs`.
+- `hooks/load-skills-gate.mjs` (PreToolUse, matcher `Agent|Task`): denies a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner` whose prompt has no `LOAD_SKILLS: [...]` / `LOAD_SKILLS: none` line, or whose list names a skill the catalog marks `main-only`; for `omo-researcher`, `omo-reviewer`, and `omo-planner` it also denies a skill whose catalog When cell says `omo-implementer only` (`omo-programming`, `omo-frontend`, and `omo-handoff`, which keep unrestricted Bash or a launcher pre-approval). Since 2.0.0 it also reads an optional `MODES: <parent>/<mode>[, …]` line, normalizes `parent:mode` and `parent/mode` to the parent name, and applies the same two rules to that parent. The `main-only` modes of `omo-research` (`ultraresearch`, `tech-debt-audit`) are not denied, because the worker returns their steps instead of running them. Both sets are read from `skills/omo-orchestrate/references/skill-catalog.md` on each call; an unreadable catalog or malformed input lets the dispatch through. `OMO_LOAD_SKILLS_GATE=off` disables it. Tests: `node --test omo-orchestrator/hooks/load-skills-gate.test.mjs`.
+- `hooks/preflight.mjs` (UserPromptSubmit): when a prompt asks for a code change (Japanese or English change verbs such as 実装, 修正, fix, add, refactor), it injects a short `<omo-preflight>` checklist: who else is affected, up to three undefined or contradictory cases, and a caller search for every existing unit about to change. Since 1.45.0 it also sends the change to `omo-plan` before the first edit (typo, wording, and config value changes excepted) and names the executor to pick by size after approval. A GitHub issue link the user typed routes to the `github-triage` mode of `omo-work-with-pr` and then `omo-plan`. When a prompt asks for a review (レビュー, 監査, review, audit), it instead tells Claude to load `omo-review`, the single review entry, and to follow each changed value past the diff: who reads a status the change now writes, what the old failure path did, and whether a repeated call is safe. A model does not choose `omo-review` on its own for a plain review request, so this routing is what makes review requests use it. Prompts that name a reviewer (`review-pr`, `code-review`, `self-review`), slash commands, and prompts with a `ulw` keyword are left alone. Version 1.25.0 adds a third route, checked first: when the prompt carries a link to a PR review thread (`/pull/<n>#discussion_r<id>`, `#pullrequestreview-<id>`) or a review thread id (`PRRT_...`), even inside pasted content, it points Claude at the follow-up section of `omo-work-with-pr` and asks for an `omo-review` run on the whole branch diff, one reply draft per handled comment, and a PR body draft before the work is called done. Review tools hand over the comments to address as a paste, and fixes made that way used to end with "should I also review, update the body, or reply?". Apart from that route, text inside code spans, injected system or task blocks, and pasted content (`<pasted_content>`) is ignored. Pasted content still counts as user input for turn tracking. Tests: `node --test omo-orchestrator/hooks/pasted.test.mjs`.
 - `hooks/review-gate.mjs` (Stop): when the current turn changed 2 or more files inside the working directory and no review skill or reviewer, oracle, or security-check agent ran after the last edit, it blocks the stop once. The reason asks Claude for a light review: a risk map of hidden reach for modified units, undefined cases, and the checks actually run, with `omo-review` for 3+ files, public or CLI behavior, persistence, or security. The follow-up stop carries `stop_hook_active` and always passes, so the gate cannot loop. A background task notification continues the same turn and stops again without that flag; the gate then passes as long as its own feedback already follows the last edit, so it asks once per edit. A `!` shell command the user runs also continues the turn, since it fires no prompt hook and the snapshot stays at the last prompt. Files under `.claude/omo/` and outside the working directory do not count.
 - `hooks/omo-dir-ignore.mjs` (PostToolUse, matcher `Write|Edit|MultiEdit|NotebookEdit|Bash`): writes `.claude/omo/.gitignore` (itself plus `/handoffs/`, `/plans/`, `/reviews/`, `/briefs/`; no `*`, no negation, so `omo-init-deep` keeps control of `init-deep.json`) into an existing `.claude/omo/` directory that has none, so omo working records stay untracked. A new omo subdirectory must be added to the list in the hook. It uses no child process and no network, never creates the directory, never overwrites an existing `.gitignore`, and writes nothing to stdout. `OMO_DIR_IGNORE=off|0|false` disables it. Tests: `node --test omo-orchestrator/hooks/omo-dir-ignore.test.mjs`.
 - `hooks/turn-snapshot.mjs`: on every user prompt, `preflight.mjs` records the git state (HEAD plus a hash of each already-changed file) under `$TMPDIR/omo-orchestrator/turns/`. The gate compares the tree against it, so edits made through Bash, scripts, or sub-agents count, a file that was already dirty counts only when the turn changed it again, and commits made during the turn still count. Background task notifications do not start a new snapshot. Outside a git work tree the gate falls back to the transcript's Edit and Write calls.
@@ -291,7 +330,7 @@ A chain of Grep and Read calls puts every match into the conversation, and those
 
 Version 1.21.0 makes `omo-review` the one place to ask for a review. It runs two lanes in parallel on the same frozen tree: an `omo-reviewer` agent with the omo review areas (or `omo-review-work` when real-surface QA evidence is needed), and the `self-review` skill in review-only mode through a sub-agent when that skill is installed. The stricter verdict decides, and fixes happen after both return. Version 1.24.0 changes the standalone `omo-review` order: the `omo-reviewer` lane runs first on the unchanged tree, then an `omo-external-reviewer` agent runs `self-review` in its normal mode, which fixes the findings (including the omo lane's, passed as focus notes) and re-reviews. Controller final gates keep `self-review` in review-only mode with `--dry-run`, because Ralph owns fixes there. omo no longer runs `review-pr` at all: it is for GitHub PRs, and only the user invokes it. A plan can still skip `self-review` with `REVIEW_SKILL: none`. `omo-review-work` is now an internal gate stage (`user-invocable: false`), and `omo-review-loop` stays the entry for implement-plus-review loops.
 
-Every final gate in the controllers (`omo-review-loop`, `omo-ultrawork`, `omo-ulw-execute`, `omo-mass-ulw`, `omo-ralph-loop`) now always runs `self-review` alongside `omo-review-work` or `omo-reviewer`. `review-pr` is no longer a fallback when `self-review` is missing. From 1.21.0 to 1.23.x it ran only when the user asked for it, as an extra lane; 1.24.0 removed that lane.
+Every final gate in the controllers (the `review-loop` mode of `omo-review`, `omo-ultrawork` with its `ulw-execute` and `mass-ulw` modes, `omo-ralph-loop`) now always runs `self-review` alongside the `review-work` mode or `omo-reviewer`. `review-pr` is no longer a fallback when `self-review` is missing. From 1.21.0 to 1.23.x it ran only when the user asked for it, as an extra lane; 1.24.0 removed that lane.
 
 ## Evals
 
@@ -317,7 +356,7 @@ The run compares the plugin against a no-plugin baseline by default. Results go 
 - `omo-researcher`: the Explore equivalent for read-only codebase investigation, with evidence labels and access limits disclosed. External library, upstream source, and dependency-history questions go to `omo-librarian`. Uses `model: haiku`, `effort: low`; callers pass `model: sonnet` when the task needs bug hypotheses rather than location.
 - `omo-plan-consultant`: read-only pre-planning consultant for intent classification, exploration, affected-user ideal-state gaps, and planning directives. Uses `model: sonnet`, `effort: high`.
 - `omo-plan-reviewer`: read-only plan executability reviewer with an approval-biased `OKAY` or `REJECT` verdict. Uses `model: sonnet`, `effort: medium`.
-- `omo-reviewer`: independent implementation and PR-style reviewer for risk, quality, and scope control. Its lifecycle remains `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Uses `model: opus`, `effort: medium`. In `omo-review-loop`, the alignment, quality, and evidence-gate lanes override it to `model: sonnet`; the security and robustness lanes and the final gate stay on Opus.
+- `omo-reviewer`: independent implementation and PR-style reviewer for risk, quality, and scope control. Its lifecycle remains `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Uses `model: opus`, `effort: medium`. In the `review-loop` mode of `omo-review`, the alignment, quality, and evidence-gate lanes override it to `model: sonnet`; the security and robustness lanes and the final gate stay on Opus.
 - `omo-oracle`: read-only strategic advisor for architecture decisions, plan review before heavy work, debugging after 2+ failed fix attempts, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: opus`, `effort: high`. When it judges the problem beyond what it can settle, it gives its best answer and ends with `ESCALATE: fable — <point>`; the caller then re-runs the consult once with `model: "fable"`, without asking, and keeps the Opus answer if Fable refuses or fails.
 - `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim. Uses `model: sonnet`, `effort: medium`.
 - `omo-external-reviewer`: runs the installed `self-review` skill with the caller's contract, without preloading any skill, and returns the verdict, findings verbatim, report path, and changed files (by content hash, checked against the skill's fix log). In fix mode it reports the re-review verdict and allows edits only to files in the diff and new tests; in both modes it never commits, pushes, stashes, switches branches, or posts. It inherits the caller's model, `effort: medium`. `omo-review` and the controller final gates dispatch it in place of a general-purpose agent.
@@ -340,11 +379,10 @@ Haiku is sufficient for routine use of these prompt-only skills when the task is
 
 - `omo-guardrails`
 - `omo-programming`
-- `omo-research`
-- `omo-start-work`
-- `omo-coding-agent-sessions`
+- `omo-research` (including its `coding-agent-sessions` mode)
+- `omo-plan` for its `start-work` mode
 
-Use Sonnet or stronger for `omo-ultraresearch` (decision-critical research) and `omo-visual-qa` (visual judgment).
+Use Sonnet or stronger for the `ultraresearch` mode of `omo-research` (decision-critical research) and `omo-visual-qa` (visual judgment).
 
 ## Claude Code Adaptation Scope
 
@@ -419,22 +457,22 @@ Background agents are advisory, not blocking. Wait for one bounded follow-up whe
 
 For implementation tasks, prefer `/omo-plan` before editing and `/omo-review` before final handoff. Initialize or reuse `/omo-ralph-loop` as the sole implementation/review controller; every repair pass reserves the next shared iteration before editing. The mandatory final gate returns `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`. Only `APPROVE` permits completion. `REQUEST_CHANGES` returns to the same Ralph budget for a fix and re-review; `INCONCLUSIVE` blocks completion until the missing evidence or decision is recorded and resolved. Bounded local tool recovery never grants another implementation/review budget.
 
-For release or PR work, run `/omo-get-unpublished-changes` before `/omo-pre-publish-review`, then use `/omo-work-with-pr` to prepare a local handoff or reviewer-response artifact. GitHub changes and every publish, push, merge, or remote comment are outside these content-only skills and require an external operator with explicit permission for the specific action.
+For release or PR work, run `/omo-research get-unpublished-changes` before `/omo-review pre-publish-review`, then use `/omo-work-with-pr` to prepare a local handoff or reviewer-response artifact. GitHub changes and every publish, push, merge, or remote comment are outside these content-only skills and require an external operator with explicit permission for the specific action.
 
 ## Planning And Review Gates
 
 - `omo-plan-consultant` classifies intent, explores before asking, and records affected users, concrete `IS-*` ideal states, and `GAP-*` shortfalls. `omo-planner` then creates one plan that closes every gap and maps every ideal state to a task, executable QA scenario, and evidence location. Clear plans ask only for irreducible owner decisions. Unclear plans research and announce practical defaults before the approval brief. Plan approval never authorizes implementation.
 - `omo-plan-reviewer` checks plan references, task startability, QA executability, ideal-state coverage, and gap closure. It returns `OKAY` by default and `REJECT` only for verified blockers. It is not a substitute for `omo-reviewer`.
-- `omo-ultraresearch` expands only leads with stated decision impact, source, owner, and bounded budget. Research converges when the evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence.
-- `omo-start-work` treats manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state. Compare them before dispatch, handoff, retry, review, and completion; correct disagreement with the current TodoWrite item and a new ledger entry, never by rewriting history.
+- The `ultraresearch` mode of `omo-research` expands only leads with stated decision impact, source, owner, and bounded budget. Research converges when the evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence.
+- The `start-work` mode of `omo-plan` treats manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state. Compare them before dispatch, handoff, retry, review, and completion; correct disagreement with the current TodoWrite item and a new ledger entry, never by rewriting history.
 - Plans should include TL;DR, affected users, `IS-*` and `GAP-*` rows, dependencies, QA scenarios, task closure, gap classification, and verification strategy.
 - Every parallel wave must state why its lanes are independent. Same-file writes, shared contracts, mutable state, and named predecessors serialize.
 - Every plan must define executable QA scenarios with a tool or surface, concrete commands or steps, a pass or fail assertion, and an evidence location. Abstract checks such as "verify it works" are blocking plan-quality findings.
 - Significant implementation should pass an implement-review-fix loop before final handoff.
-- Hard or risky plans should pass `/omo-hyperplan` before implementation.
+- Hard or risky plans should pass `/omo-plan hyperplan` before implementation.
 - Release candidates should pass unpublished-change analysis and pre-publish review before publishing.
 - PR-style review should be evidence-first: understand changed files, verify uncertain findings against the codebase, and record verified non-issues separately from findings.
-- `omo-review-work` uses two lanes: real-surface QA against the final tree, then exactly one independent read-only final reviewer. A failed QA row returns `REQUEST_CHANGES`; missing reviewer evidence is `INCONCLUSIVE`.
+- The `review-work` mode of `omo-review` uses two lanes: real-surface QA against the final tree, then exactly one independent read-only final reviewer. A failed QA row returns `REQUEST_CHANGES`; missing reviewer evidence is `INCONCLUSIVE`.
 - If the same blocker survives a bounded retry budget, stop, record the exact blocker, and continue with partial findings or ask one precise question.
 
 ## Manual Handoffs
@@ -521,7 +559,7 @@ const required = [
   '`omo-librarian`',
   '`omo-media-reader`',
   '`omo-git-master`',
-  '`omo-coding-agent-sessions`',
+  '`coding-agent-sessions`',
   '`omo-visual-qa`',
   '`omo-init-deep`',
   '/omo-init-deep --create-new',
@@ -551,12 +589,14 @@ const required = [
   '3d8cf52b673fcbf4dd9d34361a273b791a19c2e5',
   'ulw-keyword.mjs',
   'ULTRAWORK MODE ENABLED!',
-  '`omo-ulw-execute`',
-  '`omo-mass-ulw`',
-  '`omo-tech-debt-audit`',
+  '`ulw-execute`',
+  '`mass-ulw`',
+  '`tech-debt-audit`',
   '`omo-ast-grep`',
   '`omo-lsp-setup`',
-  '`omo-review-loop`',
+  '`review-loop`',
+  'Version 2.0.0',
+  'MODES: <parent>/<mode>',
   '`omo-frontend`',
   'json-error-recovery.mjs',
   'Approval writes the plan only. It does not authorize implementation.',

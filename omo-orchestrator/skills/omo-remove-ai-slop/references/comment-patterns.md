@@ -88,7 +88,7 @@ Fix: delete, or reduce to the real reason: `// downstream aggregation crashes on
 
 Signals: `//` followed by valid code, or `/* */` blocks containing code.
 
-Fix: this is a deletion candidate. Follow `/omo-remove-deadcode` if it may still be referenced (feature flags, docs, copy-paste templates); otherwise delete. Git has the history.
+Fix: this is a deletion candidate. Follow the `remove-deadcode` mode of `omo-programming` if it may still be referenced (feature flags, docs, copy-paste templates); otherwise delete. Git has the history.
 
 ## KEEP Patterns
 

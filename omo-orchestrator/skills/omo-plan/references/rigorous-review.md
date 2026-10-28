@@ -2,11 +2,11 @@
 
 Optional lane review of a written draft plan. Use it when `RISK_LEVEL` is `critical` or `high`, or when the user asks for a thorough or high-accuracy plan review. It replaces the single `omo-plan-reviewer` pass in Bounded Plan Review and uses the same budget: one initial pass plus at most two revisions.
 
-This is not `omo-hyperplan`. Hyperplan critiques the problem framing before a plan exists. This review checks a written plan before the approval brief. Passing it never authorizes implementation.
+This is not `omo-plan` mode `hyperplan`. Hyperplan critiques the problem framing before a plan exists. This review checks a written plan before the approval brief. Passing it never authorizes implementation.
 
 ## Risk Level
 
-Classify the touched areas and record `RISK_LEVEL` and `RISK_REASON` in the plan TL;DR. `omo-review-loop` uses the same table, so the value carries into execution unchanged.
+Classify the touched areas and record `RISK_LEVEL` and `RISK_REASON` in the plan TL;DR. `omo-review` mode `review-loop` uses the same table, so the value carries into execution unchanged.
 
 | Risk | Area | Review policy |
 |---|---|---|
@@ -91,7 +91,7 @@ Include this table in the approval brief:
 
 ## Final Verification Wave
 
-Every final plan ends with this wave after all tasks. `omo-ulw-execute` registers it as its own todo and runs it before `omo-review-work`. All four must pass.
+Every final plan ends with this wave after all tasks. `omo-ultrawork` mode `ulw-execute` registers it as its own todo and runs it before `omo-review` mode `review-work`. All four must pass.
 
 - F1 Plan compliance: each must-have exists, each non-goal and must-not has zero matches, deliverables match the plan. Output `Must [N/N] | Must NOT [N/N] | VERDICT`.
 - F2 Code quality: typecheck, lint, and tests run; scan for `as any`, empty catches, stray debug output, unused imports, obvious comments, and redundant queries. Output `Build PASS/FAIL | Tests N pass/N fail | VERDICT`.

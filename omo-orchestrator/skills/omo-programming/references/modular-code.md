@@ -10,7 +10,7 @@ Defaults for file and module structure. Project conventions win: if CLAUDE.md, A
 - factory calls that compose modules
 - top-level wiring or registration
 
-Avoid business logic, helpers, non-trivial type definitions, or unrelated responsibilities there. If you need to add logic to a mixed entry file, put the new logic in its own file instead of growing the entry file. Extracting existing logic is a refactor: do it only when requested or required, via `/omo-refactor`.
+Avoid business logic, helpers, non-trivial type definitions, or unrelated responsibilities there. If you need to add logic to a mixed entry file, put the new logic in its own file instead of growing the entry file. Extracting existing logic is a refactor: do it only when requested or required, via `omo-programming` mode `refactor`.
 
 ## 2. No Catch-All Files
 
@@ -46,7 +46,7 @@ When a file you are editing is over budget:
 
 1. Do not push it further past the budget. Put new responsibilities in a new focused module.
 2. Flag the existing overage in the delivery report with the responsibilities you see.
-3. Split it only when the task asks for it or the change cannot be made cleanly otherwise, and then lock behavior first (`/omo-refactor`).
+3. Split it only when the task asks for it or the change cannot be made cleanly otherwise, and then lock behavior first (`omo-programming` mode `refactor`).
 
 Generated files, fixtures, tables, and files where the project accepts larger modules are exempt.
 

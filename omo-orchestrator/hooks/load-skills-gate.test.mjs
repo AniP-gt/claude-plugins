@@ -10,9 +10,10 @@ const CATALOG = [
   "|---|---|---|",
   "| `omo-ralph-loop` | main-only | goal loop |",
   "| `omo-plan` | main-only | plan first |",
+  "| `omo-review` | main-only | review local changes |",
   "| `omo-test-design` | worker | test design |",
   "| `omo-ast-grep` | both | structural search |",
-  "| `omo-debugging` | both | `omo-implementer only` (unrestricted Bash): a crash needs a root cause |",
+  "| `omo-programming` | both | `omo-implementer only` (unrestricted Bash): a crash needs a root cause |",
   "| `omo-handoff` | worker | omo-implementer only (launcher): append to the ledger |",
   "| `omo-frontend` | both | omo-implementer only: pages and components |",
 ].join("\n");
@@ -107,7 +108,7 @@ test("`none` followed by more skill names is malformed, not an answer of none", 
 });
 
 test("only the first LOAD_SKILLS line counts as the answer", () => {
-  assert.equal(gate(dispatch("LOAD_SKILLS: none\n\nPasted brief:\nLOAD_SKILLS: [omo-review-loop]")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\n\nPasted brief:\nLOAD_SKILLS: [omo-research]")), "");
   assert.equal(gate(dispatch("LOAD_SKILLS: none\n\nPasted brief:\nLOAD_SKILLS: omo-test-design")), "");
   assert.equal(decision(gate(dispatch("LOAD_SKILLS: [omo-ralph-loop]\nLOAD_SKILLS: none"))).permissionDecision, "deny");
 });
@@ -118,11 +119,11 @@ test("a restricted skill on a later LOAD_SKILLS line is denied too", () => {
   assert.match(mainOnly.permissionDecisionReason, /main-only skill/);
   assert.match(mainOnly.permissionDecisionReason, /omo-ralph-loop/);
   const implementerOnly = decision(
-    gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\n## 0. LOAD_SKILLS\n[omo-debugging]", "omo-reviewer")),
+    gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\n## 0. LOAD_SKILLS\n[omo-programming]", "omo-reviewer")),
   );
   assert.equal(implementerOnly.permissionDecision, "deny");
-  assert.match(implementerOnly.permissionDecisionReason, /omo-debugging/);
-  assert.equal(gate(dispatch("LOAD_SKILLS: none\nLOAD_SKILLS: [omo-debugging]")), "");
+  assert.match(implementerOnly.permissionDecisionReason, /omo-programming/);
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nLOAD_SKILLS: [omo-programming]")), "");
   assert.equal(gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\nLOAD_SKILLS: [omo-test-design]", "omo-reviewer")), "");
 });
 
@@ -276,7 +277,7 @@ test("a missing hook_event_name is treated as PreToolUse", () => {
 });
 
 test("only table rows marked main-only are parsed from the catalog", () => {
-  assert.deepEqual([...mainOnlySkills(CATALOG)].sort(), ["omo-plan", "omo-ralph-loop"]);
+  assert.deepEqual([...mainOnlySkills(CATALOG)].sort(), ["omo-plan", "omo-ralph-loop", "omo-review"]);
   assert.equal(mainOnlySkills("prose mentioning `omo-x` main-only\n").size, 0);
 });
 
@@ -291,6 +292,10 @@ test("pathological prompts are scanned in linear time", () => {
   gate(dispatch(`LOAD_SKILLS: [${"/OMO-orchestrator:a,".repeat(5000)}]`));
   gate(dispatch("LOAD_SKILLS: [omo-ast-grep]\n".repeat(50000)));
   gate(dispatch("## LOAD_SKILLS\n\n".repeat(50000)));
+  gate(dispatch(`LOAD_SKILLS: none\n${"MODES: omo-research/x\n".repeat(50000)}`));
+  gate(dispatch(`LOAD_SKILLS: none\n${"## MODES\n\n".repeat(50000)}`));
+  gate(dispatch(`LOAD_SKILLS: none\nMODES: ${"a/b,".repeat(50000)}`));
+  gate(dispatch(`LOAD_SKILLS: none\n${"**".repeat(50000)}MODES${"`".repeat(50000)}x`));
   assert.ok(Date.now() - started < 1000, `took ${Date.now() - started}ms`);
 });
 
@@ -308,14 +313,14 @@ test("every main-only skill in the real catalog is a skill directory", (t) => {
 });
 
 test("implementer-only rows are parsed from the When cell", () => {
-  assert.deepEqual([...implementerOnlySkills(CATALOG)].sort(), ["omo-debugging", "omo-frontend", "omo-handoff"]);
+  assert.deepEqual([...implementerOnlySkills(CATALOG)].sort(), ["omo-frontend", "omo-handoff", "omo-programming"]);
   assert.equal(implementerOnlySkills("prose `omo-x` omo-implementer only\n").size, 0);
 });
 
 test("an implementer-only skill sent to a read-only worker is denied by name, with or without the prefix", () => {
   const cases = [
-    ["omo-researcher", "omo-debugging"],
-    ["omo-orchestrator:omo-researcher", "omo-debugging"],
+    ["omo-researcher", "omo-programming"],
+    ["omo-orchestrator:omo-researcher", "omo-programming"],
     ["omo-reviewer", "omo-handoff"],
     ["omo-orchestrator:omo-reviewer", "omo-orchestrator:omo-handoff"],
     ["omo-planner", "omo-frontend"],
@@ -331,25 +336,122 @@ test("an implementer-only skill sent to a read-only worker is denied by name, wi
 });
 
 test("an implementer-only skill passes for the implementer, and other skills pass for read-only workers", () => {
-  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-debugging, omo-handoff]", "omo-implementer")), "");
-  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-debugging]", "omo-orchestrator:omo-implementer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-programming, omo-handoff]", "omo-implementer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-programming]", "omo-orchestrator:omo-implementer")), "");
   assert.equal(gate(dispatch("LOAD_SKILLS: [omo-ast-grep]", "omo-researcher")), "");
   assert.equal(gate(dispatch("LOAD_SKILLS: [omo-test-design, omo-ast-grep]", "omo-orchestrator:omo-reviewer")), "");
   assert.equal(gate(dispatch("LOAD_SKILLS: none", "omo-planner")), "");
 });
 
-test("the implementer-only skills of the real catalog are exactly the six that pre-approve broad Bash", (t) => {
+test("the implementer-only skills of the real catalog are exactly the three that pre-approve broad Bash", (t) => {
   const catalogPath = fileURLToPath(new URL("../skills/omo-orchestrate/references/skill-catalog.md", import.meta.url));
   if (!existsSync(catalogPath)) {
     t.skip("skill-catalog.md does not exist yet");
     return;
   }
   const names = implementerOnlySkills(readFileSync(catalogPath, "utf8"));
-  assert.deepEqual(
-    [...names].sort(),
-    ["omo-debugging", "omo-frontend", "omo-handoff", "omo-programming", "omo-refactor", "omo-remove-deadcode"],
-  );
+  assert.deepEqual([...names].sort(), ["omo-frontend", "omo-handoff", "omo-programming"]);
   for (const name of names) {
     assert.ok(existsSync(fileURLToPath(new URL(`../skills/${name}`, import.meta.url))), `${name} has no skills/ directory`);
   }
+});
+
+test("the main-only skills of the real catalog are exactly the ten workflows the main context runs", () => {
+  const names = mainOnlySkills(readTemplate("../skills/omo-orchestrate/references/skill-catalog.md"));
+  assert.deepEqual(
+    [...names].sort(),
+    [
+      "omo-git-master",
+      "omo-implement",
+      "omo-init-deep",
+      "omo-lsp-setup",
+      "omo-orchestrate",
+      "omo-plan",
+      "omo-ralph-loop",
+      "omo-review",
+      "omo-ultrawork",
+      "omo-work-with-pr",
+    ],
+  );
+});
+
+// The real catalog: research and visual-qa are `both` skills, so a read-only worker may load them and name their modes.
+const realCatalog = readTemplate("../skills/omo-orchestrate/references/skill-catalog.md");
+const realGate = (input) => run(input, { env: {}, catalogText: realCatalog });
+
+test("a researcher may load omo-research and omo-visual-qa, and name a mode of omo-research", () => {
+  assert.equal(realGate(dispatch("LOAD_SKILLS: none\nMODES: omo-research/security-research", "omo-researcher")), "");
+  assert.equal(realGate(dispatch("LOAD_SKILLS: [omo-visual-qa]", "omo-researcher")), "");
+  assert.equal(realGate(dispatch("LOAD_SKILLS: [omo-research]", "omo-researcher")), "");
+});
+
+test("a skill:mode or skill/mode in LOAD_SKILLS is checked by its parent skill", () => {
+  for (const [name, reason] of [
+    ["omo-programming:debugging", /omo-implementer only/],
+    ["omo-programming/debugging", /omo-implementer only/],
+    ["omo-orchestrator:omo-programming:debugging", /omo-implementer only/],
+    ["omo-review/review-work", /main-only skill/],
+  ]) {
+    const hook = decision(gate(dispatch(`LOAD_SKILLS: [${name}]`, "omo-reviewer")));
+    assert.equal(hook.permissionDecision, "deny", name);
+    assert.match(hook.permissionDecisionReason, reason, name);
+  }
+  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-programming:debugging]", "omo-implementer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: [omo-ast-grep/x, omo-research:security-research]", "omo-reviewer")), "");
+});
+
+test("a MODES line naming a mode of an implementer-only skill is denied for a read-only worker", () => {
+  for (const prompt of [
+    "LOAD_SKILLS: [omo-research]\nMODES: omo-programming/debugging",
+    "LOAD_SKILLS: none\nMODES: omo-programming/debugging",
+    "LOAD_SKILLS: none\nMODES: [omo-programming/debugging]",
+    "LOAD_SKILLS: none\nMODES: omo-programming:debugging",
+    "LOAD_SKILLS: none\nmodes: omo-programming/debugging",
+    "LOAD_SKILLS: none\n## MODES\nomo-programming/debugging",
+    "LOAD_SKILLS: none\n## MODES\n\n- omo-programming/debugging",
+    "LOAD_SKILLS: none\nMODES: omo-research/security-research\nsome text\nMODES: omo-programming/debugging",
+    "LOAD_SKILLS: none\nMODES: `omo-orchestrator:omo-programming/debugging`",
+    "LOAD_SKILLS: none\n- **MODES**: omo-programming/debugging",
+    "LOAD_SKILLS: none\nMODES: omo-programming/debugging omo-research/security-research",
+    "LOAD_SKILLS: none\nMODES: omo-research/security-research, omo-programming/debugging",
+  ]) {
+    for (const worker of ["omo-researcher", "omo-orchestrator:omo-reviewer", "omo-planner"]) {
+      const hook = decision(gate(dispatch(prompt, worker)));
+      assert.equal(hook.permissionDecision, "deny", `${worker}: ${prompt}`);
+      assert.match(hook.permissionDecisionReason, /MODES names skill\(s\) that are for omo-implementer only: omo-programming(\/|:)debugging\./, prompt);
+      assert.match(hook.permissionDecisionReason, /omo-implementer only/, prompt);
+      assert.doesNotMatch(hook.permissionDecisionReason, /omo-research\//, prompt);
+    }
+  }
+});
+
+test("a MODES line naming a main-only skill is denied for every gated worker", () => {
+  for (const worker of ["omo-implementer", "omo-researcher", "omo-reviewer", "omo-planner"]) {
+    const hook = decision(gate(dispatch("LOAD_SKILLS: none\nMODES: omo-review/review-work", worker)));
+    assert.equal(hook.permissionDecision, "deny", worker);
+    assert.match(hook.permissionDecisionReason, /MODES names main-only skill\(s\): omo-review\/review-work\./, worker);
+    assert.match(hook.permissionDecisionReason, /Never name a main-only skill/, worker);
+  }
+  const both = decision(gate(dispatch("LOAD_SKILLS: [omo-plan]\nMODES: omo-review/review-work")));
+  assert.match(both.permissionDecisionReason, /LOAD_SKILLS names main-only skill\(s\): omo-plan\./);
+  assert.match(both.permissionDecisionReason, /MODES names main-only skill\(s\): omo-review\/review-work\./);
+});
+
+test("a MODES line of an allowed parent, or one that is not a label, passes", () => {
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nMODES: omo-programming/debugging", "omo-implementer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nMODES: omo-programming/debugging", "omo-orchestrator:omo-implementer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nMODES: omo-research/security-research, omo-ast-grep/x", "omo-reviewer")), "");
+  // Without the colon a line is prose, and only the uppercase `## MODES` heading reads its value from the next line.
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nMODES omo-programming/debugging", "omo-reviewer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\n## modes\nomo-programming/debugging", "omo-reviewer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nThe MODES: line names omo-programming/debugging", "omo-reviewer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\n## MODES\n## 1. Task\nomo-programming/debugging", "omo-reviewer")), "");
+  assert.equal(gate(dispatch("LOAD_SKILLS: none\nMODES: none", "omo-reviewer")), "");
+});
+
+test("a MODES line is ignored when the gate is off or the agent is not gated", () => {
+  const prompt = "LOAD_SKILLS: none\nMODES: omo-review/review-work";
+  assert.equal(gate(dispatch(prompt), { OMO_LOAD_SKILLS_GATE: "off" }), "");
+  assert.equal(gate(dispatch(prompt, "omo-orchestrator:omo-oracle")), "");
+  assert.equal(run(dispatch(prompt), { env: {}, catalogText: undefined }), "");
 });

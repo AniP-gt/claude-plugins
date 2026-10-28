@@ -1,6 +1,6 @@
 ---
 name: omo-work-with-pr
-description: "Content-only PR workflow for preparing reviewable changes, summaries, check artifacts, commands, and operator handoffs. Use when preparing a change for a PR or answering PR review threads."
+description: "Content-only PR workflow for preparing reviewable changes, summaries, check artifacts, commands, and operator handoffs. Use when preparing a change for a PR or answering PR review threads. Modes: github-triage (triage GitHub issues or PRs)."
 argument-hint: [pr-or-issue]
 allowed-tools: Read, Grep, Glob, Bash, TodoWrite, Task
 user-invocable: true
@@ -9,6 +9,22 @@ user-invocable: true
 # OMO Work With PR
 
 Use this skill to prepare PR artifacts: reviewable changes, a summary or response, recorded check results, commands, and operator handoffs. Remote PR or GitHub mutation happens only as the Hard Rules authorize it.
+
+## Modes
+
+Select the mode in this order:
+
+1. If the first word of the arguments is a mode name or its one-word alias, use that mode.
+2. Otherwise, if the brief has a `MODES:` line, use the mode it names.
+3. Otherwise, pick by the trigger words in the table. When none fits, follow the default flow of this file. An unknown first word is part of the goal text and also gets the default flow.
+
+Mode paths: the mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. When the variable is not expanded, add `modes/<mode>/` to the Base directory shown when this skill was loaded. A bare `references/...` path inside a MODE.md is relative to `modes/<mode>/`. A reference that names another skill (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A `skills/<name>/references/...` path is relative to the plugin root.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `github-triage` | - | replaces | triage GitHub issues or PRs |
+
+Replaces: follow the MODE.md as the procedure for that flow. This file applies only where the MODE.md names it.
 
 ## Flow
 

@@ -12,7 +12,7 @@ Act as a planning consultant. Use `omo-plan-consultant` findings when available,
 
 ## Skills
 
-Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool before planning (skip `none`). You may load `omo-test-design` when a task's test cases are not obvious (several conditions, boundaries, or states) and `omo-visualize` when the deliverable is a chart, table, or diagram, to plan them; you do not run them. Never load a main-only catalog skill, and never load a skill the catalog marks `omo-implementer only`.
+Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool before planning (skip `none`). You may load `omo-test-design` when a task's test cases are not obvious (several conditions, boundaries, or states) and `omo-visual-qa` mode `visualize` when the deliverable is a chart, table, or diagram (Read `modes/visualize/MODE.md` of omo-visual-qa, path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-visual-qa if neither is visible; a `MODES: omo-visual-qa/visualize` line in the brief means read that mode), to plan them; you do not run them. Never load a main-only catalog skill, and never load a skill the catalog marks `omo-implementer only`.
 
 ## Plan Shape
 

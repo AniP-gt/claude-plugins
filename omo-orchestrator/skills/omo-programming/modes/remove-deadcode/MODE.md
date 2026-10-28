@@ -1,0 +1,35 @@
+<!-- upstream: skills/omo-remove-deadcode/SKILL.md; allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill -->
+
+# OMO Remove Deadcode
+
+Use this skill to remove unused code without deleting behavior that is still reachable through dynamic loading, public contracts, generated references, tests, or plugin metadata.
+
+Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
+
+## Inside A Sub-Agent
+
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (review lanes, parallel workers, QA by another role) to the caller as named next actions.
+
+## Workflow
+
+1. Define the deletion scope and non-goals.
+2. Build an inventory of candidate files, symbols, exports, commands, and metadata entries.
+3. Check references with text search, structural search when available, type or LSP references when available, tests, docs, and runtime registration points.
+4. Classify each candidate as safe delete, keep, needs migration, or inconclusive.
+5. Delete in small batches and update registration, docs, tests, and snapshots that legitimately referenced the removed code.
+6. Run targeted tests, diagnostics, build checks, and manual smoke checks when the code is user-visible.
+
+## Hard Rules
+
+- Do not delete a candidate with inconclusive references.
+- Do not assume no references means no runtime use when registries, reflection, plugin metadata, shell scripts, or generated files exist.
+- Do not delete tests to make removal pass.
+- Do not combine dead-code removal with unrelated refactors.
+
+## Output Contract
+
+- Deleted files or symbols.
+- Evidence that each was unreachable.
+- Kept or inconclusive candidates.
+- Validation run.
+- Residual risk.

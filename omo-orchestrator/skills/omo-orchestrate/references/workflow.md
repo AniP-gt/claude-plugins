@@ -11,17 +11,17 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | `omo-plan-consultant` | Read-only intent classification, exploration, affected-user ideal-state and gap analysis, and planning directives |
 | `omo-plan-reviewer` | Read-only plan executability check with `OKAY` or `REJECT` |
 | `omo-plan` | On a plan request, and before the first edit of any change request or GitHub issue except a typo, wording, or config value change: TL;DR, dependency matrix, blocking executable QA scenarios, gap classification, and handoff inputs |
-| `omo-hyperplan` | Adversarial planning for high-risk or ambiguous work before implementation |
+| `omo-plan` mode `hyperplan` | Adversarial planning for high-risk or ambiguous work before implementation |
 | `omo-implementer` | Minimal verified implementation |
 | `omo-researcher` | Read-only codebase investigation |
 | `omo-librarian` | Read-only external library, upstream source, and dependency-history research with permalinks |
 | `omo-ralph-loop` + `omo-implement` + `omo-review` | Ralph controls the shared budget; one implementation/fix pass consumes planned QA and returns evidence for independent review and final verification |
 | `omo-review` | PR-style evidence-first review gate with `APPROVE` / `REQUEST_CHANGES` / `INCONCLUSIVE` |
-| `omo-get-unpublished-changes` + `omo-pre-publish-review` | Diff-based release impact analysis and publish-readiness gate |
+| `omo-research` mode `get-unpublished-changes` + `omo-review` mode `pre-publish-review` | Diff-based release impact analysis and publish-readiness gate |
 | `omo-work-with-pr` | Issue understanding, implementation, review response, validation, and handoff |
-| `omo-security-research` | Exploitability-first security investigation and severity calibration |
-| `omo-github-triage` | Evidence-first issue and PR classification, priority, and next action |
-| `omo-remove-deadcode` | Reference-checked deletion workflow with zero-false-positive discipline |
+| `omo-research` mode `security-research` | Exploitability-first security investigation and severity calibration |
+| `omo-work-with-pr` mode `github-triage` | Evidence-first issue and PR classification, priority, and next action |
+| `omo-programming` mode `remove-deadcode` | Reference-checked deletion workflow with zero-false-positive discipline |
 | `omo-reviewer` | Independent change review with `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` |
 | `omo-handoff` + handoff template | Manual task-slug-linked append-only ledger with explicit phase checkpoints |
 | `omo-ralph-loop` + `omo-handoff` + guardrails | Completion promise, append-only phase ledger, and manual continuation checkpoint |

@@ -26,10 +26,10 @@ const ULTRAWORK_PATTERN = new RegExp(`${B}(?:ulw|ultrawork)${E}`, "i");
 const MODES = {
   ultrawork: { skill: "omo-ultrawork", label: "ULTRAWORK" },
   plan: { skill: "omo-plan", label: "ULW PLAN" },
-  research: { skill: "omo-ultraresearch", label: "ULW RESEARCH" },
+  research: { skill: "omo-research", mode: "ultraresearch", label: "ULW RESEARCH" },
   loop: { skill: "omo-ralph-loop", label: "ULW LOOP" },
-  execute: { skill: "omo-ulw-execute", label: "ULW EXECUTE" },
-  mass: { skill: "omo-mass-ulw", label: "MASS ULW" },
+  execute: { skill: "omo-ultrawork", mode: "ulw-execute", label: "ULW EXECUTE" },
+  mass: { skill: "omo-ultrawork", mode: "mass-ulw", label: "MASS ULW" },
 };
 
 export function stripCode(prompt) {
@@ -95,13 +95,15 @@ export function detectKeyword(prompt) {
   return null;
 }
 
-function skillPath(skill) {
-  return join(PLUGIN_ROOT, "skills", skill, "SKILL.md");
+function skillPath({ skill, mode }) {
+  return mode === undefined
+    ? join(PLUGIN_ROOT, "skills", skill, "SKILL.md")
+    : join(PLUGIN_ROOT, "skills", skill, "modes", mode, "MODE.md");
 }
 
 export function buildContext({ mode, mass }) {
-  const { skill, label } = MODES[mode];
-  const path = skillPath(skill);
+  const { skill, mode: skillMode, label } = MODES[mode];
+  const path = skillPath(MODES[mode]);
   const lines = [
     MARKER,
     `${label} MODE IS ACTIVE FOR THIS TASK (keyword detected in the user's message).`,
@@ -116,7 +118,7 @@ export function buildContext({ mode, mass }) {
     "2. Open your reply with a binding `# Goal` block: the user's request as an outcome, the success",
     "criteria as binary observables, the scope bounds, and one line \"I'll stop right away when <observable state>\".",
     "",
-    `3. Load the \`omo-orchestrator:${skill}\` skill NOW with the Skill tool, before any other tool call, plan, or edit.`,
+    `3. Load the \`omo-orchestrator:${skill}\` skill NOW with the Skill tool${skillMode === undefined ? "" : `, with args starting with \`${skillMode}\` (e.g. args \`${skillMode} <task>\`)`}, before any other tool call, plan, or edit.`,
   ];
   if (existsSync(path)) {
     lines.push(
@@ -132,11 +134,12 @@ export function buildContext({ mode, mass }) {
     "Every rule in that skill is binding for this entire task: no summarizing from memory, no skipping.",
   );
   if (mass) {
-    const massPath = skillPath(MODES.mass.skill);
+    const massPath = skillPath(MODES.mass);
     lines.push(
       "",
-      `MASS ULW: also load \`omo-orchestrator:${MODES.mass.skill}\` and run this mode as dependency-ordered parallel waves`,
-      `of sub-agent tasks as that skill describes${existsSync(massPath) ? ` (file: ${massPath})` : ""}.`,
+      `MASS ULW: also Read the \`${MODES.mass.mode}\` mode of \`omo-orchestrator:${MODES.mass.skill}\` for how to split this job`,
+      `into dependency-ordered parallel waves of sub-agent tasks${existsSync(massPath) ? ` (file: ${massPath})` : ""}.`,
+      "Keep the step 3 load and its args unchanged.",
     );
   }
   lines.push("", "Do not start the requested work until the bootstrap is complete.", "</ultrawork-mode>");

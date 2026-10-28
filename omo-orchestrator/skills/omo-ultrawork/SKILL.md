@@ -1,8 +1,8 @@
 ---
 name: omo-ultrawork
-description: Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork.
-argument-hint: [goal]
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
+description: Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork. Modes: ulw-execute (ulw execute, run a written omo plan wave by wave), mass-ulw (mass ulw, mulw, fan-out where some tasks wait on others).
+argument-hint: [mode] [goal]
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill, AskUserQuestion
 user-invocable: true
 ---
 
@@ -15,6 +15,25 @@ Implementation skills can also enter this mode without the keyword; the decision
 Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
 
 Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
+
+## Modes
+
+Mode selection, in order:
+
+1. The first argument word is a mode name or alias from the table: use that mode.
+2. The brief carries a `MODES: omo-ultrawork/<mode>` line: use that mode.
+3. Otherwise match the triggers in the table. No match: follow the default flow in the rest of this file. An unknown first word is part of the goal, not a mode.
+
+Mode files live at `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, use the Base directory shown when this skill was loaded plus `modes/<mode>/`. A bare `references/…` path inside a MODE.md is relative to that mode's directory; a path qualified with another skill name is relative to that skill's directory; `skills/<name>/…` is relative to the plugin root.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `ulw-execute` | - | replaces this file's flow | `ulw execute`, run a written omo plan wave by wave |
+| `mass-ulw` | `mulw` | replaces this file's flow | mass ulw, mulw, fan-out where some tasks wait on others |
+
+"Replaces" means: read the MODE.md and follow it as the procedure; the rest of this file applies only where the MODE.md names it.
+
+When `ulw-execute` and `mass-ulw` are both requested, `ulw-execute` is the procedure and `mass-ulw` only supplies how to split waves.
 
 ## Bootstrap
 
@@ -139,7 +158,7 @@ Name the exact tool and invocation with concrete inputs for every scenario. "Thi
 1. Read the tests covering the area before touching it. A wrong test is a finding to report; never edit a test green. Reproduce a bug before fixing it.
 2. Make the smallest change that meets the scenario and update tests it makes stale. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
 3. Exercise the real surface named by the scenario and record the artifact path in the notepad.
-4. Reconcile the full scenario list plus the step-1 tests against the final inputs. Run every missing or affected check; reuse an unchanged row only under `omo-review-work` Evidence Reuse, recording its current provenance. Record pass or fail for the complete set with evidence. A full scenario set does not require repeating independently valid rows.
+4. Reconcile the full scenario list plus the step-1 tests against the final inputs. Run every missing or affected check; reuse an unchanged row only under `omo-review` mode `review-work` Evidence Reuse, recording its current provenance. Record pass or fail for the complete set with evidence. A full scenario set does not require repeating independently valid rows.
 
 Prose, documentation, and prompt changes take semantic review plus real-surface QA only when a runnable surface exists; do not add tests that pin wording. Visual-only changes still require rendered-surface QA.
 
@@ -151,7 +170,7 @@ When the user or project allows commits, commit one atomic, verified increment a
 
 Trigger when any apply: the user asked for rigor ("strictly", "rigorously", "厳密", "深く"), the task touches 3+ files or ran long, or it is refactor, migration, performance, security, persistence, or public-behavior work.
 
-1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following the `omo-review-loop` skill's `references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
+1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path.
 3. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes.
 4. Return criterion-cited blockers to Ralph and reserve the next shared iteration before dispatching any fix. In that pass, fix the blockers, re-run the affected scenario QA, and update the notepad.
