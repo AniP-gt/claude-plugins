@@ -82,4 +82,10 @@ Size remains 145 lines. No further edit. Stop under the skill's resource-cutoff 
 
 ## Completion
 
-The authorized completion sequence is a local feature commit, ordinary push to `origin/main`, then `claude plugin update omo-orchestrator@AniP-gt` for both existing user and local scopes. Actual results are recorded after execution.
+- Feature commit: `1540b00` — `feat(omo-orchestrator): 原資料と抽出結果の整合性検証を明確にする (1.60.0)`.
+- `git push origin main`: succeeded, `a0c81bc..1540b00 main -> main`.
+- `claude plugin update omo-orchestrator@AniP-gt --scope user --json`: succeeded, 1.59.0 → 1.60.0.
+- `claude plugin update omo-orchestrator@AniP-gt --scope local --json`: succeeded, 1.59.0 → 1.60.0 for this repository.
+- `claude plugin list --json`: both scopes enabled at 1.60.0, folderVersion 1.60.0. Installed skill content matched the repository text in both scopes.
+- Worktree clean after feature push and plugin updates. This completion receipt is committed separately outside the plugin tree, so it does not require another plugin version bump.
+- Claude Code reports that restart is required to apply the updated plugin in existing sessions.
