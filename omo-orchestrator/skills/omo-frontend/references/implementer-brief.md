@@ -42,6 +42,10 @@ User-designated visual target (screenshot path, URL, or none) and what must matc
 - Do not touch: ...
 
 ## States and behavior
+Required content: name every required input, datum, label, and copy item separately.
+Primary action and information priorities: ...
+Left out on purpose: ...
+Before evidence: capture paths, states, widths, and capture time before edits (or explicit gap).
 Default, hover, active, focus-visible, disabled, loading, empty, error, as applicable.
 Scroll owner for any shell. Reduced-motion behavior for any animation.
 
@@ -56,6 +60,7 @@ Scroll owner for any shell. Reduced-motion behavior for any animation.
 - [ ] Each listed file exists or is changed as described
 - [ ] Grep of changed styles finds no raw color or arbitrary px outside tokens
 - [ ] Every listed state is implemented
+- [ ] Every required-content item remains separately present; removals have a stated purpose
 - [ ] Any external reuse follows the recorded decision and retains required notices; reference defects have explicit checks
 - [ ] Project diagnostics, lint, type check, and build pass (commands: ...)
 - [ ] The surface renders at <route or story> without console errors

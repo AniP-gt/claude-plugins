@@ -99,6 +99,16 @@ Set the threshold before synthesis. For each `P0` or `P1` claim, require direct 
 
 Use the smallest safe empirical check that can confirm or refute the claim. Record the command or procedure, environment or version, observed result, artifact location, and limits. Never change the researched system to make a claim pass. If execution is unavailable, mark the claim `UNKNOWN` or reduce confidence instead of assuming success.
 
+## Numerical And Quotation Fidelity
+
+For each material number or direct quotation, include a compact fact record in the reply: fact ID, claim ID, source/revision or capture time, exact sentence or table-cell locator, original value or text, unit, population, period, and qualifier. Distinguish measured, derived, converted, and assumed values; an assumption needs an explicit rationale and cannot support a measured claim. If a source cannot be inspected, leave the fact unverified rather than completing it from memory. Citation metadata such as years or versions needs no fact row unless used as substantive evidence.
+
+For a calculation, name the operand fact IDs, formula, conversion factor when applicable, denominator, and rounding. Check compatible entities, populations, periods, units, and accounting bases before combining values; do not pool unlike observations or sum overlapping shares. Preserve source bounds such as "about", "up to", and "at least" in both prose and charts. Keep direct quotations verbatim with their qualifiers; label translations and paraphrases, and never turn an association into causality or a tentative statement into certainty.
+
+Check each delivered edition against its actual final content, including tables, captions, charts, and substantive claims under Sources. Record the edition, content hash when available (otherwise an exact revision and inspected content), claim/fact IDs checked, checker, result, and unchecked pairs. A clean defect list with unread claim/source pairs is incomplete. Markdown verification does not verify an HTML export; any content edit invalidates the affected edition's earlier check. A filename, timestamp, or approval for another edition is insufficient. Recheck numerical fidelity and meaning after conversion or copy polishing, including subject, scope, population, direction, certainty, and causal language.
+
+Remain read-only: keep records in the reply, or return them to the existing writable owner. Do not create a ledger, snapshot, hash file, or verification script, or invoke upstream report-tools commands. If final content or source access is missing, report the exact unchecked pairs and hand off the edition, sources, required repair/check, and fresh verification action. Deliver the available report with those limits; do not label that edition verified or ready.
+
 ## Convergence And Stop Conditions
 
 Research converges when the declared evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence without changing a claim status. Stop immediately when any declared blocking gap prevents a responsible answer, then state the exact missing source, access, decision, or empirical check needed.

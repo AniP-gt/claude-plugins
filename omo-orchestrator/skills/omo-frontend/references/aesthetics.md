@@ -57,6 +57,10 @@ Match implementation complexity to the vision. Maximalist work needs elaborate l
 
 ## Anti-Patterns
 
+- Invented proof: testimonials, quotations, ratings, customer logos, user counts, and prices need project evidence. Omit unsupported proof or leave an explicitly empty owner-fill slot; a sample testimonial is still fabricated.
+- Static promotional badges, duplicated figures, and stat tiles without a decision to support. Keep chips that carry real status, counts, or filter categories. Product previews show real readable states; remove floating reassurance cards, sparkles, and props with no product meaning. State what the interface does in plain copy.
+- A repeated eyebrow-heading-subtitle formula in every section. Keep explanatory copy only when it adds information; each required datum and input keeps its own place even when decorative repetition is removed.
+
 - Freestyling without a direction: rounded-2xl on everything, three feature cards in a grid, generic font, lorem ipsum.
 - **Coloured bars along one side of a box, rounded or square, for decoration or state.** A feature card with `border-top: 4px solid <accent>` or a callout with `border-l-4 border-primary` has the same problem. A `::before`/`::after` bar, inset `box-shadow`, hard-stop gradient band, or gradient `border-image` is not a workaround. Also avoid accent underlines on headings, tabs, or links, and accent outlines 2px or wider on rounded cards, including inset rings. Replace these treatments with a tonal surface, accent text, a leading glyph, or spacing; encode hover/selected/active state with ink-alpha washes and a selection glyph. Preserve keyboard `focus-visible` rings, validation borders on form inputs, neutral 1px hairlines/dividers, table rules, and neutral blockquote rules. Apply this to pre-existing instances on surfaces you touch, but retain an edge required by a user-designated visual target and record that reference exception.
 - Emojis as icons, in markup, alt text, or visible UI.

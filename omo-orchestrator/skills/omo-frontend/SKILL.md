@@ -67,6 +67,8 @@ Record the chosen branch and the system location in the task ledger (`.claude/om
 
 ## Phase 3: Direction (mandatory before any code)
 
+For each changed screen, inventory every required input, datum, label, and piece of copy by name in the implementer brief. State the primary action, information priorities, and what will be left out on purpose. For existing UI, define states and widths and capture the before set through `omo-visual-qa` before the first edit; a reconstruction after editing is not a baseline. Missing capture access is an explicit QA gap, never an invented before image.
+
 Write 1 to 2 sentences covering:
 
 1. **Purpose.** What problem does this solve, and for whom?
@@ -98,6 +100,8 @@ Record the source, mechanism, reuse decision, and missing behavior in the implem
 4. Read the implementer's report and diff. Check it against the brief yourself before QA.
 
 ## Phase 5: Verify
+
+Before QA, remove elements with no user task or information purpose using `references/aesthetics.md`. Reconcile the result against the named required-content inventory: do not merge separate required inputs, drop data, or shorten required copy as cleanup. Record removals in the brief. Each subsequent repair names one change and its owned regions (a shared-token fix may own all affected regions); avoid an unscoped whole-page redesign during a fix pass.
 
 1. **Token and edge-stripe audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing). Inspect side borders, pseudo-elements, inset shadows, hard-stop gradients, and `border-image` for the same visual stripe; classify each hit against the aesthetics exceptions and verify it in rendered QA. This is a source inspection, not an automated linter pass.
 2. **Consistency checklist.** Every color is a token. Every spacing value is on the scale. Every component follows the existing composition pattern. Every interactive element has hover, active, focus-visible, and disabled states. Zero magic numbers for visual properties. Any NO means not done.
