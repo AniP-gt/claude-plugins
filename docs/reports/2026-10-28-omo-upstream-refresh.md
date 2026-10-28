@@ -64,3 +64,14 @@ Iteration 2（本文変更なし、さらに新規executor）: A/B/Cすべて○
 ## 公開・インストール
 
 ユーザーが今回のセッションに限りコミット・pushとplugin更新を明示許可。skillの既定の「pushしない」より今回の指示を優先する。開始時のclaude-pluginsは `main`、`74c5587` でクリーン、origin/mainと一致。無関係な変更はなかった。更新対象は既存のuser/local両scopeの `omo-orchestrator@AniP-gt`。
+
+実施結果:
+
+- `2617031`（feat、1.59.0）をコミットし、`git push origin main` 成功（`74c5587..2617031 main -> main`）。`git ls-remote`でもリモートHEADの一致を確認。
+- `claude plugin marketplace update AniP-gt`: 成功。AniP-gtはこの作業ディレクトリを参照するlocal marketplace。
+- `claude plugin update omo-orchestrator@AniP-gt --scope user --json`: outcome=ok、1.58.1→1.59.0。
+- 同コマンドの `--scope local`: outcome=ok、1.58.1→1.59.0。
+- `claude plugin list --json`で両scopeのversion/folderVersionが1.59.0であることを確認。
+- Claude Code再起動で適用。実行中の利用者セッションは終了させていない。
+
+この実施結果だけを追記するdocsコミットを作成し、通常pushする。plugin配下の追加変更はないためバージョン再更新は不要。
