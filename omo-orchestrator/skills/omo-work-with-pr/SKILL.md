@@ -41,7 +41,7 @@ Replaces: follow the MODE.md as the procedure for that flow. This file applies o
 
 Review responses, conflict resolution, and refactors added after the PR was opened usually bypass the implement-review loop. Before calling such a change done, run these on the cumulative branch diff (`git diff <base>...HEAD` plus uncommitted work), not only on the latest fix. Do them without asking first; "should I also review / update the body / reply?" leaves the user to request each step separately.
 
-1. Run `omo-orchestrator:omo-review` (it fixes what it finds), even for a one-line fix. When a commit already holds the fix, review the branch diff anyway; the review edits the working tree only.
+1. Run `omo-orchestrator:omo-review` (it fixes what it finds), even for a one-line fix and even when the fix touches only docs or code comments: a sentence rewritten to answer a reviewer is a new claim about the code and needs the same check against the code. When a commit already holds the fix, review the branch diff anyway; the review edits the working tree only.
 2. Compare the current PR body with the cumulative diff and draft an updated body when any of these hold (if the body cannot be read, say so and draft only the additions):
    - A changed file or behavior is not explained. When files outside the component named in the title changed, say why they had to change.
    - A statement became stale after the follow-up (method names, notification destinations, conditions, limits).

@@ -8,7 +8,7 @@ user-invocable: true
 
 # OMO Review
 
-Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Treat it as a PR-style gate with one completion state: `APPROVE`.
+Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Docs and code comments that describe behavior count as behavior changes for this gate; "docs only" is not a reason to skip it. Treat it as a PR-style gate with one completion state: `APPROVE`.
 
 ## Modes
 
