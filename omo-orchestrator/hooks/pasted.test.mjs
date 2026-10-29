@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { handsOverIssue, handsOverReviewComments, recordTurnStart, run, wantsChange, wantsReview } from "./preflight.mjs";
+import { buildPlanContext, handsOverIssue, handsOverReviewComments, recordTurnStart, run, wantsChange, wantsPlan, wantsReview } from "./preflight.mjs";
 import { loadSnapshot } from "./turn-snapshot.mjs";
 import { detectKeyword, stripPasted } from "./ulw-keyword.mjs";
 
@@ -123,4 +123,89 @@ test("route order: review thread beats an issue link, and an issue link beats a 
   assert.match(route("`https://github.com/o/r/issues/42` とは別件、ログイン処理を修正して"), /omo-plan/);
   assert.match(route("https://github.com/o/r/pull/12#discussion_r1 と https://github.com/o/r/issues/42"), /follow-up changes to an existing PR/);
   assert.doesNotMatch(route("https://github.com/o/r/pull/12#discussion_r1 と https://github.com/o/r/issues/42"), /github-triage/);
+});
+
+test("a plan or design request routes to omo-plan with the planning agents", () => {
+  for (const prompt of ["認証の設計をして", "移行の計画を立てて", "段取りを考えて", "make a plan for the retry logic", "Design the cache layer"]) {
+    assert.equal(wantsPlan(prompt), true, prompt);
+    const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+    assert.match(output, /omo-plan-consultant/, prompt);
+    assert.match(output, /omo-planner/, prompt);
+  }
+});
+
+test("plan and design inside names, paths, slash commands, or pastes do not route to planning", () => {
+  for (const prompt of ["omo-plan の description を見て", "plan.md を開いて", "docs/design/x を見て", "planner は何？", "/omo-plan 認証の設計", `${paste("設計メモ")}\nこれ何？`]) {
+    assert.equal(wantsPlan(prompt), false, prompt);
+  }
+});
+
+test("a change request that mentions plan or design keeps the change checklist and only offers the planning agents", () => {
+  for (const prompt of ["設計書の誤字を直して", "Fix the bug where free plan users cannot log in", "update the design tokens", "設計どおりに修正して"]) {
+    const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+    assert.match(output, /Who is affected/, prompt);
+    assert.match(output, /typo fix, a wording change/, prompt);
+    assert.match(output, /If the prompt also asks for a plan or a design/, prompt);
+  }
+  const plain = run({ hook_event_name: "UserPromptSubmit", prompt: "バグを修正して" }, noRecord);
+  assert.doesNotMatch(plain, /omo-plan-consultant/);
+});
+
+test("a plan request without a change verb gets the plan block with the typo exemption", () => {
+  const output = run({ hook_event_name: "UserPromptSubmit", prompt: "認証の設計をして" }, noRecord);
+  assert.doesNotMatch(output, /Who is affected/);
+  assert.match(output, /typo fix, a wording change, or a config value change/);
+});
+
+test("a plan word before sentence punctuation still counts, a file extension does not", () => {
+  for (const prompt of ["Please draft a plan.", "Draft the design.", "plan, then build"]) assert.equal(wantsPlan(prompt), true, prompt);
+  for (const prompt of ["open plan.md", "see design.json"]) assert.equal(wantsPlan(prompt), false, prompt);
+});
+
+test("a product tier named プラン is not a plan request", () => {
+  for (const prompt of ["料金プランの表示を確認して", "無料プランの上限は？"]) assert.equal(wantsPlan(prompt), false, prompt);
+  assert.equal(wantsPlan("プランを立てて"), true);
+});
+
+test("route order: an issue link beats a plan request, and a review beats both", () => {
+  const issue = run({ hook_event_name: "UserPromptSubmit", prompt: "https://github.com/o/r/issues/42 の設計をして" }, noRecord);
+  assert.match(issue, /github-triage/);
+  assert.doesNotMatch(issue, /omo-plan-consultant/);
+});
+
+test("a review request with a design word still routes to review", () => {
+  assert.match(run({ hook_event_name: "UserPromptSubmit", prompt: "この設計をレビューして" }, noRecord), /single review/);
+});
+
+test("a request whose object is the plan itself gets the plan block even when a change word appears", () => {
+  for (const prompt of ["Create a plan for the cache layer", "移行の計画を立てて", "write a design for the import job", "DB移行の段取りを考えて", "The import is slow. Please write a plan for the migration."]) {
+    const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+    assert.match(output, /This prompt asks for a plan or a design/, prompt);
+  }
+  assert.match(run({ hook_event_name: "UserPromptSubmit", prompt: "make the design responsive and fix the header" }, noRecord), /Who is affected/);
+  assert.match(buildPlanContext(), /also asks for the change itself/);
+  const both = run({ hook_event_name: "UserPromptSubmit", prompt: "認証まわりを設計して実装して" }, noRecord);
+  assert.match(both, /Who is affected/);
+  assert.match(both, /If the prompt also asks for a plan or a design/);
+});
+
+test("a feature named after a plan or design is a change request, not a plan request", () => {
+  for (const prompt of ["Create a design token editor", "Create a plan selector for the billing page", "設計図を書き込む処理を修正して", "Add a button to create a plan for paid users", "設計図を作成する処理を修正して"]) {
+    assert.match(run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord), /Who is affected/, prompt);
+  }
+});
+
+test("a plan request that also carries a change verb keeps the change checks", () => {
+  for (const prompt of ["Create a plan for the migration and implement it.", "Design the cache layer and implement it.", "ログインのバグを修正して。移行の計画を立てて。"]) {
+    const output = run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+    assert.match(output, /This prompt asks for a plan or a design/, prompt);
+    assert.match(output, /Who is affected/, prompt);
+  }
+  assert.doesNotMatch(run({ hook_event_name: "UserPromptSubmit", prompt: "認証の設計をして" }, noRecord), /Who is affected/);
+});
+
+test("plan detection stays linear on long runs of newlines", () => {
+  const started = Date.now();
+  run({ hook_event_name: "UserPromptSubmit", prompt: `${"\n".repeat(100000)}x` }, noRecord);
+  assert.ok(Date.now() - started < 500, `took ${Date.now() - started}ms`);
 });

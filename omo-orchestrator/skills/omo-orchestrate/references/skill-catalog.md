@@ -38,7 +38,6 @@ Controllers choose the `LOAD_SKILLS` line of every delegation prompt from this t
 | `omo-work-with-pr` | main-only | A change is being prepared for a PR, or PR review threads need answers. Mode: `github-triage` (triage GitHub issues or PRs) |
 | `omo-git-master` | main-only | A task needs a commit, rebase, squash, or a git-history answer (who wrote, when was X added) |
 | `omo-init-deep` | main-only | The user asks to generate or maintain a hierarchical Claude Code rule set for a worktree |
-| `omo-lsp-setup` | main-only | A project needs a language server, or a "no LSP server configured" error appears |
 | `omo-frontend` | both | `omo-implementer only` (unrestricted Bash): The task touches pages, components, styling, layout, motion, tokens, or themes |
 | `omo-remove-ai-slop` | both | The task is to clean up AI-generated patterns in recent changes (deslop) |
 | `omo-guardrails` | worker | Safety rules are needed beyond the preloaded set: anti-duplication, context guard, circuit breaker, error recovery (agents without preloaded guardrails, such as omo-researcher and omo-planner) |

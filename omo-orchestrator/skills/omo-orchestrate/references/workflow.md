@@ -6,7 +6,6 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 
 | Component | Purpose |
 |---|---|
-| `omo-coordinator` | Intent routing, delegation, verification, and completion checks |
 | `omo-planner` | File-level implementation planning |
 | `omo-plan-consultant` | Read-only intent classification, exploration, affected-user ideal-state and gap analysis, and planning directives |
 | `omo-plan-reviewer` | Read-only plan executability check with `OKAY` or `REJECT` |

@@ -4,7 +4,8 @@
 // user did not ask for it. When it asks for a review, route it to omo-review, the single review entry, which
 // a model does not pick on its own for a plain "review this" request. When it hands over review comments
 // on an existing PR, ask for the follow-up steps (review, reply drafts, PR body) that a fix there skips.
-// Change requests and GitHub issue links are sent to omo-plan before the first edit.
+// Change requests and GitHub issue links are sent to omo-plan before the first edit. A prompt that asks for
+// a plan or a design is sent to omo-plan with the consultant and planner agents, which a model skips on its own.
 // ulw prompts are left to ulw-keyword.mjs, which loads a fuller workflow.
 // Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
 import { fileURLToPath } from "node:url";
@@ -21,6 +22,24 @@ const CHANGE_PATTERNS = [
     `${B}(?:implement|add|fix|refactor|change|update|modify|rewrite|migrate|remove|delete|build|create|rename|support)${E}`,
     "i",
   ),
+];
+
+// "plan" and "design" also appear in names such as omo-plan or plan.md, so a hyphen, slash, or a dot that starts an
+// extension next to the word does not count; a sentence-ending dot does.
+const PLAN_PATTERNS = [
+  // Bare プラン is left out: 料金プラン and 無料プラン name a product tier, not a request for a plan.
+  /計画|設計|段取り|プラン(?:を|は)?(?:立て|作成|考え|練)/,
+  /(?<![A-Za-z0-9_./-])(?:plan|design)(?![A-Za-z0-9_/-]|\.[A-Za-z0-9_])/i,
+];
+
+// A request whose object is the plan itself. It wins over the change verbs, which also fire on such prompts
+// (移行, create), so planning is not mistaken for a change request. Only the main clause counts: in Japanese the
+// request ends the sentence (移行の計画を立てて), in English it starts one (Create a plan for ...). A clause that
+// only describes the change (設計図を作成する処理を修正して, Add a button to create a plan) stays a change request.
+const PLAN_REQUEST_PATTERNS = [
+  /(?:計画|設計|段取り|プラン)(?:案|図)?(?:を|は|だけ|も)?(?:立てて|作って|作成して|考えて|練って|書いて|して)(?:ください|ほしい|欲しい|もらえる|くれる)?[？?。.!！\s]*$/m,
+  /(?:^|[.!?]\s+)(?:please\s+)?(?:create|make|write|draft|prepare|propose|come up with)\s+(?:(?:me|us)\s+)?(?:a|an)\s+(?:[A-Za-z-]+\s+){0,2}?(?:plan|design)(?=\s*$|\s*[.,;:!?]|\s+(?:for|of|to|that|on|about|with|so)\b)/im,
+  /^[ \t]*(?:plan|design)\s+(?:the|a|an|our|my)\s/im,
 ];
 
 const REVIEW_PATTERNS = [/レビュー|監査|指摘だけ|指摘して/, new RegExp(`${B}(?:review|audit)${E}`, "i")];
@@ -49,24 +68,42 @@ export function handsOverIssue(prompt) {
   return ISSUE_URL_PATTERN.test(userText(prompt));
 }
 
+export function wantsPlan(prompt) {
+  const text = userText(prompt);
+  if (text.trimStart().startsWith("/")) return false;
+  return PLAN_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+export function asksForPlan(prompt) {
+  const text = userText(prompt);
+  if (text.trimStart().startsWith("/")) return false;
+  return PLAN_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 export function wantsChange(prompt) {
   const text = userText(prompt);
   return CHANGE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-export function buildContext() {
+// The pre-edit checks for a change request. A plan request that also carries a change verb gets them too.
+const CHANGE_CHECKLIST = [
+  "Before the first edit, check these briefly and keep the result to a few lines:",
+  "1. Who is affected besides the requester: callers of the code, API or CLI users, operators, jobs, other agents.",
+  "2. Up to three cases the request leaves undefined or contradicts (empty, boundary, repeat, concurrent,",
+  "   partial failure, existing data). Ask the user only when the answer changes a reachable result;",
+  "   otherwise pick the reading that matches existing code and say which one you used.",
+  "3. Search the callers of every existing function, config key, or command you will modify.",
+  `   \`node "${IMPACT_SCRIPT}" --symbol <name>\` lists callers and related tests in a few lines;`,
+  "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
+];
+
+export function buildContext({ withPlanAgents = false } = {}) {
   return [
     MARKER,
     "This prompt may ask for a code change. If it does not, ignore this block.",
-    "Before the first edit, check these briefly and keep the result to a few lines:",
-    "1. Who is affected besides the requester: callers of the code, API or CLI users, operators, jobs, other agents.",
-    "2. Up to three cases the request leaves undefined or contradicts (empty, boundary, repeat, concurrent,",
-    "   partial failure, existing data). Ask the user only when the answer changes a reachable result;",
-    "   otherwise pick the reading that matches existing code and say which one you used.",
-    "3. Search the callers of every existing function, config key, or command you will modify.",
-    `   \`node "${IMPACT_SCRIPT}" --symbol <name>\` lists callers and related tests in a few lines;`,
-    "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
+    ...CHANGE_CHECKLIST,
     ...PLAN_FIRST,
+    ...(withPlanAgents ? PLAN_AGENTS : []),
     "</omo-preflight>",
   ].join("\n");
 }
@@ -82,6 +119,30 @@ const PLAN_FIRST = [
   "`omo-orchestrator:omo-review` with args `review-loop <plan-path>`; dependent waves across many files ->",
   "`omo-orchestrator:omo-ultrawork` with args `ulw-execute <plan-path>`.",
 ];
+
+// Added when a change request also asks for a plan or a design: omo-plan then runs its planning agents.
+const PLAN_AGENTS = [
+  "If the prompt also asks for a plan or a design (not just a change to something named plan or design), omo-plan",
+  "runs its planning agents instead of writing the plan in the main context: `omo-plan-consultant`, then",
+  "`omo-planner`, then `omo-plan-reviewer`.",
+];
+
+export function buildPlanContext({ withChecklist = false } = {}) {
+  return [
+    MARKER,
+    "This prompt asks for a plan or a design. If it only asks about an existing one, ignore this block.",
+    "Load `omo-orchestrator:omo-plan` with the Skill tool and follow it as a plan request. Run its planning",
+    "agents instead of writing the plan in the main context: `omo-plan-consultant` first, then `omo-planner`",
+    "with the consultant's findings (its dispatch carries a `LOAD_SKILLS` line), then `omo-plan-reviewer`.",
+    "When the prompt also asks for the change itself, omo-plan's approval scope for a change request applies:",
+    "approval also starts the recommended executor.",
+    "Skip omo-plan only when the whole request is a typo fix, a wording change, or a config value change.",
+    // Telling "移行の計画を立てて" (移行 is a noun) from "計画を立てて、実装して" needs more than keywords,
+    // so a plan request with a change verb keeps the change checks and lets the model judge.
+    ...(withChecklist ? ["If the prompt also asks for a code change, apply these checks to it too.", ...CHANGE_CHECKLIST] : []),
+    "</omo-preflight>",
+  ].join("\n");
+}
 
 export function buildIssueContext() {
   return [
@@ -138,7 +199,9 @@ export function run(input, { env = process.env, record = recordTurnStart } = {})
   if (handsOverReviewComments(input.prompt)) context = buildFollowUpContext();
   else if (wantsReview(input.prompt)) context = buildReviewContext();
   else if (handsOverIssue(input.prompt)) context = buildIssueContext();
-  else if (wantsChange(input.prompt)) context = buildContext();
+  else if (asksForPlan(input.prompt)) context = buildPlanContext({ withChecklist: wantsChange(input.prompt) });
+  else if (wantsChange(input.prompt)) context = buildContext({ withPlanAgents: wantsPlan(input.prompt) });
+  else if (wantsPlan(input.prompt)) context = buildPlanContext();
   else return "";
   const output = {
     hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context },
