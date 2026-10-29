@@ -77,6 +77,8 @@ Choose by spatial shape, not product label. Settings and docs both want a fixed 
 
 ## Feedback Thresholds
 
+Action controls keep one box across idle, hover, loading, success, and disabled. Reserve slots for the longest state label and any icon/spinner, swapping their contents without changing width or height at the same locale and viewport. Keep accessible names and status announcements accurate; sizing copies must not be announced twice. This applies to a control's state changes, not naturally expanding content such as validation details or a recipient list. Never clip translations or remove required content to force equal dimensions. Send per-state rendered rectangle comparisons to `omo-visual-qa`.
+
 | Event | Feedback |
 |---|---|
 | Press, tap, drag start | State change on the element in the same frame |

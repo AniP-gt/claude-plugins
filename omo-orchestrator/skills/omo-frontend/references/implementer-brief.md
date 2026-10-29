@@ -41,12 +41,17 @@ User-designated visual target (screenshot path, URL, or none) and what must matc
 - Modify: ...
 - Do not touch: ...
 
+## Constraint and proof map
+One row per applicable constraint: source path/locator | owned file, screen and state | gap or intended behavior | scoped fix | planned proof | evidence and status.
+Include applicable nested project instructions, design rules, selected skill references, and user requirements. Mark inaccessible sources and pending captures explicitly; proposed files are not inspected evidence. For greenfield, record absent components/manifests and capture the first draft after building. Close rows only with passing proof after the final edit.
+
 ## States and behavior
 Required content: name every required input, datum, label, and copy item separately.
 Primary action and information priorities: ...
 Left out on purpose: ...
 Before evidence: capture paths, states, widths, and capture time before edits (or explicit gap).
 Default, hover, active, focus-visible, disabled, loading, empty, error, as applicable.
+Changed action controls keep the same width and height across their states at a given locale/viewport. Reserve label/icon/spinner slots sized for the longest state label; compare rendered rectangles across idle/hover/loading/success/disabled. Do not freeze dynamic content regions or clip translations to stabilize a button.
 Scroll owner for any shell. Reduced-motion behavior for any animation.
 
 ## Constraints
@@ -60,6 +65,7 @@ Scroll owner for any shell. Reduced-motion behavior for any animation.
 - [ ] Each listed file exists or is changed as described
 - [ ] Grep of changed styles finds no raw color or arbitrary px outside tokens
 - [ ] Every listed state is implemented
+- [ ] Changed action controls have equal rendered dimensions across applicable states at each required locale/viewport; pending probes remain open
 - [ ] Every required-content item remains separately present; removals have a stated purpose
 - [ ] Any external reuse follows the recorded decision and retains required notices; reference defects have explicit checks
 - [ ] Project diagnostics, lint, type check, and build pass (commands: ...)

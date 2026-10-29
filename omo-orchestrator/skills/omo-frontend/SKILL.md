@@ -49,12 +49,12 @@ If the request is still ambiguous after two reads, ask one focused question ("mi
 
 Before writing a single line of CSS, HTML, JSX, or component code:
 
-1. Search for the design system: `DESIGN.md`, `design-system.md`, token files, theme files, CSS custom properties, Tailwind config, component library.
-2. Read at least 5 to 10 existing UI components near the target.
-3. Read `package.json` (or the equivalent). Record the framework, styling approach, Tailwind version, and which motion or icon libraries are actually installed.
+1. Discover applicable project instructions (including nested `AGENTS.md` / `CLAUDE.md`) and the design system: `DESIGN.md`, `design-system.md`, token files, theme files, CSS custom properties, Tailwind config, component library. Read applicable sources and the references routed by this task; record unread or inaccessible sources as gaps, not checked rules.
+2. Read 5 to 10 existing UI components near the target, or all available when fewer exist. A new project with none records that absence and takes the greenfield branch; do not invent component evidence.
+3. Read `package.json` (or the equivalent). Record the framework, styling approach, Tailwind version, and which motion or icon libraries are actually installed. If no manifest exists, record that absence and distinguish proposed infrastructure from installed dependencies.
 4. Answer every question, with file:line evidence: naming convention, spacing system, color usage, typography scale, radius and depth strategy, composition pattern, scroll ownership in shells.
 
-Do not proceed until every answer is written down.
+Write every answer or explicit absence before proceeding. Before implementation, map each applicable constraint to its source, owned file/screen/state, planned fix, and specific proof in the implementer brief. Label evidence still to be collected as planned. For new screens, capture the first draft after implementation; no before image exists. Small changes may reuse an existing constraint record, checking it against the changed scope. Close a gap only after its planned proof passes on the final surface; unavailable evidence stays open.
 
 ## Phase 2: Pick a branch
 
@@ -105,7 +105,7 @@ Before QA, remove elements with no user task or information purpose using `refer
 
 1. **Token and edge-stripe audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing). Inspect side borders, pseudo-elements, inset shadows, hard-stop gradients, and `border-image` for the same visual stripe; classify each hit against the aesthetics exceptions and verify it in rendered QA. This is a source inspection, not an automated linter pass.
 2. **Consistency checklist.** Every color is a token. Every spacing value is on the scale. Every component follows the existing composition pattern. Every interactive element has hover, active, focus-visible, and disabled states. Zero magic numbers for visual properties. Any NO means not done.
-3. **Rendered QA handoff.** Give `omo-visual-qa` the complete route, state, reference, project-requirement, and content-stress list. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison for a user-designated visual target; label mechanism-only references separately and verify their adaptations against the brief and existing design system.
+3. **Rendered QA handoff.** Give `omo-visual-qa` the complete route, state, reference, project-requirement, content-stress list, and constraint-to-proof mapping. Compare changed action controls' `getBoundingClientRect()` width and height across idle, hover, loading, success, and disabled at each required locale and viewport; unimplemented states are N/A with a reason. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison for a user-designated visual target; label mechanism-only references separately and verify their adaptations against the brief and existing design system.
 4. **Flatness check.** A bug-free render that reads generic next to the direction is still a failure. Raise the design (material, color ramp, type moment, the signature) and re-run QA on fresh evidence.
 
 Report done only when `omo-visual-qa` returns `APPROVE` on evidence captured after the final edit. `INCONCLUSIVE` is not done; report the missing surface or tool and the next action.
