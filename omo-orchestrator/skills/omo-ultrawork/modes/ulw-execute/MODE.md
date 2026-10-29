@@ -163,6 +163,7 @@ artifacts: <paths>
 cleanup: <receipts>
 review: APPROVE (<reviewer evidence>)
 external review: self-review <verdict>, <report path> | SKIPPED (self-review unavailable) | SKIPPED (REVIEW_SKILL: none)
+codex: OK (self-review, <report path>) | OK (direct, <output path>)
 ```
 
 ## Delivery And Git Boundaries

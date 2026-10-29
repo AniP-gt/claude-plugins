@@ -1,6 +1,6 @@
 ---
 name: omo-review
-description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes. Use proactively after editing 2+ files or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
+description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes, with a required Codex CLI review. Use proactively after editing 2+ files or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
 argument-hint: [mode] [diff-or-goal]
 allowed-tools: Read, Grep, Glob, Bash, Task, Skill, Edit, Write, Agent, TodoWrite
 user-invocable: true
@@ -35,7 +35,7 @@ This is the one review entry; other review skills are stages it or a controller 
 - Inside an active controller (`omo-ultrawork` including its modes `ulw-execute` and `mass-ulw`, `omo-ralph-loop`, the `omo-review` mode `review-loop`), the controller's final gate already runs its own omo gate and a review-only `self-review`; do not start a second review.
 - When the user asks for implementation plus review until it passes, route to the `review-loop` mode (see Modes).
 - Otherwise, review the current local changes in two lanes, one after the other, so that no lane reads a tree another lane is changing. `review-pr` never runs here; it is for GitHub PRs and only the user invokes it. The second lane edits the working tree; it never commits, pushes, or posts.
-  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review` with args `review-work …` instead (the `review-work` mode), which adds the QA lane. Make no edits while it runs. The `omo-reviewer` dispatch carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies it otherwise.
+  1. omo lane first: dispatch an `omo-reviewer` agent with the Review Areas and Report Contract below, on the unchanged tree. When the review closes out implemented work and real-surface QA evidence is needed, run `omo-orchestrator:omo-review` with args `review-work …` instead (the `review-work` mode), which adds the QA lane; its brief says it was invoked by the `omo-review` default flow, which runs the Codex lane in step 3. Make no edits while it runs. The `omo-reviewer` dispatch carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies it otherwise.
   2. self-review lane after the omo lane returns: when `self-review` is in the available skills list, dispatch an `omo-external-reviewer` agent naming `self-review`, with this contract and without `--dry-run`:
 
      ```
@@ -62,6 +62,8 @@ This is the one review entry; other review skills are stages it or a controller 
      ```
 
      When `self-review` is not listed, record `self-review: SKIPPED (self-review unavailable)`.
+  3. Codex lane, always: follow `references/codex-lane.md`. The `self-review` lane meets it when its report shows Codex ran; otherwise run Codex directly (in parallel with the omo lane when `self-review` is not listed, else after it returns). `codex: NOT_EXECUTED` blocks `APPROVE`.
+- Merge the Codex lane's confirmed findings with the omo lane's open findings before the steps below; when `self-review` did not run, nothing fixes them, so they go back to the caller.
 - Merge both results with `omo-review` `modes/review-loop/references/outer-gate.md` § 6c and § 6d: the stricter verdict decides, using the self-review lane's final (re-review) verdict, and directives are deduplicated by file and defect mechanism. Treat each omo-lane finding that the self-review fix log addresses as fixed only after re-reading the changed lines, then take the omo lane's verdict from its findings that are still open: when none of its blocking findings remain, it counts as `APPROVE` (or stays `INCONCLUSIVE` while an evidence gap remains). Re-run the validation for every file in the agent's `CHANGED FILES`. When the omo lane ran the `review-work` mode with QA evidence and the self-review lane changed files, re-run the QA scenarios those files affect before approving. Remaining findings, `NEEDS DECISION` items, any `ask` that changes behavior or a contract, and any `CONTRACT DEVIATIONS` go back to the caller.
 
 ## Review Areas
@@ -129,6 +131,7 @@ Before recording a blocking finding, follow this sequence:
 - Approval evidence that supports every required final check when the decision is `APPROVE`.
 - Release or security escalation needed, if applicable.
 - Self-review lane, when it ran: pre-fix and final verdicts, the fixes applied with their files, `CHANGED FILES`, `NEEDS DECISION` items, and `CONTRACT DEVIATIONS`.
+- Codex lane status line (`codex: OK (self-review, <path>) | OK (direct) | NOT_EXECUTED - <reason>`), and its findings labeled `(codex)`.
 
 Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 
@@ -138,7 +141,7 @@ Do not convert every checklist item into a finding. A finding must be actionable
 
 ## Final Outcome Rules
 
-- `APPROVE` is the sole completion state. Return it only when evidence verifies requested scope, task-specific constraints, dependency and retry state, executable QA evidence, validation results, and handoff completeness. Apply content-only checks, including unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior, only when the original task, repository, or plugin contract requires them. For release-facing changes, also verify version agreement across every manifest that declares the version.
+- `APPROVE` is the sole completion state. Return it only when evidence verifies requested scope, task-specific constraints, dependency and retry state, executable QA evidence, validation results, and handoff completeness. Apply content-only checks, including unsupported automation, hooks, runtime engines, scripts, dependencies, and provider-specific behavior, only when the original task, repository, or plugin contract requires them. For release-facing changes, also verify version agreement across every manifest that declares the version. A review whose Codex lane is `NOT_EXECUTED` is never `APPROVE` (see `references/codex-lane.md`).
 - `REQUEST_CHANGES` requires confirmed findings. Append the outcome and evidence to the handoff ledger, then route only the affected area through a bounded targeted fix, affected validation, and re-review.
 - `INCONCLUSIVE` means required evidence is missing, unavailable, or untrustworthy. It blocks completion. Append the exact evidence gap, blocker, owner, and next action to the handoff ledger before obtaining the evidence or handing the blocker off.
 

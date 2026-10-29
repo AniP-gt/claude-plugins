@@ -85,6 +85,7 @@ Append to `CYCLE_LOG`; never overwrite. This is loop bookkeeping, not a review.
 
 - **External review**: self-review | SKIPPED (self-review unavailable) | SKIPPED (REVIEW_SKILL: none) | NOT_EXECUTED
 - **External review verdict**: Approve | Needs Attention | Request Changes | n/a
+- **Codex lane**: OK (self-review, {path}) | OK (direct, {path}) | NOT_EXECUTED - {reason}
 - **review-work outcome**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE | NOT_EXECUTED
 - **Phase 6 decision**: APPROVE | REQUEST_CHANGES | INCONCLUSIVE (mandatory final gate must run)
 - **External review output**: {absolute path, or n/a}
@@ -139,6 +140,7 @@ One row per gate invocation; preserve earlier report paths. No empty template ro
 ### Lane and Gate Coverage
 - Copilot lane: ran / SKIPPED (not installed) / NOT_EXECUTED
 - External review gate: self-review / SKIPPED (self-review unavailable) / SKIPPED (REVIEW_SKILL: none) / NOT_EXECUTED
+- Codex lane: OK (self-review) / OK (direct) / NOT_EXECUTED - {reason}
 - Other lanes with NOT_EXECUTED: {list or none}
 
 ### External Library Contract Checks

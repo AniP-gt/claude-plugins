@@ -15,6 +15,7 @@ Use this skill after implementation and before final handoff.
 3. If required QA is missing, stale, unreadable, or cannot be tied to the current state, obtain it first; when blocked, return `INCONCLUSIVE` with the missing rows, blocker, owner (or unknown), and next exact action. Do not launch the reviewer while required QA is incomplete. An unexecuted check is not an observed failure.
 4. Use `Task` to launch exactly one fresh, independent, read-only final reviewer after all required QA rows are supported. Give it the goal, constraints, current diff, and QA artifacts. A review after a fix must use a new task and updated evidence; a previous approval does not approve a later change.
 5. If `Task` or an independent reviewer is unavailable, do not substitute a self-review. Return `INCONCLUSIVE`. Missing, empty, or stalled reviewer output is also `INCONCLUSIVE`, never approval.
+6. Codex lane: when the brief says this gate was invoked by the `omo-review` default flow, the `review-loop` outer gate, or a controller final gate (`omo-ultrawork` and its modes, `omo-ralph-loop`), that caller runs it; record `codex: run by caller`. Otherwise run it alongside step 4, following `omo-review` `references/codex-lane.md`. A `codex: NOT_EXECUTED` result is `INCONCLUSIVE`, never approval.
 
 ## Evidence Reuse
 

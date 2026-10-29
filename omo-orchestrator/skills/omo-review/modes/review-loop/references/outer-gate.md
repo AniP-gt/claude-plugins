@@ -19,6 +19,7 @@ They pass their own review base as `CYCLE_START_SHA` and their goal, constraints
 |---|---|---|---|
 | external review | `self-review` (review only), always when installed | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review` (args `review-work …`) | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
+| Codex lane (6b3) | Codex CLI, through `self-review` or directly | always | `self-review` report, or `{OUTER_DIR}/cycle{OUTER_CYCLE}_codex_{TIMESTAMP}.md` |
 
 ## Timestamp
 
@@ -57,6 +58,10 @@ This plugin does not ship `self-review`; it uses the one the user or project ins
 3. When `self-review` is not installed: record `external review: SKIPPED (self-review unavailable)` in `CYCLE_LOG`.
 
 Run 6b and 6b2 in parallel, because the reviews are independent and read the same diff. A Skill call runs in the calling context, so dispatch `self-review` to an `omo-external-reviewer` agent, naming the skill and passing the contract below verbatim, while 6b2 proceeds; wait for every lane before 6c. Freeze the tree while they run: no edits until all reports are back. Record `external review: self-review` in `CYCLE_LOG` when it ran.
+
+### 6b3: Codex lane (always)
+
+Follow `omo-review` `references/codex-lane.md` with `BASE_REF` = `{CYCLE_START_SHA}`. When `self-review` is skipped (`REVIEW_SKILL: none` or not installed), run Codex directly in parallel with 6b2. Otherwise check the `self-review` report's `Codex 実行` line once it is back, and run Codex directly before 6c when that line is not `OK`. Record the `codex:` status line in `CYCLE_LOG`.
 
 ### self-review (review only)
 
@@ -116,7 +121,8 @@ RISK_LEVEL: {RISK_LEVEL}
 Run it even when the external review returned Request Changes; the findings are merged in 6d and skipping it loses the evidence-gap signal. Invoke `Skill(skill: "omo-orchestrator:omo-review", args: "review-work <contract>")`:
 
 ```
-Invoked from omo-review mode review-loop Phase 6b2 as the outer gate.
+Invoked from omo-review mode review-loop Phase 6b2 as the outer gate. The caller
+runs the Codex lane (6b3).
 
 - The diff, GOAL, CONSTRAINTS, BACKGROUND, RISK_LEVEL, and External Library Contract
   evidence are supplied inline below. Do not resolve a GitHub PR.
@@ -141,6 +147,7 @@ The coordinator saves the report to the stated path. If `review-work` cannot run
 
 - `self-review` writes its report in Japanese. Extract the verdict from the `## 判定:` heading (`Approve` / `Request Changes` / `Needs Attention`) and quote the `Findings: must` items verbatim (file, line, description). Also quote the `Findings: should` items: they are fix directives in the same way, unless the fix changes a public API, schema, applied migration, or external contract, contradicts the GOAL or CONSTRAINTS, or conflicts with another finding; those become `ASK_USER`. An `ask` item whose answer could change a fix directive, the GOAL, or a contract becomes `ASK_USER` and pauses before the next iteration. Any other `ask` the code or evidence does not answer is carried to Phase 7 as a question for the user, and the fix pass proceeds. `nit` and `fyi` items are Phase 7 follow-ups.
 - `review-work`: extract the decision (`APPROVE` / `REQUEST_CHANGES` / `INCONCLUSIVE`), blocking findings, and for `INCONCLUSIVE` the exact missing evidence, verbatim.
+- Codex lane run directly: verify each Critical or Major finding per `omo-review` `references/codex-lane.md` § Using the findings before it becomes a fix directive.
 - Do not write a third, competing review report. Append one entry to `CYCLE_LOG` (template in `templates.md`) with both decisions, both absolute report paths, `CYCLE_START_SHA`, `TIMESTAMP`, and the blocking findings carried forward. Never overwrite earlier entries. `CYCLE_LOG` is a real file so the loop can resume after a context reset, and it is the authoritative source for a previous cycle's report paths (never glob for them).
 
 ## 6d: Verdict mapping
@@ -159,6 +166,7 @@ Every gate that ran must clear; the stricter decides.
 | Request Changes (1+ `must`) | any | REQUEST_CHANGES; merge both gates' blocking findings, deduplicated by file and defect mechanism |
 
 - An `INCONCLUSIVE` whose evidence is genuinely unavailable to the loop (production access, a business decision, a third-party response) is an `ASK_USER` escalation that does not reserve another iteration; already dispatched work remains counted. Present the exact missing evidence and pause.
+- Codex lane (6b3): its confirmed Critical or Major findings are fix directives, merged with the other gates' by file and defect mechanism, so the decision is at least REQUEST_CHANGES. `codex: NOT_EXECUTED` turns an APPROVE from the table into INCONCLUSIVE, an `ASK_USER` escalation with the reason and the fix (install or log in to Codex, or add `codex` to `sandbox.excludedCommands`).
 - Nits and `[Suggestion]` findings never affect the decision.
 - A pausing `ASK_USER` does not change the decision. Record `REQUEST_CHANGES` (or the decision the table gives) plus `paused: ASK_USER`, and hold every fix directive until the answer, so the next pass carries all of them together.
 
