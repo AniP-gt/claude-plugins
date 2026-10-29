@@ -16,6 +16,7 @@ Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py lint` (use `--wiki <path>
 | `not_in_index` | Not listed in index.md | Add it to the matching section of index.md |
 | `missing_frontmatter` | No frontmatter | Add it in the format of `<wiki>/CLAUDE.md` |
 | `missing_updated` | No `updated` | Fill in the best date you can determine |
+| `log_md_entries` | Number of dated entries still in `log.md` (old single-file layout) | Move them to the monthly log files following step 4 of the ingest skill |
 
 Next, run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims` (same `--wiki` as lint). For each `repo://<project>/<path>#L<a>-L<b>@<sha>` reference in a page, it checks whether those lines changed between the referenced commit and HEAD. References inside code blocks (``` and ~~~) are skipped. The comparison target is the HEAD of the registered main repository. A reference backed by an unmerged commit in a worktree is judged against the main repository's HEAD until it is merged (files that exist only in the worktree may show up as `missing`). The JSON `issues` contain these statuses.
 
@@ -43,5 +44,5 @@ Read `<wiki>/CLAUDE.md` and `index.md`, then read pages looking for the followin
 
 Fix everything you judge needs fixing without asking the user. Mechanical fixes (adding to the index, filling in frontmatter, fixing links) and content fixes (resolving contradictions, updating outdated statements, splitting or merging pages) are treated the same.
 Write content fixes in English, following the rules in `<wiki>/CLAUDE.md` and the "Language" section of the ingest skill. Do not delete old statements; keep them with strikethrough and a date. Do not delete pages made redundant by a merge; leave a link to the merged page.
-After fixing, add `## YYYY-MM-DD Lint <summary>` in English at the top of `log.md`, and briefly report the fixes by kind.
+After fixing, add `## YYYY-MM-DD Lint <summary>` in English to the monthly log following step 4 of the ingest skill, and briefly report the fixes by kind.
 Only items where the evidence is insufficient to decide the correct content are left unfixed and included in the report as open.

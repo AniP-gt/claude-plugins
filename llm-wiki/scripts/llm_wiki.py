@@ -181,6 +181,10 @@ def cmd_lint(args):
     links = {rel: page_links(t) for rel, t in texts.items()}
     meta_pages = {Path("index.md"), Path("log.md"), Path("CLAUDE.md")}
 
+    def is_meta(rel):
+        # The monthly logs under log/ are history, not content pages
+        return rel in meta_pages or rel.parts[0] == "log"
+
     broken = sorted({(str(rel), l) for rel, ls in links.items() for l in ls
                      if not any(link_matches(l, r) for r in all_rel)})
     inbound = {rel: 0 for rel in texts}
@@ -189,11 +193,11 @@ def cmd_lint(args):
             for r in texts:
                 if r != src and link_matches(l, r):
                     inbound[r] += 1
-    orphans = sorted(str(r) for r, n in inbound.items() if n == 0 and r not in meta_pages)
+    orphans = sorted(str(r) for r, n in inbound.items() if n == 0 and not is_meta(r))
     index_links = links.get(Path("index.md"), set())
-    not_indexed = sorted(str(r) for r in texts if r not in meta_pages
+    not_indexed = sorted(str(r) for r in texts if not is_meta(r)
                          and not any(link_matches(l, r) for l in index_links))
-    content_pages = {r: frontmatter(t) for r, t in texts.items() if r not in meta_pages}
+    content_pages = {r: frontmatter(t) for r, t in texts.items() if not is_meta(r)}
     no_front = sorted(str(r) for r, fm in content_pages.items() if fm is None)
     no_updated = sorted(str(r) for r, fm in content_pages.items()
                         if fm is not None and not re.search(r"^updated:", fm, re.M))
@@ -206,6 +210,7 @@ def cmd_lint(args):
         "not_in_index": not_indexed,
         "missing_frontmatter": no_front,
         "missing_updated": no_updated,
+        "log_md_entries": len(re.findall(r"^## \[?\d{4}-\d{2}-\d{2}", texts.get(Path("log.md"), ""), re.M)),
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
@@ -554,11 +559,11 @@ def session_context(project, wiki, index, pending=0):
     return f"""LLM Wiki ({project}): {wiki}
 A wiki of this repository's design decisions, specs, incident responses, and gotchas. Writing rules: {wiki}/CLAUDE.md.
 How to use it:
-- Write everything that goes into the wiki (pages, index.md, log.md, glossary.md) in English. Report to the user in the user's language.
+- Write everything that goes into the wiki (pages, index.md, the log, glossary.md) in English. Report to the user in the user's language.
 - Before starting investigation, implementation, or review, find and read related pages from the table of contents below. `[[name]]` is `name.md` under {wiki}/wiki/.
 - When unsure about specs, past history, or known bugs, check the wiki instead of guessing. If the table of contents has nothing, Grep {wiki} (including raw/).
 - When delegating investigation or implementation to a subagent, include the paths of related wiki pages in its prompt.
-- When the wiki disagrees with the code, the code wins: fix the wiki without asking the user (keep the old statement with strikethrough and a date, and append to log.md). Mention the fix in one line in your work report.
+- When the wiki disagrees with the code, the code wins: fix the wiki without asking the user (keep the old statement with strikethrough and a date, and add an entry at the top of this month's log/YYYY-MM.md, not log.md). Mention the fix in one line in your work report.
 - When you learn a new design decision, cause of an incident, or gotcha during work, record it at the end of the work following /llm-wiki:ingest without asking, and report the recorded pages.{inbox_note}
 Table of contents (index.md):
 {index_excerpt(index)}"""

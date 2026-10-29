@@ -33,5 +33,5 @@ Update the wiki without asking the user in these cases.
 - The answer you found looks reusable (reasons for design decisions, gotchas, procedures, and so on)
 - A wiki statement disagrees with the code or sources and you judge it needs fixing (the code wins)
 
-Update raw/, pages, index.md, and log.md following the "Language" section and steps 1 and 3-4 of the ingest skill. Write what you write back in English (answer the user in the user's language). Use `Query` in the log.
+Update raw/, pages, index.md, and the monthly log following the "Language" section and steps 1 and 3-4 of the ingest skill. Write what you write back in English (answer the user in the user's language). Use `Query` in the log.
 Mention the updated pages in one line at the end of the answer.

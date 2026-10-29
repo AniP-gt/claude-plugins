@@ -16,7 +16,7 @@ First read `<wiki>/CLAUDE.md` (writing rules) and `<wiki>/index.md` (existing pa
 
 ### Language
 
-- Write everything that goes into the wiki (pages, index.md, log.md, glossary.md) in English. Even when the source or the conversation is in Japanese, translate the facts into English.
+- Write everything that goes into the wiki (pages, index.md, the log, glossary.md) in English. Even when the source or the conversation is in Japanese, translate the facts into English.
 - Keep code, identifiers, paths, commands, error messages, and proper names such as product names exactly as they appear. Write non-English business terms as their English translation, add the original in parentheses on first use, and put the original in `aliases`.
 - Name new pages in English `kebab-case`. Do not rename existing Japanese pages; write the parts you add or rewrite in English.
 - Keep the body of sources saved to raw/ in their original language, and write the header you add at the top (source and similar notes) in English.
@@ -61,10 +61,26 @@ Go to step 3 without asking the user. Only when the user asked to confirm before
 - When a new source contradicts an existing statement and you can judge the new source is correct, fix it without asking. Keep the old statement with strikethrough and a date, and report it in step 5. When you cannot judge which is correct, write both and report it as an open question.
 - Connect related pages with `[[links]]`. When a term appears, add it to `wiki/glossary.md`.
 
-## 4. Update index.md and log.md
+## 4. Update index.md and the monthly log
 
 - `index.md`: add new pages to the matching section as `- [[page]] — one-line description`.
-- `log.md`: add `## YYYY-MM-DD Ingest <title>` at the top (right under the heading), and list the created and updated pages below it. Write the title and descriptions in English.
+- Monthly log: add `## YYYY-MM-DD Ingest <title>` at the top of `log/YYYY-MM.md` for that date (right under the heading), and list the created and updated pages below it. Set the file's `updated` to that date. Write the title and descriptions in English.
+- When the month's file does not exist yet, create it in this form, and add a link to it at the top of the month list in `log.md` (use the same link style as the existing links there; in a new wiki, `[[log/YYYY-MM|YYYY-MM]]`).
+
+  ```markdown
+  ---
+  id: log-YYYY-MM
+  aliases: []
+  tags: []
+  updated: YYYY-MM-DD
+  ---
+
+  # Operation log YYYY-MM
+
+  Newest first.
+  ```
+
+- `log.md` holds only the month list. Never add entries to it. If it still has dated entries (`## YYYY-MM-DD ...`, the old single-file layout), first move each entry, unchanged and in the same order, to the file for its month, and leave only the heading and the month list in `log.md`.
 
 ## 5. Report
 

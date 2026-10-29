@@ -5,7 +5,7 @@ The rules in this file take precedence over any CLAUDE.md in parent folders. Edi
 
 ## Language
 
-- Write everything in this wiki in English: pages, `index.md`, `log.md`, and `wiki/glossary.md`. Source material saved to `raw/` keeps its original language, but write the header you add to it (source, date, notes) in English.
+- Write everything in this wiki in English: pages, `index.md`, the log (`log.md` and `log/`), and `wiki/glossary.md`. Source material saved to `raw/` keeps its original language, but write the header you add to it (source, date, notes) in English.
 - Write in English even when the source material or the conversation is in another language. Translate the facts; do not paste untranslated prose.
 - Keep code, identifiers, file paths, commands, error messages, and product or proper names exactly as they appear. When a non-English business term matters, write the English term and add the original in parentheses once, e.g. `prescription refill (処方箋の再調剤)`, and add the original to `aliases`.
 - Quotes from sources may stay in the original language when the exact wording matters. Add an English translation after them.
@@ -22,7 +22,8 @@ The rules in this file take precedence over any CLAUDE.md in parent folders. Edi
 | `wiki/problems/` | Incidents, gotchas, and their fixes | Create and update |
 | `wiki/glossary.md` | Business terms | Append |
 | `index.md` | Table of contents for all pages | Update every time |
-| `log.md` | Operation history (newest first) | Append every time |
+| `log.md` | List of monthly logs (newest first). No entries here | Add a link when a month starts |
+| `log/YYYY-MM.md` | Operation history for the month (newest first) | Add each entry at the top every time |
 
 Save sources using their source date, or the ingestion date when unknown, and an English kebab-case title. Example: `raw/2026/10/10-09-logic-pitch-correction.md`. Create year/month directories as needed. Check existing directories and local rules before saving. Reuse an identical source; add a distinguishing identifier for a different source rather than overwriting it.
 
