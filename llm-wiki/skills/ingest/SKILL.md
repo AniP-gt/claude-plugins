@@ -65,6 +65,8 @@ Go to step 3 without asking the user. Only when the user asked to confirm before
 
 - `index.md`: add new pages to the matching section as `- [[page]] — one-line description`.
 - Monthly log: add `## YYYY-MM-DD Ingest <title>` at the top of `log/YYYY-MM.md` for that date (right under the heading), and list the created and updated pages below it. Set the file's `updated` to that date. Write the title and descriptions in English.
+- Keep each entry to at most 5 lines under its heading: the created and updated pages as `[[page]]` links, each with a few words on what changed, plus open questions if any. Write findings, evidence, and details in the pages, not in the log.
+- The log is only written, never used as a knowledge source, so do not read the whole month file. Read only its first lines (up to the newest entry, e.g. Read with `limit: 30`) and insert the entry right under the heading.
 - When the month's file does not exist yet, create it in this form, and add a link to it at the top of the month list in `log.md` (use the same link style as the existing links there; in a new wiki, `[[log/YYYY-MM|YYYY-MM]]`).
 
   ```markdown

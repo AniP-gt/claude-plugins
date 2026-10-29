@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Grows per-repository knowledge in an Obsidian Markdown wiki: ingest / query / lint skills and session hooks.",
   "author": {
     "name": "AniP-gt"
