@@ -1,7 +1,7 @@
-"""セッション終了時に、会話から wiki に残す候補を抜き出して raw/inbox/ に保存する。
+"""At session end, extract candidates worth keeping in the wiki from the conversation and save them to raw/inbox/.
 
-SessionEnd hook から別プロセスで起動される（llm_wiki.py capture）。ページは更新しない。
-候補は次のセッションの開始時に、/llm-wiki:ingest の手順で確認なしに整理される。
+Started as a separate process from the SessionEnd hook (llm_wiki.py capture). Does not update pages.
+At the start of the next session, the candidates are triaged without asking, following /llm-wiki:ingest.
 """
 import datetime
 import json
@@ -25,25 +25,25 @@ SECRET_PATTERNS = [
     (re.compile(r"(?i)\b(password|passwd|secret|token|api[_-]?key|access[_-]?key)(\s*[:=]\s*)(\S+)"), r"\1\2<redacted>"),
 ]
 
-PROMPT = """あなたはソフトウェア開発チームの記録係です。下の <conversation> は、リポジトリ {project} で行われた Claude Code のセッションです。
-このリポジトリの知識 wiki に残す価値のある「候補」だけを抜き出してください。
+PROMPT = """You are the record keeper for a software development team. The <conversation> below is a Claude Code session in the repository {project}.
+Extract only the "candidates" worth keeping in this repository's knowledge wiki.
 
-残す価値があるもの:
-- 設計判断（何をどう決めたか、なぜか、却下した案）
-- 障害・不具合の原因と対処
-- コードや docs からは分かりにくいハマりどころ、仕様、運用上の注意
-- 実測値や確認済みの事実（日付・Issue/PR 番号つき）
+Worth keeping:
+- Design decisions (what was decided and how, why, and rejected alternatives)
+- Causes of and fixes for incidents and bugs
+- Gotchas, specs, and operational notes that are hard to see from the code or docs
+- Measured values and confirmed facts (with dates and Issue/PR numbers)
 
-残さないもの:
-- 作業の手順そのもの、雑談、コマンドの出力、一時的な進捗
-- 一般的なプログラミング知識
-- 下の <existing_index> に既にある内容（新しい事実が加わった場合だけ残す）
-- 秘密情報（トークン、パスワード、鍵、個人の連絡先）
+Not worth keeping:
+- The work steps themselves, small talk, command output, transient progress
+- General programming knowledge
+- Anything already in <existing_index> below (keep it only when a new fact was added)
+- Secrets (tokens, passwords, keys, personal contact details)
 
-出力ルール:
-- 残す候補が無ければ、NONE とだけ出力する。
-- 候補があれば Markdown で、候補ごとに次の形式で書く。前置きや締めの文は書かない。
-- 候補は英語で書く（wiki は英語で書くため）。会話が日本語でも英語に訳す。コード、識別子、パス、コマンド、エラーメッセージ、固有名詞は原文のまま残す。
+Output rules:
+- If there is nothing worth keeping, output only NONE.
+- Otherwise, write Markdown with one entry per candidate in the format below. Do not write any introduction or closing.
+- Write the candidates in English (the wiki is written in English). Translate even when the conversation is in Japanese. Keep code, identifiers, paths, commands, error messages, and proper names exactly as they appear.
 
 ## <short title>
 - Type: decision | problem | gotcha | fact
@@ -93,7 +93,7 @@ def message_text(content):
 
 
 def read_transcript(path):
-    """(role, text) の列と、最後に見えた git ブランチを返す。ツール入出力・思考・メタ行は除く。"""
+    """Return a list of (role, text) and the last git branch seen. Excludes tool input/output, thinking, and meta lines."""
     turns, branch = [], ""
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -113,7 +113,7 @@ def read_transcript(path):
 def build_conversation(turns, max_chars):
     lines = [f"[{role}] {text}" for role, text in turns]
     body = "\n\n".join(lines)
-    return body if len(body) <= max_chars else "…（前半省略）\n\n" + body[-max_chars:]
+    return body if len(body) <= max_chars else "… (earlier part omitted)\n\n" + body[-max_chars:]
 
 
 def summarize(prompt, model, timeout):
@@ -148,7 +148,7 @@ def run(found, config, transcript, session_id, index_text):
     now = datetime.datetime.now()
     inbox = Path(found["wiki"]) / "raw" / "inbox"
     inbox.mkdir(parents=True, exist_ok=True)
-    # 再開したセッションは会話が前回の上位集合なので、同じセッションの古い候補は置き換える
+    # A resumed session's conversation is a superset of the previous one, so replace older candidates from the same session
     for old in inbox.glob(f"*-{session_id[:8]}.md"):
         old.unlink()
     dest = inbox / f"{now:%Y-%m-%d-%H%M}-{session_id[:8]}.md"

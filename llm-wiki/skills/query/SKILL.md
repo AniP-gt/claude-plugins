@@ -1,37 +1,37 @@
 ---
 name: query
-description: LLM Wiki を根拠に質問へ答える。過去の設計判断、仕様、障害対応、用語を聞かれたとき、または作業中に仕様や経緯で迷ったときに使う。wiki に無ければ context-mode の記録などを検索し、良い答えや誤りの訂正は確認なしで wiki に書き戻す。「wiki で調べて」「前にどう決めた？」で使う。
+description: Answer questions based on the LLM Wiki. Use when asked about past design decisions, specs, incident responses, or terms, or when unsure about a spec or its history during work. When the wiki has no answer, searches context-mode records and other sources, and writes good answers and corrections back to the wiki without asking. Use when asked to look something up in the wiki or how something was decided before.
 ---
 
 # LLM Wiki: Query
 
-## 1. wiki を特定する
+## 1. Find the wiki
 
-`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py resolve` で `<wiki>` を得る。失敗したら `/llm-wiki:setup` を案内する。
+Get `<wiki>` with `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py resolve`. If it fails, point the user to `/llm-wiki:setup`.
 
-## 2. wiki から答える
+## 2. Answer from the wiki
 
-1. `<wiki>/index.md` を読み、関連しそうなページを選ぶ。見つからなければ `<wiki>` 内を Grep する（`raw/` も対象にする）。
-2. 選んだページとリンク先を読んで答える。答えに使うページに `repo://` の根拠があれば、`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims --page <wiki からの相対パス>` を実行する。`stale` や `missing` の事実は、答える前にコードで確かめる。直す必要があれば手順 4 で書き戻す。
-3. 答えには根拠のページを `<wiki>` からの相対パスで示す。推測の部分は推測と明記する。
+1. Read `<wiki>/index.md` and pick pages that look relevant. If none are found, Grep inside `<wiki>` (including `raw/`).
+2. Read the chosen pages and their links, then answer. If a page you use for the answer has `repo://` evidence, run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims --page <path relative to the wiki>`. Confirm `stale` or `missing` facts against the code before answering. If something needs fixing, write it back in step 4.
+3. Cite the source pages in the answer as paths relative to `<wiki>`. Mark speculative parts as speculation.
 
-## 3. wiki に無いとき
+## 3. When the wiki has no answer
 
-次の順に探す。見つかった時点で止める。
+Search in this order. Stop once you find the answer.
 
-1. コードで確認できることは、リポジトリを調べる。
-2. 過去の session の経緯（何を試したか、なぜ却下したか）は、context-mode の `ctx_search` で探す。ツールは deferred なので、先に `ToolSearch` で `select:mcp__plugin_context-mode_context-mode__ctx_search` を読み込む。`queries` に複数の言い換えをまとめて渡し、`sort: "timeline"` で過去の session まで含める。今のリポジトリ以外の記録も見るときは `project: "global"` を付ける。
-3. MemPalace など、ほかの記憶ツールの MCP があるときだけ、それも検索する。
+1. For anything the code can confirm, investigate the repository.
+2. For the history of past sessions (what was tried, why it was rejected), search with context-mode `ctx_search`. The tool is deferred, so first load it with `ToolSearch` using `select:mcp__plugin_context-mode_context-mode__ctx_search`. Pass several paraphrases together in `queries`, and use `sort: "timeline"` to include past sessions. To also see records from repositories other than the current one, add `project: "global"`.
+3. Only when an MCP server for another memory tool such as MemPalace is available, search it too.
 
-context-mode の記録は自動で取られた断片で、検証されていない。答えに使うときはコードか資料で確かめ、確かめられない部分は推測と明記する。
-- wiki 以外で見つかった答えは「wiki に無かった」と明示する。今後も使えそうなら手順 4 で書き戻す。
+context-mode records are automatically captured fragments and are unverified. When you use them in an answer, confirm them against code or sources, and mark anything you cannot confirm as speculation.
+- State explicitly that an answer found outside the wiki was "not in the wiki". If it looks reusable, write it back in step 4.
 
-## 4. 書き戻し
+## 4. Write back
 
-次の場合は、ユーザーに確認せずに wiki を更新する。
+Update the wiki without asking the user in these cases.
 
-- 調べて得た答えが今後も使えそうなとき（設計判断の理由、ハマりどころ、手順など）
-- wiki の記述がコードや資料と食い違っていて、修正が必要と判断したとき（コードを正とする）
+- The answer you found looks reusable (reasons for design decisions, gotchas, procedures, and so on)
+- A wiki statement disagrees with the code or sources and you judge it needs fixing (the code wins)
 
-ingest skill の「書く言語」と手順 1、3〜4 に従って raw/、ページ、index.md、log.md を更新する。書き戻す内容は英語で書く（答え自体はユーザーの言語で返す）。log には `Query` と書く。
-更新したページは答えの最後に一言添えて報告する。
+Update raw/, pages, index.md, and log.md following the "Language" section and steps 1 and 3-4 of the ingest skill. Write what you write back in English (answer the user in the user's language). Use `Query` in the log.
+Mention the updated pages in one line at the end of the answer.

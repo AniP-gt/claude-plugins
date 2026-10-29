@@ -1,47 +1,47 @@
 ---
 name: lint
-description: LLM Wiki を点検して直す。リンク切れ、孤立ページ、index 漏れ、frontmatter 不足、根拠コードの変更を機械的に検出し、ページ間の矛盾や古い記述を読んで確認する。「wiki を点検」「wiki lint」で使う。
+description: Check and fix the LLM Wiki. Mechanically detects broken links, orphan pages, pages missing from the index, missing frontmatter, and changed evidence code, then reads pages to find contradictions and outdated statements. Use when asked to check or lint the wiki.
 ---
 
 # LLM Wiki: Lint
 
-## 1. 機械的な点検
+## 1. Mechanical checks
 
-`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py lint` を実行する（登録外の wiki は `--wiki <path>`）。JSON で次が返る。
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py lint` (use `--wiki <path>` for an unregistered wiki). It returns the following JSON.
 
-| キー | 意味 | 直し方 |
+| Key | Meaning | Fix |
 |---|---|---|
-| `broken_links` | リンク先のページが無い | 作るべきページならページを作る。typo ならリンクを直す |
-| `orphans` | どこからもリンクされていない | 関連ページか index.md からリンクする |
-| `not_in_index` | index.md に載っていない | index.md の該当セクションに追加する |
-| `missing_frontmatter` | frontmatter が無い | `<wiki>/CLAUDE.md` の形式で追加する |
-| `missing_updated` | `updated` が無い | 分かる範囲の日付を入れる |
+| `broken_links` | The linked page does not exist | Create the page if it should exist. Fix the link if it is a typo |
+| `orphans` | No page links to it | Link it from a related page or index.md |
+| `not_in_index` | Not listed in index.md | Add it to the matching section of index.md |
+| `missing_frontmatter` | No frontmatter | Add it in the format of `<wiki>/CLAUDE.md` |
+| `missing_updated` | No `updated` | Fill in the best date you can determine |
 
-続けて `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims` を実行する（`--wiki` は lint と同じ）。ページ内の `repo://<project>/<path>#L<a>-L<b>@<sha>` の根拠ごとに、参照したコミットから HEAD までにその行が変わったかを調べる。コードブロック（``` と ~~~）内の参照は対象外。比較先は登録したリポジトリ本体の HEAD。worktree の未マージのコミットを根拠にした参照は、本体にマージされるまでは本体の HEAD との差分で判定される（worktree だけにあるファイルは `missing` になりうる）。JSON の `issues` に次の status が返る。
+Next, run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims` (same `--wiki` as lint). For each `repo://<project>/<path>#L<a>-L<b>@<sha>` reference in a page, it checks whether those lines changed between the referenced commit and HEAD. References inside code blocks (``` and ~~~) are skipped. The comparison target is the HEAD of the registered main repository. A reference backed by an unmerged commit in a worktree is judged against the main repository's HEAD until it is merged (files that exist only in the worktree may show up as `missing`). The JSON `issues` contain these statuses.
 
-| status | 意味 | 直し方 |
+| status | Meaning | Fix |
 |---|---|---|
-| `stale` | 根拠の行が変わった（`hunks` に該当する差分。バイナリファイルは `hunks` の代わりに `message`） | `git -C <repo> diff <sha> HEAD -- <path>` と今のコードを読む。事実が変わっていれば、古い記述を取り消し線と日付で残して書き直し、`claim-ref` で作り直した参照に差し替え、`verified` を今日にする。事実が変わっていなければ、参照の差し替えと `verified` の更新だけ行う |
-| `missing` | ファイルが HEAD に無い | `renamed_to` があれば移動先で該当行を探し、参照を作り直す。無ければ新しい場所を探し、見つからなければ事実を取り消し線と日付で消す |
-| `unknown_commit` | 参照したコミットがリポジトリに無い（rebase や未 fetch） | `git fetch` 後に再実行する。それでも無ければ今のコードで事実を確かめ、参照を作り直す |
-| `unknown_project` | プロジェクト名が projects.json に無い | 名前の typo なら直す。未登録なら `/llm-wiki:setup` で登録する |
-| `invalid` | パスがリポジトリの外を指す、参照したコミットにファイルが無い、行範囲がそのコミットのファイルの行数を超えるなど | 正しいパスで参照を作り直す |
-| `error` | git の実行に失敗した（`message` に理由） | 理由を見て再実行する。直らなければ未解決として報告する |
+| `stale` | The evidence lines changed (`hunks` holds the matching diff; for binary files, `message` instead of `hunks`) | Read `git -C <repo> diff <sha> HEAD -- <path>` and the current code. If the fact changed, keep the old statement with strikethrough and a date, rewrite it, replace the reference with one recreated by `claim-ref`, and set `verified` to today. If the fact did not change, only replace the reference and update `verified` |
+| `missing` | The file is not in HEAD | If `renamed_to` is present, find the lines in the new location and recreate the reference. Otherwise look for the new location, and if none is found, strike the fact through with a date |
+| `unknown_commit` | The referenced commit is not in the repository (rebase or not fetched) | Run `git fetch` and retry. If it is still missing, confirm the fact against the current code and recreate the reference |
+| `unknown_project` | The project name is not in projects.json | Fix the name if it is a typo. Register it with `/llm-wiki:setup` if it is unregistered |
+| `invalid` | The path points outside the repository, the file is not in the referenced commit, the line range exceeds the file's line count at that commit, and so on | Recreate the reference with the correct path |
+| `error` | Running git failed (reason in `message`) | Read the reason and retry. If it does not resolve, report it as open |
 
-`shifted` には、内容は変わっていないが前の変更で行がずれた根拠が入る。参照の行範囲を `current` に、sha を `claim-ref` で得た今の値に差し替えるだけでよい。`claim-ref` は登録リポジトリ本体で実行する（worktree で実行すると worktree の HEAD が入り、`current` と食い違うことがある）。
+`shifted` holds evidence whose contents did not change but whose lines moved due to earlier changes. Just replace the reference's line range with `current` and the sha with the current value from `claim-ref`. Run `claim-ref` in the registered main repository (running it in a worktree uses the worktree's HEAD, which can disagree with `current`).
 
-## 2. 内容の点検
+## 2. Content checks
 
-`<wiki>/CLAUDE.md` と `index.md` を読み、ページを読んで次を探す。ページが多い場合は、最近更新されたページとその関連ページに絞る。
+Read `<wiki>/CLAUDE.md` and `index.md`, then read pages looking for the following. When there are many pages, focus on recently updated pages and their related pages.
 
-- ページ間で食い違う記述
-- `updated` が古く、コードや最近の資料と合わなくなっていそうな記述（必要ならリポジトリで確認する）
-- 1 ページに複数トピックが混ざっていて、分けたほうがよいページ
-- 同じトピックの重複ページ
+- Statements that contradict each other across pages
+- Statements whose `updated` is old and that likely no longer match the code or recent sources (check the repository if needed)
+- Pages that mix several topics and should be split
+- Duplicate pages on the same topic
 
-## 3. 報告と修正
+## 3. Report and fix
 
-修正が必要と判断したものは、ユーザーに確認せずにすべて直す。機械的な修正（index 追加、frontmatter 補完、リンク修正）も、内容の修正（食い違いの解消、古い記述の更新、ページの分割・統合）も同じ扱い。
-内容の修正は `<wiki>/CLAUDE.md` のルールと ingest skill の「書く言語」に従い、英語で書く。古い記述は消さずに取り消し線と日付を付けて残し、統合で不要になったページは削除せず統合先へのリンクを残す。
-直したら `log.md` の先頭に `## YYYY-MM-DD Lint <summary>` を英語で追記し、修正内容を種類ごとに短く報告する。
-根拠が足りず正しい内容を決められないものだけは直さず、未解決として報告に含める。
+Fix everything you judge needs fixing without asking the user. Mechanical fixes (adding to the index, filling in frontmatter, fixing links) and content fixes (resolving contradictions, updating outdated statements, splitting or merging pages) are treated the same.
+Write content fixes in English, following the rules in `<wiki>/CLAUDE.md` and the "Language" section of the ingest skill. Do not delete old statements; keep them with strikethrough and a date. Do not delete pages made redundant by a merge; leave a link to the merged page.
+After fixing, add `## YYYY-MM-DD Lint <summary>` in English at the top of `log.md`, and briefly report the fixes by kind.
+Only items where the evidence is insufficient to decide the correct content are left unfixed and included in the report as open.

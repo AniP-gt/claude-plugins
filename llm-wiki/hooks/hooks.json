@@ -1,5 +1,5 @@
 {
-  "description": "LLM Wiki: 登録済みリポジトリで wiki の場所と目次を伝え、終了時に候補を自動抽出する",
+  "description": "LLM Wiki: provides the wiki location and table of contents in registered repositories, and auto-extracts candidates at session end",
   "hooks": {
     "SessionStart": [
       {

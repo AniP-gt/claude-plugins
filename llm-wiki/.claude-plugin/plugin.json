@@ -1,7 +1,7 @@
 {
   "name": "llm-wiki",
-  "version": "0.8.2",
-  "description": "LLM Wiki 手法でリポジトリごとの知識を Obsidian の Markdown wiki に育てるプラグイン。ingest / query / lint skill、目次を渡す SessionStart hook、終了時に候補を自動抽出する SessionEnd hook。",
+  "version": "0.9.0",
+  "description": "Grows per-repository knowledge in an Obsidian Markdown wiki: ingest / query / lint skills and session hooks.",
   "author": {
     "name": "AniP-gt"
   },
