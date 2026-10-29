@@ -16,6 +16,8 @@ This skill owns direction, the design system, and the implementation brief. `omo
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
+In the main context with no active controller, finish with `/omo-review` on the change, a one-file change included, and repeat fix and re-review until it returns `APPROVE`.
+
 ## Inside A Sub-Agent
 
 When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the `omo-implementer` handoff, `omo-visual-qa`, review lanes, parallel workers, QA by another role) to the caller as named next actions.

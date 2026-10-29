@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stop hook: when this turn changed several files and nothing reviewed them after the last edit, block the
+// Stop hook: when this turn changed files (one or more by default) and nothing reviewed them after the last edit, block the
 // stop once and ask Claude for a review of hidden impact (risk map, undefined cases, validation).
 // Changed files come from the git snapshot preflight.mjs took at the prompt, so Bash and sub-agent edits
 // count; the transcript's Edit/Write calls are the fallback outside git.
@@ -8,7 +8,7 @@
 // the gate also passes when its own feedback already follows the last edit: it asks once per edit.
 // A second check blocks once when this turn ran omo-review but shows no sign of its Codex lane afterwards.
 import { readFileSync, realpathSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { filesChangedSince, loadSnapshot } from "./turn-snapshot.mjs";
 import { stripInjected } from "./ulw-keyword.mjs";
@@ -16,16 +16,17 @@ import { stripInjected } from "./ulw-keyword.mjs";
 const MARKER = "[OMO REVIEW GATE]";
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const DELEGATE_TOOLS = new Set(["Agent", "Task"]);
-// Sub-agents whose edits never appear in this transcript; one call counts as a multi-file change.
+// Sub-agents whose edits never appear in this transcript; one call counts as a change to unknown files.
 const EDITING_AGENT_PATTERN = /implementer|builder/i;
 const REVIEW_SKILL_PATTERN = /review/i;
 const REVIEW_AGENT_PATTERN = /review|oracle|security-check/i;
-// The handoff ledger and notepads are bookkeeping, not product changes.
-const IGNORED_PATH_PATTERN = /(^|\/)\.claude\/omo\//;
+// The handoff ledger and notepads are bookkeeping, not product changes. Review skills write their reports
+// under docs/reviews/ after they run; counting those would ask for a review of the review.
+const IGNORED_PATH_PATTERN = /(^|\/)(?:\.claude\/omo|docs\/reviews)\//;
 
 export function minFiles(env = process.env) {
   const value = Number.parseInt(env.OMO_REVIEW_GATE_MIN_FILES ?? "", 10);
-  return Number.isInteger(value) && value > 0 ? value : 2;
+  return Number.isInteger(value) && value > 0 ? value : 1;
 }
 
 // A `!` shell command the user runs lands as <bash-input>/<bash-stdout> user messages. It fires no
@@ -118,7 +119,11 @@ export function summarizeTurn(uses, cwd) {
 // Scratch files outside the working tree and the omo ledger are not part of the change under review.
 function isReviewable(absolute, cwd) {
   const shown = inside(absolute, cwd);
-  return shown !== null && !IGNORED_PATH_PATTERN.test(shown);
+  if (shown === null) return false;
+  // A session started in docs/ shows reports as reviews/self/x.md, so the last two cwd segments are
+  // prefixed. Ancestors above them are left out: a repository under /work/docs/reviews/ is not all reports.
+  const context = cwd ? `${basename(dirname(cwd))}/${basename(cwd)}/${shown}` : shown;
+  return !IGNORED_PATH_PATTERN.test(context);
 }
 
 // Path relative to cwd, or null when it lies outside. Git reports symlink-resolved paths (/private/tmp
@@ -155,7 +160,7 @@ export function buildReason({ files, delegatedEdit }) {
   lines.push(
     "",
     "終える前に、次のどれか1つを選んでください。",
-    "- 文言・ドキュメント・設定値だけの変更なら、そう1行で書いて終える。",
+    "- 誤字か設定値だけの変更なら、そう1行で書いて終える。ドキュメントやコメントの説明は挙動の主張なので軽いレビューの対象。",
     "- 3ファイル以上、公開 API や CLI の挙動、永続化、セキュリティに関わるなら `omo-orchestrator:omo-review` を実行する。",
     "- それ以外は軽いレビュー: 変更した関数などの呼び出し元と隠れた影響範囲、それを守るテストなど。",
     "  空入力・境界値・重複や並行実行・途中失敗・既存データの扱い。実際に実行した確認。",

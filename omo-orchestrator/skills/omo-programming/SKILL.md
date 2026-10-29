@@ -27,6 +27,7 @@ This skill has three modes. Each mode's procedure lives in `modes/<mode>/MODE.md
 
 ## Policy
 
+- Every change is reviewed before it is called done, a one-file fix included: run `/omo-review` and repeat fix and re-review until it returns `APPROVE`. Inside a sub-agent or an active controller, return the change to the caller, whose final gate reviews it. This applies to every mode.
 - Read nearby code first and match existing patterns.
 - Prefer the smallest diff that satisfies the requested behavior.
 - Keep new code modular: thin entry files, no catch-all `utils` / `helpers` files, one responsibility per file, about 200 LOC per file. These are defaults that yield to project conventions; see `references/modular-code.md`.

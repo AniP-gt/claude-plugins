@@ -33,7 +33,7 @@ Controllers choose the `LOAD_SKILLS` line of every delegation prompt from this t
 | `omo-ralph-loop` | main-only | The user wants a goal loop or durable, checkpointed execution with bounded retries |
 | `omo-orchestrate` | main-only | Complex multi-step work needs intent classification, routing, delegation, and a handoff |
 | `omo-plan` | main-only | The user asks for a plan, or before the first edit of a change request or GitHub issue. Modes: `start-work` (kick off non-trivial work with context, plan, evidence targets, and handoff setup), `hyperplan` (hyperplan, hpp, adversarial plan for hard or high-risk work) |
-| `omo-review` | main-only | Local changes need review: after editing 2+ files or before calling work done. Modes: `review-work` (final review gate for controllers returning APPROVE, REQUEST_CHANGES, or INCONCLUSIVE), `review-loop` (implement plus review fix loop with a final gate), `pre-publish-review` (pre-publish or release review) |
+| `omo-review` | main-only | Local changes need review: after any change outside an active controller (one file included) or before calling work done. Modes: `review-work` (final review gate for controllers returning APPROVE, REQUEST_CHANGES, or INCONCLUSIVE), `review-loop` (implement plus review fix loop with a final gate), `pre-publish-review` (pre-publish or release review) |
 | `omo-implement` | main-only | A non-trivial change request needs exploration, a risk map, minimal edits, and test-first |
 | `omo-work-with-pr` | main-only | A change is being prepared for a PR, or PR review threads need answers. Mode: `github-triage` (triage GitHub issues or PRs) |
 | `omo-git-master` | main-only | A task needs a commit, rebase, squash, or a git-history answer (who wrote, when was X added) |

@@ -168,7 +168,7 @@ When the user or project allows commits, commit one atomic, verified increment a
 
 ## Reviewer Gate
 
-Trigger when any apply: the user asked for rigor ("strictly", "rigorously", "厳密", "深く"), the task touches 3+ files or ran long, or it is refactor, migration, performance, security, persistence, or public-behavior work.
+Run this gate for every ulw task, whatever its size: ultrawork means implement, review, and fix until the review approves. A one-file change gets the same gate; only the review effort scales with the diff.
 
 1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path.

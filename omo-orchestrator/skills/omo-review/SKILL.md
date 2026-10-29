@@ -1,6 +1,6 @@
 ---
 name: omo-review
-description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes, with a required Codex CLI review. Use proactively after editing 2+ files or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
+description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes, with a required Codex CLI review. Use proactively after any change outside an active controller (one file included) or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
 argument-hint: [mode] [diff-or-goal]
 allowed-tools: Read, Grep, Glob, Bash, Task, Skill, Edit, Write, Agent, TodoWrite
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # OMO Review
 
-Use this skill before handing off changes that touch 2+ files, public/API/CLI behavior, data flow, security, persistence, or release-facing docs. Docs and code comments that describe behavior count as behavior changes for this gate; "docs only" is not a reason to skip it. Treat it as a PR-style gate with one completion state: `APPROVE`.
+Use this skill before handing off any change made outside an active controller, whatever its size, a one-file fix included. Inside a controller, its final gate is the review (see Entry Point). Docs and code comments that describe behavior count as behavior changes for this gate; "docs only" is not a reason to skip it. Treat it as a PR-style gate with one completion state: `APPROVE`.
 
 ## Modes
 

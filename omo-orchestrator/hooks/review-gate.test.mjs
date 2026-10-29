@@ -1,7 +1,7 @@
 // Run: node --test omo-orchestrator/hooks/review-gate.test.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { run } from "./review-gate.mjs";
+import { minFiles, run } from "./review-gate.mjs";
 
 const cwd = "/repo";
 const prompt = { type: "user", message: { content: "直して" } };
@@ -147,4 +147,54 @@ test("OMO_CODEX_GATE=off disables the Codex check", () => {
     { env: { OMO_CODEX_GATE: "off" }, loadTranscript: () => [prompt, omoReview, reply], changedFiles: () => null },
   );
   assert.equal(output, "");
+});
+
+test("a one-file change triggers the gate by default; the setting still raises the threshold", () => {
+  assert.equal(minFiles({}), 1);
+  assert.equal(minFiles({ OMO_REVIEW_GATE_MIN_FILES: "2" }), 2);
+  assert.equal(minFiles({ OMO_REVIEW_GATE_MIN_FILES: "0" }), 1);
+});
+
+test("a one-file change blocks by default", () => {
+  assert.notEqual(gate([prompt, edit("a.js")]), null);
+});
+
+test("a review report written after a review skill does not re-arm the gate", () => {
+  const reviewSkill = { type: "assistant", message: { content: [{ type: "tool_use", name: "Skill", input: { skill: "self-review" } }] } };
+  const report = { type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: `${cwd}/docs/reviews/self/x.md` } }] } };
+  assert.equal(gate([prompt, reviewSkill, report], [`${cwd}/docs/reviews/self/x.md`]), null);
+});
+
+test("the gate's reason does not offer a docs-only exit", () => {
+  const feedback = gate([prompt, edit("README.md")]);
+  assert.doesNotMatch(feedback.message.content, /文言・ドキュメント・設定値だけ/);
+  assert.match(feedback.message.content, /ドキュメントやコメントの説明は挙動の主張/);
+});
+
+function gateAt(dir, entries, changed) {
+  return run(
+    { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd: dir },
+    { env: {}, loadTranscript: () => entries, changedFiles: () => changed },
+  );
+}
+
+test("a review report alone does not block, whatever directory the session started in", () => {
+  const report = [`${cwd}/docs/reviews/self/x.md`];
+  assert.equal(gateAt(cwd, [prompt], report), "");
+  assert.equal(gateAt(`${cwd}/docs`, [prompt], report), "");
+  assert.equal(gateAt(`${cwd}/docs/reviews`, [prompt], report), "");
+});
+
+test("a review report next to a real change still blocks, and lists only the real change", () => {
+  const out = gateAt(`${cwd}/docs`, [prompt], [`${cwd}/docs/reviews/self/x.md`, `${cwd}/docs/guide.md`]);
+  assert.notEqual(out, "");
+  const reason = JSON.parse(out).reason;
+  assert.match(reason, /1 ファイル/);
+  assert.doesNotMatch(reason, /reviews\/self/);
+});
+
+test("a repository that lives under a docs/reviews directory still gates its own changes", () => {
+  const root = "/work/docs/reviews/project";
+  assert.notEqual(gateAt(root, [prompt], [`${root}/src/main.js`]), "");
+  assert.equal(gateAt(root, [prompt], [`${root}/docs/reviews/self/x.md`]), "");
 });
