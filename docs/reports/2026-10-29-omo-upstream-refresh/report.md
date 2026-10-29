@@ -64,3 +64,15 @@ Iteration 2の新規指摘は既存motion規則の「transform/opacity/filterの
 ## 公開権限と開始状態
 
 ユーザーはこのセッションのcommit・pushとClaude plugin更新を明示許可。skill既定の「pushしない」より今回の指示を優先。claude-plugins開始時はmain/bf05246、クリーンでorigin/mainと一致。導入済みはuser 2.1.0、local 2.0.0（folderVersion 2.1.0）。AniP-gt marketplaceは当該worktreeを参照するdirectory source。
+
+## 公開・導入結果
+
+- `c9ed3df31e191587deb5682c65496986989f4800`: `feat(omo-orchestrator): UI制約の検証計画と操作状態の寸法維持を明確にする (2.2.0)` をコミット。
+- `git push origin main` 成功、`bf05246..c9ed3df main -> main`。`git ls-remote origin refs/heads/main` でも一致を確認。
+- `claude plugin marketplace update AniP-gt` 成功。
+- `claude plugin update omo-orchestrator@AniP-gt --scope user --json`: outcome=ok、up_to_date、2.2.0。directory sourceを読むため、更新コマンド時点では既に最新版として返った。
+- 同コマンド `--scope local`: outcome=ok、updated、2.0.0→2.2.0。
+- `claude plugin list --json`: user/local両scopeでversion/folderVersionとも2.2.0。更新後のtracked作業ツリーはクリーン。
+- CLIの案内どおり、Claude Code再起動で実行中セッションへ適用する。ユーザーの実行中セッションは終了していない。
+
+この公開結果追記はdocsのみの別commitとして通常pushする。plugin配下の追加変更はないためバージョン再更新は不要。
