@@ -17,9 +17,9 @@ const review = {
 const notification = { type: "user", origin: { kind: "task-notification" }, message: { content: "<task-notification>\n<status>completed</status>\n</task-notification>" } };
 const reply = { type: "assistant", message: { content: [{ type: "text", text: "ok" }] } };
 
-function gate(entries, changed = null) {
+function gate(entries, changed = null, stopHookActive = false) {
   const feedback = run(
-    { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd },
+    { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd, stop_hook_active: stopHookActive },
     { env: {}, loadTranscript: () => entries, changedFiles: () => changed },
   );
   return feedback.length === 0 ? null : { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${JSON.parse(feedback).reason}` } };
@@ -68,4 +68,83 @@ test("a prompt that mixes the user's words with a shell block still starts a new
   const feedback = gate(entries);
   const mixed = { type: "user", message: { content: "これも直して <bash-input>ls</bash-input>" } };
   assert.notEqual(gate([...entries, feedback, reply, mixed, edit("c.js"), edit("d.js")]), null);
+});
+
+const tool = (name, input, id = `${name}-1`) => ({ type: "assistant", message: { content: [{ type: "tool_use", id, name, input }] } });
+const result = (id, text) => ({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text }] }] } });
+const omoReview = tool("Skill", { skill: "omo-orchestrator:omo-review" });
+const isCodexBlock = (feedback) => feedback !== null && feedback.message.content.includes("[OMO CODEX GATE]");
+
+test("blocks when omo-review ran with no Codex lane afterwards", () => {
+  assert.ok(isCodexBlock(gate([prompt, omoReview, reply])));
+});
+
+test("passes when a Bash call ran codex exec after omo-review", () => {
+  const codex = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/x.md" "review" < /tmp/x.diff' });
+  assert.equal(gate([prompt, omoReview, codex, reply]), null);
+});
+
+test("passes when the codex probe found no CLI, since the lane then records NOT_EXECUTED", () => {
+  assert.equal(gate([prompt, omoReview, tool("Bash", { command: "command -v codex >/dev/null 2>&1 && codex --version" }), reply]), null);
+});
+
+test("passes when a review sub-agent returned a Codex status line", () => {
+  const agent = tool("Agent", { subagent_type: "omo-orchestrator:omo-external-reviewer" }, "agent-1");
+  assert.equal(gate([prompt, omoReview, agent, result("agent-1", "VERDICT: Approve\n- **Codex 実行**: OK"), reply]), null);
+});
+
+test("`codex: run by caller` from a sub-agent is not evidence", () => {
+  const agent = tool("Agent", { subagent_type: "omo-orchestrator:omo-reviewer" }, "agent-1");
+  assert.ok(isCodexBlock(gate([prompt, omoReview, agent, result("agent-1", "codex: run by caller"), reply])));
+});
+
+test("a codex command in a comment line is not evidence", () => {
+  assert.ok(isCodexBlock(gate([prompt, omoReview, tool("Bash", { command: "# codex exec review\nprintf done" }), reply])));
+});
+
+test("a status line in a Read result is not evidence", () => {
+  const read = tool("Read", { file_path: `${cwd}/codex-lane.md` }, "read-1");
+  assert.ok(isCodexBlock(gate([prompt, omoReview, read, result("read-1", "codex: OK (direct)"), reply])));
+});
+
+test("a codex run before omo-review does not cover it", () => {
+  assert.ok(isCodexBlock(gate([prompt, tool("Bash", { command: "codex exec x" }), omoReview, reply])));
+});
+
+test("a user-typed /omo-review command counts as an omo-review call", () => {
+  const command = { type: "user", message: { content: "<command-name>/omo-orchestrator:omo-review</command-name>" } };
+  assert.ok(isCodexBlock(gate([command, reply])));
+});
+
+test("the follow-up stop with stop_hook_active always passes", () => {
+  assert.equal(gate([prompt, omoReview, reply], null, true), null);
+});
+
+test("a background notification after the Codex feedback does not ask again", () => {
+  const entries = [prompt, omoReview, reply];
+  const feedback = gate(entries);
+  assert.ok(isCodexBlock(feedback));
+  assert.equal(gate([...entries, feedback, reply, notification, reply]), null);
+});
+
+test("Codex feedback stored as a hook_blocking_error attachment also counts", () => {
+  const attachment = {
+    type: "attachment",
+    attachment: { type: "hook_blocking_error", hookEvent: "Stop", blockingError: { blockingError: "[OMO CODEX GATE] ..." } },
+  };
+  assert.equal(gate([prompt, omoReview, reply, attachment, reply, notification, reply]), null);
+});
+
+test("an omo-review call after the Codex feedback re-arms the check", () => {
+  const entries = [prompt, omoReview, reply];
+  const feedback = gate(entries);
+  assert.ok(isCodexBlock(gate([...entries, feedback, reply, tool("Skill", { skill: "omo-orchestrator:omo-review" }, "Skill-2"), reply])));
+});
+
+test("OMO_CODEX_GATE=off disables the Codex check", () => {
+  const output = run(
+    { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd },
+    { env: { OMO_CODEX_GATE: "off" }, loadTranscript: () => [prompt, omoReview, reply], changedFiles: () => null },
+  );
+  assert.equal(output, "");
 });

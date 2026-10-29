@@ -1,5 +1,5 @@
 {
-  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist for change requests, review gate on stop after multi-file edits, LOAD_SKILLS gate on omo worker dispatches, JSON argument error recovery, and a .gitignore for .claude/omo/",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist for change requests, review gate on stop after multi-file edits and a Codex check after omo-review, LOAD_SKILLS gate on omo worker dispatches, JSON argument error recovery, and a .gitignore for .claude/omo/",
   "hooks": {
     "UserPromptSubmit": [
       {

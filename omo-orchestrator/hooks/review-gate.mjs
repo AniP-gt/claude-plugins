@@ -6,6 +6,7 @@
 // The second stop arrives with stop_hook_active=true and always passes, so the hook cannot loop.
 // A background task notification continues the same turn and triggers a fresh stop without that flag, so
 // the gate also passes when its own feedback already follows the last edit: it asks once per edit.
+// A second check blocks once when this turn ran omo-review but shows no sign of its Codex lane afterwards.
 import { readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,22 +49,27 @@ function isRealUserPrompt(entry) {
 // Marks where this gate's own feedback landed in the turn; summarizeTurn treats it like a review.
 export const GATE_FEEDBACK = "omo-review-gate-feedback";
 
-function isGateFeedback(entry) {
-  if (entry?.type !== "user" || entry.isMeta !== true || entry.isSidechain === true) return false;
+// Stop feedback may be stored as a meta user message or as a hook_blocking_error attachment.
+function isGateFeedback(entry, marker = MARKER) {
+  if (entry?.isSidechain === true) return false;
+  if (entry?.type === "attachment" && entry.attachment?.type === "hook_blocking_error") {
+    return JSON.stringify(entry.attachment.blockingError ?? "").includes(marker);
+  }
+  if (entry?.type !== "user" || entry.isMeta !== true) return false;
   const content = entry.message?.content;
-  return typeof content === "string" && content.includes(MARKER);
+  return typeof content === "string" && content.includes(marker);
+}
+
+// Index of the first entry after the last real user prompt.
+function turnStart(entries) {
+  for (let i = entries.length - 1; i >= 0; i -= 1) if (isRealUserPrompt(entries[i])) return i + 1;
+  return 0;
 }
 
 // Returns the tool_use blocks the main thread issued since the last real user prompt, with a
 // { name: GATE_FEEDBACK } entry wherever the gate already blocked a stop.
 export function currentTurnToolUses(entries) {
-  let start = 0;
-  for (let i = entries.length - 1; i >= 0; i -= 1) {
-    if (isRealUserPrompt(entries[i])) {
-      start = i + 1;
-      break;
-    }
-  }
+  const start = turnStart(entries);
   const uses = [];
   for (const entry of entries.slice(start)) {
     if (isGateFeedback(entry)) {
@@ -158,6 +164,73 @@ export function buildReason({ files, delegatedEdit }) {
   return lines.join("\n");
 }
 
+const CODEX_MARKER = "[OMO CODEX GATE]";
+const OMO_REVIEW_SKILL_PATTERN = /(^|:)omo-review$/;
+// A user-typed `/omo-review` lands as the prompt itself, not as a Skill call.
+const OMO_REVIEW_COMMAND_PATTERN = /<command-name>\/?(omo-orchestrator:)?omo-review<\/command-name>/;
+const CODEX_COMMAND_PATTERN = /(^|[\s;&|(])(codex\s+exec\b|command\s+-v\s+codex\b)/;
+// Status lines a review sub-agent returns: `codex: …` from codex-lane.md and self-review's `Codex 実行: …`.
+// `codex: run by caller` is left out: it hands the lane to the caller, which still has to run it.
+const CODEX_STATUS_PATTERN = /codex:\s*(OK|NOT_EXECUTED)|Codex 実行\**\s*[:：]\s*\**\s*(OK|NOT_EXECUTED)/i;
+
+// Comment lines mention commands without running them.
+function withoutComments(command) {
+  return String(command ?? "")
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("#"))
+    .join("\n");
+}
+
+function textOf(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((block) => (typeof block?.text === "string" ? block.text : "")).join("\n");
+}
+
+// True when this turn invoked omo-review and nothing after the last invocation shows its Codex lane: a Bash
+// call that ran or probed `codex`, or a Codex status line in a sub-agent's result. Only Agent/Task results
+// count, because a Read of codex-lane.md or the skill text carries the same status line as an example.
+export function codexLaneMissing(entries) {
+  const start = turnStart(entries);
+  let pending = start > 0 && OMO_REVIEW_COMMAND_PATTERN.test(textOf(entries[start - 1]?.message?.content));
+  const delegateIds = new Set();
+  for (const entry of entries.slice(start)) {
+    if (isGateFeedback(entry, CODEX_MARKER)) {
+      pending = false;
+      continue;
+    }
+    if (entry?.isSidechain === true) continue;
+    const content = entry?.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (entry.type === "assistant" && block?.type === "tool_use") {
+        const input = block.input ?? {};
+        if (block.name === "Skill" && OMO_REVIEW_SKILL_PATTERN.test(String(input.skill ?? ""))) pending = true;
+        else if (block.name === "Bash" && CODEX_COMMAND_PATTERN.test(withoutComments(input.command))) pending = false;
+        else if (DELEGATE_TOOLS.has(block.name)) delegateIds.add(block.id);
+      } else if (entry.type === "user" && block?.type === "tool_result" && delegateIds.has(block.tool_use_id)) {
+        if (CODEX_STATUS_PATTERN.test(textOf(block.content))) pending = false;
+      }
+    }
+  }
+  return pending;
+}
+
+export function buildCodexReason() {
+  return [
+    `${CODEX_MARKER} このターンで omo-review を実行しましたが、Codex レーンの実行が見当たりません。`,
+    "",
+    "終える前に、次のどれか1つを選んでください。",
+    "- `omo-review` の `references/codex-lane.md` に従って Codex を実行し、`codex:` の状態行を最終報告に書く。",
+    "- self-review が Codex を実行済みなら、そのレポートの `Codex 実行` 行を確認して `codex: OK (self-review, <path>)` を書く。",
+    "- レビュー自体を実行しなかった（コントローラー内で二重レビューを避けた等）なら、そう1行で書いて終える。",
+  ].join("\n");
+}
+
+function block(reason) {
+  return `${JSON.stringify({ decision: "block", reason })}\n`;
+}
+
 export function readTranscript(path) {
   try {
     return readFileSync(path, "utf8")
@@ -180,19 +253,28 @@ export function run(input, { env = process.env, loadTranscript = readTranscript,
   if (typeof input !== "object" || input === null) return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
   if (input.stop_hook_active === true) return "";
-  if (/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) return "";
   if (typeof input.transcript_path !== "string") return "";
+  const entries = loadTranscript(input.transcript_path);
+  if (!/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) {
+    const reason = reviewReason(entries, input, env, changedFiles);
+    if (reason !== null) return block(reason);
+  }
+  if (!/^(off|0|false)$/i.test(env.OMO_CODEX_GATE ?? "") && codexLaneMissing(entries)) return block(buildCodexReason());
+  return "";
+}
+
+function reviewReason(entries, input, env, changedFiles) {
   const cwd = typeof input.cwd === "string" ? input.cwd : undefined;
-  const turn = summarizeTurn(currentTurnToolUses(loadTranscript(input.transcript_path)), cwd);
-  if (turn.reviewed) return "";
+  const turn = summarizeTurn(currentTurnToolUses(entries), cwd);
+  if (turn.reviewed) return null;
   const fromGit = changedFiles(input.session_id, env, cwd);
   const files = new Set(turn.files);
   for (const file of fromGit ?? []) if (isReviewable(file, cwd)) files.add(file);
   // With a git snapshot, sub-agent edits are already in the file list; without one, guess from the call.
   const delegatedEdit = fromGit === null && turn.delegatedEdit;
-  if (files.size < minFiles(env) && !delegatedEdit) return "";
+  if (files.size < minFiles(env) && !delegatedEdit) return null;
   const shown = [...files].map((file) => display(file, cwd)).sort();
-  return `${JSON.stringify({ decision: "block", reason: buildReason({ files: shown, delegatedEdit }) })}\n`;
+  return buildReason({ files: shown, delegatedEdit });
 }
 
 // Absolute paths the turn changed according to the git snapshot, or null when there is no snapshot.
