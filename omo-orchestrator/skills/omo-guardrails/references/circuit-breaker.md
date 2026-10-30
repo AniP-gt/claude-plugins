@@ -14,7 +14,7 @@ Call signature = tool name + normalized arguments.
 
 Common causes: retrying the same error without changing anything, re-running a query that matches nothing, a fix that recreates the error it fixes.
 
-After 2 failed fix attempts on the same problem, consult `omo-oracle` before the next attempt. After 3 consecutive failures, stop editing, revert to the last working state, document each attempt, and consult `omo-oracle` with that context; if it is still unresolved, ask the user.
+After 2 failed fix attempts on the same problem, consult `omo-oracle` before the next attempt, and run the debug rescue Codex consult (`skills/omo-orchestrate/references/codex-consult.md`) in parallel. After 3 consecutive failures, stop editing, revert to the last working state, document each attempt, and consult `omo-oracle` with that context, again with the Codex consult when the first one did not resolve it; if it is still unresolved, ask the user.
 
 ## Delegation Loops
 

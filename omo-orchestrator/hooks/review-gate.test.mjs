@@ -107,6 +107,39 @@ test("a status line in a Read result is not evidence", () => {
   assert.ok(isCodexBlock(gate([prompt, omoReview, read, result("read-1", "codex: OK (direct)"), reply])));
 });
 
+test("a consult run (omo-consult scratch dir) is not the review lane", () => {
+  const consult = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-consult/codex/1.out.md" "debug" < "/tmp/omo-consult/codex/1.brief.md"' });
+  assert.ok(isCodexBlock(gate([prompt, omoReview, consult, reply])));
+});
+
+test("an adversarial run (.adv. files) is not the review lane", () => {
+  const adv = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-review/codex/1.adv.out.md" "adv" < "/tmp/omo-review/codex/1.diff"' });
+  assert.ok(isCodexBlock(gate([prompt, omoReview, adv, reply])));
+});
+
+test("a consult preflight (codex --version) followed by a consult run is not the review lane", () => {
+  const preflight = tool("Bash", { command: "codex --version" });
+  const consult = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-consult/codex/1.out.md" "debug" < "/tmp/omo-consult/codex/1.brief.md"' });
+  assert.ok(isCodexBlock(gate([prompt, omoReview, preflight, consult, reply])));
+});
+
+test("a consult preflight that finds no codex is not the review lane", () => {
+  assert.ok(isCodexBlock(gate([prompt, omoReview, tool("Bash", { command: "codex --version" }), reply])));
+});
+
+test("an adversarial run after a lane status line keeps the gate passed", () => {
+  const agent = tool("Agent", { prompt: "self-review" }, "agent-1");
+  const adv = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-review/codex/1.adv.out.md" "adv" < "/tmp/omo-review/codex/1.diff"' });
+  assert.equal(gate([prompt, omoReview, agent, result("agent-1", "codex: OK (self-review, r.md)"), adv, reply]), null);
+});
+
+test("a lane run after a probe and a consult still passes", () => {
+  const probe = tool("Bash", { command: "command -v codex >/dev/null 2>&1 && codex --version" });
+  const consult = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-consult/codex/1.out.md" "debug" < "/tmp/omo-consult/codex/1.brief.md"' });
+  const lane = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/omo-review/codex/1.out.md" "review" < "/tmp/omo-review/codex/1.diff"' });
+  assert.equal(gate([prompt, omoReview, probe, consult, lane, reply]), null);
+});
+
 test("a codex run before omo-review does not cover it", () => {
   assert.ok(isCodexBlock(gate([prompt, tool("Bash", { command: "codex exec x" }), omoReview, reply])));
 });

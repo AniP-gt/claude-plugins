@@ -174,6 +174,9 @@ const OMO_REVIEW_SKILL_PATTERN = /(^|:)omo-review$/;
 // A user-typed `/omo-review` lands as the prompt itself, not as a Skill call.
 const OMO_REVIEW_COMMAND_PATTERN = /<command-name>\/?(omo-orchestrator:)?omo-review<\/command-name>/;
 const CODEX_COMMAND_PATTERN = /(^|[\s;&|(])(codex\s+exec\b|command\s+-v\s+codex\b)/;
+// A consult (scratch dir `omo-consult/`) or an adversarial run (`.adv.` files) is read-only Codex use, but not the
+// review lane. Their preflight is `codex --version` without `command -v`, so only the lane's probe matches above.
+const NON_LANE_EXEC_PATTERN = /omo-consult\/|\.adv\./;
 // Status lines a review sub-agent returns: `codex: …` from codex-lane.md and self-review's `Codex 実行: …`.
 // `codex: run by caller` is left out: it hands the lane to the caller, which still has to run it.
 const CODEX_STATUS_PATTERN = /codex:\s*(OK|NOT_EXECUTED)|Codex 実行\**\s*[:：]\s*\**\s*(OK|NOT_EXECUTED)/i;
@@ -184,6 +187,11 @@ function withoutComments(command) {
     .split("\n")
     .filter((line) => !line.trimStart().startsWith("#"))
     .join("\n");
+}
+
+function isLaneCodexCommand(command) {
+  if (!CODEX_COMMAND_PATTERN.test(command)) return false;
+  return !(/codex\s+exec\b/.test(command) && NON_LANE_EXEC_PATTERN.test(command));
 }
 
 function textOf(content) {
@@ -211,7 +219,7 @@ export function codexLaneMissing(entries) {
       if (entry.type === "assistant" && block?.type === "tool_use") {
         const input = block.input ?? {};
         if (block.name === "Skill" && OMO_REVIEW_SKILL_PATTERN.test(String(input.skill ?? ""))) pending = true;
-        else if (block.name === "Bash" && CODEX_COMMAND_PATTERN.test(withoutComments(input.command))) pending = false;
+        else if (block.name === "Bash" && isLaneCodexCommand(withoutComments(input.command))) pending = false;
         else if (DELEGATE_TOOLS.has(block.name)) delegateIds.add(block.id);
       } else if (entry.type === "user" && block?.type === "tool_result" && delegateIds.has(block.tool_use_id)) {
         if (CODEX_STATUS_PATTERN.test(textOf(block.content))) pending = false;

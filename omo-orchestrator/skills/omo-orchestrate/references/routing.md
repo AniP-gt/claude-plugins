@@ -64,7 +64,7 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | Standalone visual explanation, chart, table, or diagram | `omo-visual-qa` mode `visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
 | Implement plus review loop | `omo-review` mode `review-loop` |
 | Change review | `omo-reviewer` |
-| Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle` |
+| Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle`; for the debugging case and `HEAVY` plan review, also the Codex consult in `references/codex-consult.md` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |
 | Long command-driven verification (local real runs, Docker scenarios) | `omo-implementer` with a verification-only scope and the work budget from `omo-guardrails` |
 

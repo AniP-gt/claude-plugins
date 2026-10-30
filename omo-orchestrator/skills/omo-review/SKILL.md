@@ -133,7 +133,7 @@ Before recording a blocking finding, follow this sequence:
 - Approval evidence that supports every required final check when the decision is `APPROVE`.
 - Release or security escalation needed, if applicable.
 - Self-review lane, when it ran: pre-fix and final verdicts, the fixes applied with their files, `CHANGED FILES`, `NEEDS DECISION` items, and `CONTRACT DEVIATIONS`.
-- Codex lane status line (`codex: OK (self-review, <path>) | OK (direct) | NOT_EXECUTED - <reason>`), and its findings labeled `(codex)`.
+- Codex lane status line (`codex: OK (self-review, <path>) | OK (direct) | NOT_EXECUTED - <reason>`), and its findings labeled `(codex)`. When the adversarial run ran (`references/codex-lane.md` § Adversarial run), also its line `codex-adversarial: OK (direct, <path>) | NOT_EXECUTED - <reason>`; `NOT_EXECUTED` there is a warning and does not change the verdict.
 
 Do not escalate a finding to blocking unless the evidence shows a real contract break, user-visible risk, data-loss path, security issue, or verification gap that could hide one.
 

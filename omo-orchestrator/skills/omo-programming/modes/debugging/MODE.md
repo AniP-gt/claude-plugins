@@ -8,7 +8,7 @@ Ultrawork escalation: when invoked standalone, size the task first and decide wh
 
 ## Inside A Sub-Agent
 
-When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the `omo-oracle` consult, review lanes, parallel workers, QA by another role) to the caller as named next actions.
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the `omo-oracle` consult, the debug rescue Codex consult, review lanes, parallel workers, QA by another role) to the caller as named next actions.
 
 ## Workflow
 
@@ -19,7 +19,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 5. Before applying a fix, observe an existing owner test or one regression or validation target fail on the pre-fix code when the project supports such checks.
 6. Apply the smallest fix that removes the proven cause.
 7. Re-run the reproduction and related validation.
-8. When two fix rounds have failed (the reproduction still fails after the fix), stop editing, revert your unverified edits, and consult `omo-oracle` once with the reproduction, the hypotheses with their evidence, and each attempted fix and how it failed. Resume from its recommendation; if it cannot resolve the cause, ask the user.
+8. When two fix rounds have failed (the reproduction still fails after the fix), stop editing, revert your unverified edits, and consult `omo-oracle` once with the reproduction, the hypotheses with their evidence, and each attempted fix and how it failed. In parallel, run the debug rescue Codex consult in `skills/omo-orchestrate/references/codex-consult.md`, which gets the reproduction and the attempts but not your hypotheses. Check both answers against the code and the reproduction, and resume from the one whose evidence holds; if neither resolves the cause, ask the user.
 
 ## Multi-Signal Or Cascading Errors
 

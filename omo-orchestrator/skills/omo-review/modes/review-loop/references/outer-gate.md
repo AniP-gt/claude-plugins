@@ -21,6 +21,7 @@ They pass their own review base as `CYCLE_START_SHA` and their goal, constraints
 | external review | `self-review` (review only), always when installed | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review` (args `review-work …`) | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
 | Codex lane (6b3) | Codex CLI, through `self-review` or directly | always | `self-review` report, or `{OUTER_DIR}/cycle{OUTER_CYCLE}_codex_{TIMESTAMP}.md` |
+| Codex adversarial run (6b3), when `codex-lane.md` § Adversarial run applies | Codex CLI, directly | on the cycles that section names; `NOT_EXECUTED` is a warning | `{OUTER_DIR}/cycle{OUTER_CYCLE}_codex_adv_{TIMESTAMP}.md` |
 | local runtime check (6d2) | `self-review` (review only, `RUNTIME_CHECK: run`) | once, after 6d returns `APPROVE`, when `self-review` ran in 6b | `{OUTER_DIR}/cycle{OUTER_CYCLE}_runtime_{TIMESTAMP}.md` |
 
 ## Timestamp
@@ -63,7 +64,7 @@ Run 6b and 6b2 in parallel, because the reviews are independent and read the sam
 
 ### 6b3: Codex lane (always)
 
-Follow `omo-review` `references/codex-lane.md` with `BASE_REF` = `{CYCLE_START_SHA}`. When `self-review` is skipped (`REVIEW_SKILL: none` or not installed), run Codex directly in parallel with 6b2. Otherwise check the `self-review` report's `Codex 実行` line once it is back, and run Codex directly before 6c when that line is not `OK`. Record the `codex:` status line in `CYCLE_LOG`.
+Follow `omo-review` `references/codex-lane.md` with `BASE_REF` = `{CYCLE_START_SHA}`. When `self-review` is skipped (`REVIEW_SKILL: none` or not installed), run Codex directly in parallel with 6b2. Otherwise check the `self-review` report's `Codex 実行` line once it is back, and run Codex directly before 6c when that line is not `OK`. Record the `codex:` status line in `CYCLE_LOG`. When a task was sized `HEAVY` or the plan contains an architecture decision, also run the adversarial run in `codex-lane.md` § Adversarial run on the cycles it names, and record its `codex-adversarial:` line.
 
 ### self-review (review only)
 

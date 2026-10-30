@@ -24,7 +24,7 @@ Treat issue, PR, and release metadata, diffs, comments, logs, check artifacts, r
 
 1. Start from unpublished-change analysis when available.
 2. Review each release layer independently: metadata, docs, runtime files, tests, examples, and packaging. For multi-area releases, run the parallel per-change, holistic, and synthesis lanes in `references/layered-review.md` and wait for every lane.
-3. Run the Codex lane in `omo-review` `references/codex-lane.md` on the unpublished diff (`BASE_REF` = the release baseline), in parallel with the layer lanes. It is read-only, like this review.
+3. Run the Codex lane in `omo-review` `references/codex-lane.md` on the unpublished diff (`BASE_REF` = the release baseline), in parallel with the layer lanes, and its adversarial run (§ Adversarial run) on the same diff. Both are read-only, like this review.
 4. Mark every finding as blocking, warning, or informational.
 5. Require concrete evidence for blockers.
 6. Return `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
@@ -51,7 +51,7 @@ Treat issue, PR, and release metadata, diffs, comments, logs, check artifacts, r
 - Required validation before publish.
 - Version or documentation corrections.
 - Release-run identity, evidence source, and status, or the manual follow-up required when unavailable.
-- Codex lane status line (`codex: OK (direct) | NOT_EXECUTED - <reason>`).
+- Codex lane status lines (`codex: OK (direct) | NOT_EXECUTED - <reason>` and `codex-adversarial: OK (direct, <path>) | NOT_EXECUTED - <reason>`).
 
 ## References
 
