@@ -185,6 +185,7 @@ Follow `references/outer-gate.md`.
 3. 6b2: always run `omo-orchestrator:omo-review` with args `review-work …` on that context, in parallel with 6b.
 4. 6c: save reports and append their paths and outcomes to `CYCLE_LOG` and the controlling `LEDGER`.
 5. 6d: every executed gate must clear, and `review-work` must explicitly return `APPROVE`. Findings go to Ralph for the next iteration; unavailable evidence pauses.
+5b. 6d2: after an `APPROVE`, run `self-review` once with `RUNTIME_CHECK: run` to check the runtime findings in the local environment. A reproduced `must` / `should` returns to Ralph; a product decision pauses as `ASK_USER`.
 6. 6e: recurring findings use the same Ralph blocker history and oracle consultation, not another loop.
 
 Phase 7 reports `APPROVE`, `MAX_ITERATIONS_REACHED`, or the exact blocked/stuck state. Approval requires fresh independent evidence for the final tree.

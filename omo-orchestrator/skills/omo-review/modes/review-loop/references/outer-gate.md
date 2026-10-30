@@ -11,6 +11,7 @@ Other entry skills (`omo-ultrawork` including its modes `ulw-execute` and `mass-
 - External `must` and `should` fix directives become fix work the same way their own gate's blockers do (a graph task, a plan fix task, or a todo). Add that work right away as pending; dispatch it in the next Ralph pass, and when a pausing `ASK_USER` exists, only after the answer arrives.
 - Both gates run after the skill's final verification run and are independent, so run them in parallel. When the built-in gate is `review-work`, fill its `Phase 3.5 result` slot with that final verification output.
 - In the contract headers, replace `omo-review mode review-loop Phase 6` / `Phase 6b2` with the calling skill and step (for example `omo-ultrawork mode ulw-execute Phase 6`).
+- When their merged decision is `APPROVE`, they run 6d2 (the one local runtime check) before completing, in place of reporting done; its result decides as 6d2 says.
 - "Ledger" and `CYCLE_LOG` both mean the task's handoff ledger `.claude/omo/handoffs/<task-slug>.md` when the skill keeps no `CYCLE_LOG`. "Phase 7 follow-ups" means a `Follow-ups` list in the skill's final report.
 
 They pass their own review base as `CYCLE_START_SHA` and their goal, constraints, and background from the plan, notepad, or ledger. When no `RISK_LEVEL` was recorded, classify the changed areas with the risk table in the `omo-plan` skill's `references/rigorous-review.md`. In 6d their own built-in gate (`omo-reviewer` or `review-work`) takes the `review-work` column, and they record the 6c entry in their Ralph ledger when they keep no `CYCLE_LOG`.
@@ -20,6 +21,7 @@ They pass their own review base as `CYCLE_START_SHA` and their goal, constraints
 | external review | `self-review` (review only), always when installed | `self-review`: required when listed as available | `{OUTER_DIR}/cycle{OUTER_CYCLE}_review_{TIMESTAMP}.md` |
 | second opinion, final-gate contract | `omo-orchestrator:omo-review` (args `review-work …`) | always | `{OUTER_DIR}/cycle{OUTER_CYCLE}_omo_review_work_{TIMESTAMP}.md` |
 | Codex lane (6b3) | Codex CLI, through `self-review` or directly | always | `self-review` report, or `{OUTER_DIR}/cycle{OUTER_CYCLE}_codex_{TIMESTAMP}.md` |
+| local runtime check (6d2) | `self-review` (review only, `RUNTIME_CHECK: run`) | once, after 6d returns `APPROVE`, when `self-review` ran in 6b | `{OUTER_DIR}/cycle{OUTER_CYCLE}_runtime_{TIMESTAMP}.md` |
 
 ## Timestamp
 
@@ -54,7 +56,7 @@ REPORT_REPO_ROOT=$(git rev-parse --show-toplevel)
 This plugin does not ship `self-review`; it uses the one the user or project installed. Decide whether it runs like this:
 
 1. `REVIEW_SKILL: none` in `SPEC`, `task.md`, or the plan skips `self-review`; record `external review: SKIPPED (REVIEW_SKILL: none)`. Any other `REVIEW_SKILL` value is ignored and `self-review` runs. No other external review skill runs here; `review-pr` is for GitHub PRs and only the user invokes it.
-2. `self-review`, when it appears in the available skills list: always run it with the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate.
+2. `self-review`, when it appears in the available skills list: always run it with the review-only contract below. Its own fix stage never runs here: Ralph owns fixes and the iteration budget, so the findings come back through 6d like any other gate. Its local runtime check (Phase 4b) is off in this call, because the gate repeats while the work is still changing; it runs once in 6d2 after the static gates approve.
 3. When `self-review` is not installed: record `external review: SKIPPED (self-review unavailable)` in `CYCLE_LOG`.
 
 Run 6b and 6b2 in parallel, because the reviews are independent and read the same diff. A Skill call runs in the calling context, so dispatch `self-review` to an `omo-external-reviewer` agent, naming the skill and passing the contract below verbatim, while 6b2 proceeds; wait for every lane before 6c. Freeze the tree while they run: no edits until all reports are back. Record `external review: self-review` in `CYCLE_LOG` when it ran.
@@ -170,9 +172,47 @@ Every gate that ran must clear; the stricter decides.
 - Nits and `[Suggestion]` findings never affect the decision.
 - A pausing `ASK_USER` does not change the decision. Record `REQUEST_CHANGES` (or the decision the table gives) plus `paused: ASK_USER`, and hold every fix directive until the answer, so the next pass carries all of them together.
 
+An `APPROVE` from this table is not final yet: run 6d2 next.
+
+## 6d2: Local runtime check (once, after APPROVE)
+
+The gates above read code. Before completing, check once that the code-level concerns hold when the code runs in the local environment (Docker Compose, dev server, runner). This runs only when 6d returns `APPROVE`, so it costs one run per completed task, not one per iteration.
+
+Skip it, recording the reason in `CYCLE_LOG` and Phase 7, when 6b skipped `self-review` (`REVIEW_SKILL: none` or not installed), or when `SPEC`, `task.md`, or the plan says `RUNTIME_CHECK: skip`. A skip does not block `APPROVE`.
+
+Dispatch an `omo-external-reviewer` agent naming `self-review`, with the 6b contract verbatim except for these lines:
+
 ```
-APPROVE
-  -> append gate paths/outcomes to CYCLE_LOG and LEDGER -> Ralph completes -> Phase 7
+--dry-run    (skips the fix stage only; the report is still saved)
+CALLER: omo-review mode review-loop Phase 6d2 local runtime check (non-interactive)
+RUNTIME_CHECK: run
+REPORT_PATH: {OUTER_DIR}/cycle{OUTER_CYCLE}_runtime_{TIMESTAMP}.md (absolute path)
+
+- Run Phase 4b (local runtime check) on every runtime finding and on the report's
+  未確認事項. Follow its safety limits: local DB and services only, no destructive
+  environment operations, stop only what you started.
+- Review and report only. Do not apply fixes, commit, stash, switch branches, or
+  post anything. Do not ask the user questions; record each one as an `ask` finding.
+```
+
+Read its `## ローカル実機検証` table and map the result:
+
+| Phase 4b result in the runtime report | 6d2 decision |
+|---|---|
+| A `must` / `should` with `再現` or `別の問題` | REQUEST_CHANGES; each becomes a fix directive with the observed output. The next pass reruns the full final gate (6b to 6d), and 6d2 runs again only after that `APPROVE` |
+| A finding with `仕様判断` | `ASK_USER` with the observed behavior; pause as in 6d |
+| Only `不一致`, `再現条件不足`, `静的のみ`, or no runtime target | APPROVE |
+| `not run` (environment could not start) or `Phase 4b: skipped` | APPROVE; list each unchecked finding and the reason in Phase 7 as an unverified runtime item with the command the user can run |
+| Report missing after one re-invocation | APPROVE with `runtime check: NOT_EXECUTED - <reason>` in Phase 7 |
+
+New findings in this report that have no `再現`, `別の問題`, or `仕様判断` result do not block: the static gates already approved this tree. List them in Phase 7 as follow-ups. Record the decision, the report path, and the Phase 4b counts in `CYCLE_LOG`.
+
+```
+APPROVE (6d) -> 6d2 runtime check
+  APPROVE
+    -> append gate paths/outcomes to CYCLE_LOG and LEDGER -> Ralph completes -> Phase 7
+  REQUEST_CHANGES (reproduced runtime defect) or ASK_USER (product decision)
+    -> handled like the same decision below
 REQUEST_CHANGES or recoverable INCONCLUSIVE
   -> append blocking findings or missing evidence
   -> return to Ralph; check shared cap and stuck history before reserving next N
@@ -197,4 +237,4 @@ Append oracle responses verbatim to `CYCLE_LOG` and reference them in `LEDGER`. 
 
 ## Phase 7
 
-Present the final report (template in `templates.md`) in the response, not as a new review file. Link every saved gate report by absolute path. Include the External Library Contract Checks evidence and gate decision, or the explicit N/A reason.
+Present the final report (template in `templates.md`) in the response, not as a new review file. Link every saved gate report by absolute path, the 6d2 runtime report included, and list its Phase 4b results (checked and reproduced-then-fixed, not reproduced, not run with reason). Include the External Library Contract Checks evidence and gate decision, or the explicit N/A reason.

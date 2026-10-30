@@ -40,6 +40,7 @@ Return only:
 - `FIX LOG` (fix mode): the rows of `対応一覧` (ID, action, changed files).
 - `NEEDS DECISION` (fix mode): the items under `ユーザー判断が必要な事項`, or `none`.
 - `VALIDATION` (fix mode): the rows of `検証`.
+- `RUNTIME CHECK`: when the contract says `RUNTIME_CHECK: run`, the rows of the report's `ローカル実機検証` table (ID, result, observed output), or the report's `Phase 4b: skipped (<reason>)` line. Otherwise omit it.
 - `REPORT`: the absolute path of the report the skill actually saved.
 - `CHANGED FILES`: the files whose fingerprint line differs between steps 3 and 5 (changed hash, or present in only one run), excluding the report. Mark each `in fix log` or `not in fix log`. List new files under `docs/reviews/` that are not in the fix log separately as `OTHER REVIEW REPORTS`, not here: review lanes running beside this one save their reports there. When either fingerprint printed `FINGERPRINT FAILED`, write `unknown (<the error>)` instead of a list.
 - `CONTRACT DEVIATIONS`: any change outside the limits above, any file `not in fix log`, `unknown` when `CHANGED FILES` is unknown, or `none`.

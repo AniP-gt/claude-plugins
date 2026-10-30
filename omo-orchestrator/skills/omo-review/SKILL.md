@@ -45,7 +45,9 @@ This is the one review entry; other review skills are stages it or a controller 
 
      - Run the full flow, Phase 1 to Phase 9: review, fix the findings in the working
        tree (test-first when the fix needs a test), verify, re-review, and append the
-       fix log. This call is not an omo final gate, so the stop after Phase 4 does not apply.
+       fix log. This call is not an omo final gate, so the stop after Phase 4b does not apply.
+     - Leave the local runtime check (Phase 4b) off: this review runs after each change
+       while work continues. The user runs it with `/self-review` as the final check.
      - Edit only files in the diff against BASE_REF (untracked files included), test files for those fixes (new files, or existing test files of the changed code), and
        the report. Do not commit, push, stash, switch branches, or post anything.
      - Do not ask the user questions; record each one as a needs-decision item.
