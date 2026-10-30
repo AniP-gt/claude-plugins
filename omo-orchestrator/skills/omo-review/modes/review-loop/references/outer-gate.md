@@ -203,7 +203,7 @@ Read its `## ローカル実機検証` table and map the result:
 | A `must` / `should` with `再現` or `別の問題` | REQUEST_CHANGES; each becomes a fix directive with the observed output. The next pass reruns the full final gate (6b to 6d), and 6d2 runs again only after that `APPROVE` |
 | A finding with `仕様判断` | `ASK_USER` with the observed behavior; pause as in 6d |
 | Only `不一致`, `再現条件不足`, `静的のみ`, or no runtime target | APPROVE |
-| `not run` (environment could not start) or `Phase 4b: skipped` | APPROVE; list each unchecked finding and the reason in Phase 7 as an unverified runtime item with the command the user can run |
+| `not run` (environment could not start) or `Phase 4b: skipped` | APPROVE; list each unchecked finding and the reason in Phase 7 as an unverified runtime item with the command the user can run. Do not present those items as decisions or follow-up issues until they have run: findings filed from code reading alone were all closed as already decided or wrong |
 | Report missing after one re-invocation | APPROVE with `runtime check: NOT_EXECUTED - <reason>` in Phase 7 |
 
 New findings in this report that have no `再現`, `別の問題`, or `仕様判断` result do not block: the static gates already approved this tree. List them in Phase 7 as follow-ups. Record the decision, the report path, and the Phase 4b counts in `CYCLE_LOG`.
