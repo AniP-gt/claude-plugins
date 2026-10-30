@@ -139,4 +139,20 @@ omo-orchestratorはuser/local両scopeに3.1.1が導入済み。
 
 ## 公開・導入結果
 
-検証と独立評価を終えてから実施し、結果を追記する。
+- `63ef73e7f9be95b0e50f5fbe98fd69d738eccd90`:
+  `feat(omo-orchestrator): 上流の文字・余白・ブラウザ部品の品質基準を取り込む (3.2.0)`。
+  指示・直接参照・帰属表示・version同期・今回の評価記録を1つの変更としてcommitした。
+- `git push origin main`: 成功。`3177820..63ef73e main -> main`。
+  開始前から未pushだった `e7c0a75`（llm-wiki 0.10.1）も通常pushに含まれた。
+- `git ls-remote origin refs/heads/main`: 上記commitと一致。
+- `claude plugin marketplace update AniP-gt`: 成功。directory sourceのlocal marketplaceを検証。
+- `claude plugin update omo-orchestrator@AniP-gt --scope user --json`:
+  outcome=ok、up_to_date、3.2.0。directory sourceを参照するため既に最新版として返った。
+- 同コマンド `--scope local`: outcome=ok、updated、3.1.1→3.2.0。
+- `claude plugin list --json`: user/localともversionとfolderVersionが3.2.0、enabled=true。
+- tracked作業ツリーはクリーン。開始前の未追跡 `docs/reviews/` 2ファイルは保持した。
+- CLIの案内に従い、実行中のClaude Codeへの反映には再起動が必要。
+  ユーザーの実行中セッションは終了していない。
+
+この公開結果の追記はdocsだけの別commitとして通常pushする。plugin配下の
+追加変更はないため、versionは3.2.0のままとする。
