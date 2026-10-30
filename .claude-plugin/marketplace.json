@@ -64,7 +64,7 @@
     },
     {
       "name": "omo-orchestrator",
-      "version": "3.4.0",
+      "version": "3.5.0",
       "source": "./omo-orchestrator",
       "description": "Claude Code OMO skills and agents for intent routing, parallel execution, real-surface QA, review, and handoff, plus a ulw (ultrawork) keyword hook."
     },
