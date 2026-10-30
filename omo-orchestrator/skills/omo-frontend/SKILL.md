@@ -32,7 +32,7 @@ Read only the files the task routes to, and say which ones you loaded and why in
 | `references/design-system.md` | No design system exists, extracting one, or adding a token |
 | `references/layout-and-motion.md` | App shells, scroll, responsive breakage, interaction, animation |
 | `references/component-references.md` | Selecting external component or motion references, unfamiliar UI patterns, charts, or reusable templates and kits |
-| `references/quality-floor.md` | Accessibility, performance, semantic HTML, content stress |
+| `references/quality-floor.md` | Accessibility, performance, semantic HTML, content stress, rendered type/spacing and browser-detail checks |
 | `references/implementer-brief.md` | Writing the spec and delegating to `omo-implementer` |
 
 ## Phase 0: Route
@@ -81,6 +81,8 @@ Write 1 to 2 sentences covering:
 For an expressive brief, sketch 2 to 3 genuinely different directions and pick the boldest one you can defend. Do not average them; the average is the generic default. For an operational brief, restraint is correct: clarity, density control, and state feedback carry the design. Details are in `references/aesthetics.md`.
 
 ## Before The First Draft
+
+For a new or extended system, apply `references/quality-floor.md` Rendered Craft Checks and the scaffold defaults in `references/aesthetics.md`. Put concrete token values, scoped design exceptions, and planned computed probes in the brief before implementation; do not fabricate measured values or redesign unrelated established patterns.
 
 For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visual-qa` mode `visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
 

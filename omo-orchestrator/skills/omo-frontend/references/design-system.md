@@ -23,7 +23,7 @@ When creating one, cover these sections. Keep each short.
 
 1. **Atmosphere.** One paragraph on how the product feels, plus the named signature.
 2. **Color.** Table of role, token, light value, dark value, usage. Roles: surface (primary, secondary, elevated), text (primary, secondary, tertiary), border (default, subtle), accent (primary, hover), status (success, warning, error, info). Rule: no color outside the table.
-3. **Typography.** Scale table (display, h1 to h3, body lg / base / sm, caption, overline) with size, weight, line height, tracking. Font stacks for display, body, mono.
+3. **Typography.** Scale table for roles actually used (display, h1 to h3, body lg / base / sm, caption, label) with size, weight, line height, tracking. Font stacks for display, body, mono. Labels describe fields, tables, or metadata; a decorative overline above a heading needs a chosen direction. Validate new scales against `quality-floor.md` Rendered Craft Checks; keep explicit project values as scoped exceptions.
 4. **Spacing and layout.** Base unit (usually 4px) and a scale from 4 to 96. Max content width, column system, breakpoint names.
 5. **Components.** For each primitive: structure, variants, spacing tokens, states (default, hover, active, focus, disabled, loading, empty, error), accessibility, motion, layout primitive and scroll owner. For externally informed mechanisms, cite the source and record the token mapping and adaptations; keep source code out of this document. Use `component-references.md` for source and reuse checks.
 6. **Motion.** Timing table (micro 100 to 150ms ease-out, standard 200 to 300ms, emphasis 400 to 600ms with a strong ease-out curve) and the feedback thresholds in `layout-and-motion.md`.
