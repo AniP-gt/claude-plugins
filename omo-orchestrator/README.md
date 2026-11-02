@@ -13,7 +13,7 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
-Version 3.6.0 adds a Codex implementation lane for use inside Orca. See [Codex Implementation Lane](#codex-implementation-lane).
+Version 3.6.1 lets `omo-work-with-pr` post reply-only follow-ups without waiting for a push, and makes `omo-git-master` finish a cherry-pick the user asked for instead of stopping at a conflict. Version 3.6.0 adds a Codex implementation lane for use inside Orca. See [Codex Implementation Lane](#codex-implementation-lane).
 
 Version 3.5.1 changes how the final gate reports runtime checks that could not run. When the local environment could not start, the unchecked findings are still listed with the command the user can run, but they are no longer presented as decisions or follow-up issues until they have run. Findings filed from code reading alone were all closed as already decided or wrong.
 

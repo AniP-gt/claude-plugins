@@ -19,6 +19,7 @@ Parse the actual request. Do not default to commit mode.
 | commit, there are changes to commit | Commit |
 | rebase, squash, clean up history, apply fixups, reorder | Rebase |
 | resolve conflicts with the base, update the branch to latest | Start with Rebase Mode Step 1 safety assessment, including current-branch, dirty-tree, upstream, and recovery checks. Use `git merge <base>` instead of rebase when the branch is already pushed, then proceed through conflict handling and verification; record the pre-merge HEAD and report it with the merge result as before and after |
+| cherry-pick, port a PR's commits onto another branch | Rebase Mode Step 1 safety checks, then cherry-pick and resolve conflicts as in Step 3 |
 | when was X added, who wrote this, find the commit that, bisect | History |
 
 ## Shared Rules
@@ -31,6 +32,7 @@ Parse the actual request. Do not default to commit mode.
 - Do not push, force-push, or create a pull request unless the user asked. Report the command and let them run it.
 - Never pass `--no-verify`. If a pre-commit or commit-msg hook fails, report the failure output and stop rather than bypassing it.
 - Report what you actually did. If a step failed or was skipped, say so with the output.
+- When the user names the method (for example "cut a branch from X and cherry-pick"), use it. A conflict, or finding that the target branch already has an equivalent change, is not a reason to stop or switch methods: resolve the conflict, finish, and report the overlap and any alternative next to the result. A result that differs only in comments or wording still counts as done. A commit whose whole change the target already has resolves to nothing: drop it with `git cherry-pick --skip` (never `--allow-empty`), continue with the rest, and list it in the report. Stop and ask only when the resolution needs a choice you cannot verify.
 
 ### Machine-readable path inventory
 
