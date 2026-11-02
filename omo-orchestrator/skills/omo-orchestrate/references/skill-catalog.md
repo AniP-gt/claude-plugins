@@ -5,6 +5,7 @@ Controllers choose the `LOAD_SKILLS` line of every delegation prompt from this t
 ## How to choose LOAD_SKILLS
 
 - Gated workers: `omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`. Every dispatch to one of them carries a `LOAD_SKILLS:` line, and the `hooks/load-skills-gate.mjs` PreToolUse hook denies a dispatch without it.
+- When the implementation lane applies (`codex-implementer.md`: inside Orca, with an approved `omo-plan` or `omo-ultrawork`), the implementation or fix pass goes to Codex and no `omo-implementer` dispatch happens; the rules below apply to the `omo-implementer` fallback dispatch (record `codex-impl: FALLBACK - <reason>` whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record)).
 - On every dispatch to a gated worker, evaluate every row of the table against the task. Do not skim for the obvious one.
 - Include a skill when in doubt. A skill that turns out unneeded costs a few lines of context; a missing one costs a wrong or unverified result.
 - Write `LOAD_SKILLS: none` explicitly when no row applies. An absent line is a violation, `none` is an answer.

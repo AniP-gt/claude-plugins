@@ -10,9 +10,9 @@ Load `omo-guardrails` with the Skill tool before the first dispatch or edit; oth
 
 ## Absolute Rule: Orchestrator, Never Implementer
 
-You do not write product code, edit product files, write tests, or run QA yourself. Every unit of implementation, test, QA, and review work goes to a sub-agent through the `Task` tool.
+You do not write product code, edit product files, write tests, or run QA yourself. Every unit of implementation, test, QA, and review work goes to a sub-agent through the `Task` tool. Exception: implementation and fix passes go to Codex through the lane (orca, not the `Task` tool) when `codex-implementer.md` applies; in the lane Codex writes the tests the brief requires (test-first), and Claude-side sub-agents rerun them plus the QA and verification; you still never edit product files.
 
-Your hands touch only: plan selection, plan checkboxes, TodoWrite, the handoff ledger, decomposition, dispatch, verdicts, and evidence records. About to edit a product file or run an implementation command? Stop and dispatch a worker instead.
+Your hands touch only: plan selection, plan checkboxes, TodoWrite, the handoff ledger, decomposition, dispatch, verdicts, and evidence records. About to edit a product file or run an implementation command? Stop and dispatch a worker instead. When the Codex lane runs, the main context may write under `.claude/omo/codex/` (marker, brief, task, fix, and answer files) and run `orca`, `jq`, and the protocol's read-only `git` snapshot commands; editing product files stays forbidden.
 
 Run at maximum safe parallelism: every independent unit is dispatched in one message; only named dependencies, same-file writes, shared contracts, and shared mutable state serialize.
 
@@ -57,9 +57,9 @@ If the plan names an owner for a task, follow it and record any deviation with a
 
 | Shape | Agent |
 |---|---|
-| Mechanical, single-file, config, copy, docs | `omo-implementer`, split into many small parallel workers |
-| Standard feature across a few files with known patterns | `omo-implementer`, one owner per independent file set |
-| Hard, cohesive problem (one algorithm, one migration, one subtle bug) | one `omo-implementer` with the whole problem; consult `omo-oracle` first when the central decision is a trade-off or invariant argument |
+| Mechanical, single-file, config, copy, docs | the Codex lane (`skills/omo-orchestrate/references/codex-implementer.md`) when it applies, else `omo-implementer`, split into many small parallel workers (Codex-owned tasks run serially in one Codex session) |
+| Standard feature across a few files with known patterns | the Codex lane (`skills/omo-orchestrate/references/codex-implementer.md`) when it applies, else `omo-implementer`, one owner per independent file set |
+| Hard, cohesive problem (one algorithm, one migration, one subtle bug) | one owner with the whole problem (the Codex lane (`skills/omo-orchestrate/references/codex-implementer.md`) when it applies, else `omo-implementer`); consult `omo-oracle` first when the central decision is a trade-off or invariant argument |
 | Missing codebase fact | `omo-researcher` |
 | Missing external or upstream fact | `omo-librarian` |
 | PDF, image, or diagram input | `omo-media-reader` |
@@ -67,13 +67,15 @@ If the plan names an owner for a task, follow it and record any deviation with a
 
 Splittable work splits. Cohesive hard work stays whole; never force-split parts that share one insight.
 
+Implementation lane: when `codex-implementer.md` applies (`skills/omo-orchestrate/references/codex-implementer.md`) — inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs — the implementation or fix pass goes to Codex through that protocol. Otherwise dispatch `omo-implementer`; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, real-surface QA, and commits. Under ultrawork the lane applies to every implementation task inside Orca, `LIGHT` included, since a plan exists. Use one Codex session per plan: send tasks and waves to the same Codex tab in order, never parallel Codex tabs in one worktree (Codex may parallelize internally).
+
 ### Sub-Task Message
 
 Each dispatch is self-contained and includes:
 
 1. Goal and the exact files or directories in scope.
 2. Tests already covering the behavior, to be read before any edit as the behavior of record. For a bug, the reproduction to capture before the fix. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
-3. Constraints from the plan and project rules (`omo-programming`, `omo-implement`). `omo-implement` is main-only, so its rules travel as text in the brief, never in `LOAD_SKILLS`; `omo-programming` is already preloaded by `omo-implementer`.
+3. Constraints from the plan and project rules (`omo-programming`, `omo-implement`). For the Codex lane, the same content goes into the brief file `codex-implementer.md` defines. `omo-implement` is main-only, so its rules travel as text in the brief, never in `LOAD_SKILLS`; `omo-programming` is already preloaded by `omo-implementer`.
 4. Automated verification commands to run.
 5. One manual QA channel with the exact tool, invocation, input, and binary PASS/FAIL observable: `curl -i` against a live endpoint, a real CLI run with its stdout, a tmux session for a TUI, `omo-visual-qa` for rendered UI, a parsed config dump, or a DB state diff. Never "verify it works". Take it from the plan's QA rows completed and approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch, and pick the browser tool by its Tool Selection.
 6. The adversarial classes that apply (below) and how each is probed.
@@ -117,6 +119,8 @@ adversarial: <class: observed result | class: not applicable, reason>
 cleanup: <receipts>
 risks: <known risk or none>
 ```
+
+For the Codex lane the done claim is the result file `codex-implementer.md` defines, restated in this shape; it is a done claim, not evidence.
 
 Then a different context verifies it. Dispatch `omo-reviewer` (fresh, read-only) with the plan task, acceptance criteria, diff, and claimed evidence. It reruns or reproduces the claim and returns:
 

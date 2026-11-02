@@ -1,7 +1,11 @@
 // Run: node --test omo-orchestrator/hooks/review-gate.test.mjs
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { minFiles, run } from "./review-gate.mjs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, test } from "node:test";
+import { codexRunInFlight, minFiles, run } from "./review-gate.mjs";
 
 const cwd = "/repo";
 const prompt = { type: "user", message: { content: "直して" } };
@@ -230,4 +234,93 @@ test("a repository that lives under a docs/reviews directory still gates its own
   const root = "/work/docs/reviews/project";
   assert.notEqual(gateAt(root, [prompt], [`${root}/src/main.js`]), "");
   assert.equal(gateAt(root, [prompt], [`${root}/docs/reviews/self/x.md`]), "");
+});
+
+// A Claude controller writes <git root>/.claude/omo/codex/IN_FLIGHT while a Codex run is in flight in another tab.
+const HOUR_MS = 60 * 60 * 1000;
+const repos = [];
+after(() => {
+  for (const dir of repos) rmSync(dir, { recursive: true, force: true });
+});
+
+function repoWithMarker(ageHours) {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "review-gate-")));
+  repos.push(dir);
+  execFileSync("git", ["init", "-q"], { cwd: dir });
+  if (ageHours !== null) {
+    const marker = join(dir, ".claude/omo/codex/IN_FLIGHT");
+    mkdirSync(join(dir, ".claude/omo/codex"), { recursive: true });
+    writeFileSync(marker, "");
+    const then = new Date(Date.now() - ageHours * HOUR_MS);
+    utimesSync(marker, then, then);
+  }
+  return dir;
+}
+
+function gateInRepo(dir, entries) {
+  const edited = { type: "assistant", message: { content: [{ type: "tool_use", name: "Edit", input: { file_path: `${dir}/a.js` } }] } };
+  return run(
+    { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd: dir },
+    { env: {}, loadTranscript: () => [prompt, edited, ...entries], changedFiles: () => [`${dir}/a.js`] },
+  );
+}
+
+test("a fresh in-flight Codex marker keeps the gate from asking for a review of half-done edits", () => {
+  assert.equal(gateInRepo(repoWithMarker(1), [reply]), "");
+});
+
+test("the marker is found from a subdirectory of the repository", () => {
+  const dir = repoWithMarker(1);
+  mkdirSync(join(dir, "src"));
+  const input = { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd: join(dir, "src") };
+  const deps = { env: {}, loadTranscript: () => [prompt, reply], changedFiles: () => [`${dir}/src/a.js`] };
+  assert.equal(run(input, deps), "");
+  rmSync(join(dir, ".claude"), { recursive: true });
+  assert.notEqual(run(input, deps), "");
+});
+
+test("without the marker the gate blocks as before", () => {
+  assert.notEqual(gateInRepo(repoWithMarker(null), [reply]), "");
+});
+
+test("a marker older than 24 hours is ignored", () => {
+  assert.notEqual(gateInRepo(repoWithMarker(25), [reply]), "");
+  assert.equal(gateInRepo(repoWithMarker(23), [reply]), "");
+});
+
+test("a marker with a future mtime is ignored", () => {
+  assert.notEqual(gateInRepo(repoWithMarker(-2), [reply]), "");
+});
+
+test("a directory named IN_FLIGHT is not a marker", () => {
+  const dir = repoWithMarker(null);
+  mkdirSync(join(dir, ".claude/omo/codex/IN_FLIGHT"), { recursive: true });
+  assert.notEqual(gateInRepo(dir, [reply]), "");
+});
+
+test("the marker does not hide a missing Codex lane after omo-review", () => {
+  const out = gateInRepo(repoWithMarker(1), [omoReview, reply]);
+  assert.notEqual(out, "");
+  assert.match(JSON.parse(out).reason, /\[OMO CODEX GATE\]/);
+});
+
+test("a marker outside a git repository is not looked for", () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "review-gate-nogit-")));
+  repos.push(dir);
+  mkdirSync(join(dir, ".claude/omo/codex"), { recursive: true });
+  writeFileSync(join(dir, ".claude/omo/codex/IN_FLIGHT"), "");
+  assert.equal(codexRunInFlight(dir), false);
+  assert.notEqual(gateAt(dir, [prompt], [`${dir}/a.js`]), "");
+});
+
+test("an unknown cwd does not fall back to the hook process's own directory", () => {
+  const dir = repoWithMarker(1);
+  const original = process.cwd();
+  process.chdir(dir);
+  try {
+    assert.equal(codexRunInFlight(dir), true);
+    assert.equal(codexRunInFlight(undefined), false);
+  } finally {
+    process.chdir(original);
+  }
 });

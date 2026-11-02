@@ -11,7 +11,7 @@ This plugin adapts OMO concepts into portable Claude Code skills and agents.
 | `omo-plan-reviewer` | Read-only plan executability check with `OKAY` or `REJECT` |
 | `omo-plan` | On a plan request, and before the first edit of any change request or GitHub issue except a typo, wording, or config value change: TL;DR, dependency matrix, blocking executable QA scenarios, gap classification, and handoff inputs |
 | `omo-plan` mode `hyperplan` | Adversarial planning for high-risk or ambiguous work before implementation |
-| `omo-implementer` | Minimal verified implementation |
+| `omo-implementer` | Minimal verified implementation; inside Orca with an approved plan or `omo-ultrawork`, Codex implements through `references/codex-implementer.md` and `omo-implementer` is the fallback (`codex-impl: FALLBACK - <reason>` whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record)) |
 | `omo-researcher` | Read-only codebase investigation |
 | `omo-librarian` | Read-only external library, upstream source, and dependency-history research with permalinks |
 | `omo-ralph-loop` + `omo-implement` + `omo-review` | Ralph controls the shared budget; one implementation/fix pass consumes planned QA and returns evidence for independent review and final verification |

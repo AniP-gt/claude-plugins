@@ -7,7 +7,7 @@ Use this before the first delegation of a request. State the routing decision in
 | Surface form | True intent | Route |
 |---|---|---|
 | "explain X", "how does Y work" | Research | `omo-researcher` / `omo-librarian` in parallel, then synthesize an answer |
-| "implement X", "add Y", "create Z" | Implementation | plan when the planning threshold applies, then `omo-implementer` |
+| "implement X", "add Y", "create Z" | Implementation | plan when the planning threshold applies, then the implementation lane (Codex through `references/codex-implementer.md` when it applies, else `omo-implementer`) |
 | "look into X", "check Y", "investigate" | Investigation | `omo-researcher`, report findings; no edits |
 | "what do you think about X?" | Evaluation | evaluate, propose, then wait for user confirmation before any edit |
 | "I'm seeing error X", "Y is broken" | Fix | diagnose root cause (`omo-programming` mode `debugging`), then a minimal fix; no refactor while fixing |
@@ -60,13 +60,15 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | Pre-planning gap analysis | `omo-plan-consultant` |
 | File-level plan | `omo-planner`; hard or risky work: `omo-plan` mode `hyperplan` |
 | Plan executability check (a written plan file or omo-plan draft; not todo lists) | `omo-plan-reviewer` |
-| Implementation and fixes | `omo-implementer` |
-| Standalone visual explanation, chart, table, or diagram | `omo-visual-qa` mode `visualize`, implementation by `omo-implementer`, then `omo-visual-qa` |
+| Implementation and fixes | Implementation lane: Codex through `references/codex-implementer.md` when it applies, else `omo-implementer` |
+| Standalone visual explanation, chart, table, or diagram | `omo-visual-qa` mode `visualize`, implementation through the implementation lane (row above), then `omo-visual-qa` |
 | Implement plus review loop | `omo-review` mode `review-loop` |
 | Change review | `omo-reviewer` |
 | Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle`; for the debugging case and `HEAVY` plan review, also the Codex consult in `references/codex-consult.md` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |
 | Long command-driven verification (local real runs, Docker scenarios) | `omo-implementer` with a verification-only scope and the work budget from `omo-guardrails` |
+
+Implementation lane: when `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the implementation or fix pass goes to Codex through that protocol. Otherwise dispatch `omo-implementer`; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, real-surface QA, and commits. The two `omo-implementer` rows above (prose-only wiki or docs writer, verification-only scope) stay with `omo-implementer` by design: the first is not planned product implementation, and verification is Claude's job. Git operations also stay with `omo-implementer` because Codex never makes commits.
 
 ## Model for agents outside this matrix
 

@@ -60,7 +60,7 @@ Size the scope first: count distinct surfaces, files, and steps. Any task with 2
 
 ## Delegate By Default
 
-The main context orchestrates. It does not implement unless the change is trivial (1-2 obvious lines with all context loaded).
+The main context orchestrates. It does not implement unless the change is trivial (1-2 obvious lines with all context loaded) and the Codex lane does not apply; when the lane applies (inside Orca under ulw), even trivial edits go to the lane.
 
 | Task type | Owner |
 |---|---|
@@ -68,7 +68,7 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Documentation or upstream lookup | `omo-librarian`, in parallel |
 | Planning | `omo-planner` |
 | Hard problem, architecture, 2+ failed fix attempts | `omo-oracle` |
-| Implementation | `omo-implementer`, one owner per independent file set |
+| Implementation | the Codex lane in `skills/omo-orchestrate/references/codex-implementer.md` when it applies, else `omo-implementer`; one owner per independent file set |
 | PDFs, images, diagrams | `omo-media-reader` |
 | Review gate | `omo-reviewer` |
 | Research that writes files, long command-driven verification | see `omo-orchestrate` `references/routing.md` |
@@ -77,7 +77,9 @@ Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (o
 
 Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
 
-Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), a binary `Done when`, and the real-surface QA design approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch. Without `Done when` the executor has no exit.
+Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), a binary `Done when`, and the real-surface QA design approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch. Without `Done when` the executor has no exit. A Codex lane brief carries the same fields.
+
+Implementation lane: when `codex-implementer.md` applies (`skills/omo-orchestrate/references/codex-implementer.md`) — inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs — the implementation or fix pass goes to Codex through that protocol. Otherwise dispatch `omo-implementer`; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, real-surface QA, and commits. Under ultrawork the lane applies to every implementation task inside Orca, `LIGHT` included, since a plan exists. Use one Codex session per plan: send tasks and waves to the same Codex tab in order, never parallel Codex tabs in one worktree (Codex may parallelize internally). Each Codex round's done claim is still verified by a fresh `omo-reviewer`; the Codex result file is a done claim, not evidence. The orchestrator still never edits product files itself.
 
 Parallelize independent agent calls in one message. Read before change, never in parallel with it. Serialize same-file writes, shared mutable state, shared contracts, and named predecessors. Size the work as `LIGHT` or `HEAVY` once and only ratchet toward `HEAVY` when risk grows.
 

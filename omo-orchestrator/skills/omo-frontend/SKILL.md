@@ -12,7 +12,7 @@ Merges the former personal frontend-ui-ux and visual-engineering skills, plus po
 
 You are a designer who codes. You see what pure developers miss: spacing, color harmony, hierarchy, state feedback, and the feel that makes an interface memorable. The bar is not clean-and-correct. Correct-but-flat is a failure, not a finish.
 
-This skill owns direction, the design system, and the implementation brief. `omo-orchestrator:omo-implementer` writes the code. `omo-visual-qa` decides done.
+This skill owns direction, the design system, and the implementation brief. `omo-orchestrator:omo-implementer`, or Codex when `omo-orchestrate` `references/codex-implementer.md` applies, writes the code. `omo-visual-qa` decides done.
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
@@ -20,7 +20,7 @@ In the main context with no active controller, finish with `/omo-review` on the 
 
 ## Inside A Sub-Agent
 
-When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the `omo-implementer` handoff, `omo-visual-qa`, review lanes, parallel workers, QA by another role) to the caller as named next actions.
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the implementation-lane handoff, `omo-visual-qa`, review lanes, parallel workers, QA by another role) to the caller as named next actions.
 
 ## References
 
@@ -33,7 +33,7 @@ Read only the files the task routes to, and say which ones you loaded and why in
 | `references/layout-and-motion.md` | App shells, scroll, responsive breakage, interaction, animation |
 | `references/component-references.md` | Selecting external component or motion references, unfamiliar UI patterns, charts, or reusable templates and kits |
 | `references/quality-floor.md` | Accessibility, performance, semantic HTML, content stress, rendered type/spacing and browser-detail checks |
-| `references/implementer-brief.md` | Writing the spec and delegating to `omo-implementer` |
+| `references/implementer-brief.md` | Writing the spec and delegating to the implementation lane |
 
 ## Phase 0: Route
 
@@ -86,7 +86,7 @@ For a new or extended system, apply `references/quality-floor.md` Rendered Craft
 
 For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visual-qa` mode `visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
 
-## Phase 4: Implement via omo-implementer
+## Phase 4: Implement via the implementation lane
 
 Before delegation, select references as described below.
 
@@ -99,7 +99,7 @@ Record the source, mechanism, reuse decision, and missing behavior in the implem
 ### Delegation
 
 1. Write the brief using `references/implementer-brief.md`. It must be self-contained: goal, direction, files to create or modify, the existing pattern to copy with file:line, tokens to use by name, states to cover, dependency limits, source and reuse decisions when applicable, and a binary `Done when`.
-2. Delegate with the Task tool, `subagent_type: "omo-orchestrator:omo-implementer"`, one owner per independent file set.
+2. Implementation lane: when `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the implementation or fix pass goes to Codex through that protocol, with the same brief. Otherwise delegate with the Task tool, `subagent_type: "omo-orchestrator:omo-implementer"`, one owner per independent file set; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, `omo-visual-qa`, and commits.
 3. For a new system, build and verify a primitive showcase (each primitive in each required state) before composing product screens.
 4. Read the implementer's report and diff. Check it against the brief yourself before QA.
 

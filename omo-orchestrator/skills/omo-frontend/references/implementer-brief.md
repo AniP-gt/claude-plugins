@@ -1,6 +1,6 @@
 # Implementer Brief
 
-Every `omo-orchestrator:omo-implementer` brief is self-contained. The implementer did not see your analysis. Without a binary `Done when` it has no exit.
+Every `omo-orchestrator:omo-implementer` brief is self-contained. The implementer did not see your analysis. Without a binary `Done when` it has no exit. When `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), this brief body is also the Codex brief body; `omo-implementer` is the fallback, recorded as `codex-impl: FALLBACK - <reason>` whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record).
 
 For multi-step work, append the brief to the task ledger at `.claude/omo/handoffs/<task-slug>.md` and reference that path in the prompt. For a single delegation, pass the brief inline.
 
@@ -74,7 +74,7 @@ Scroll owner for any shell. Reduced-motion behavior for any animation.
 
 ## Delegation
 
-Use the Task tool:
+Use the Task tool (the fallback path when `codex-implementer.md` does not apply or could not start):
 
 - `subagent_type`: `omo-orchestrator:omo-implementer`
 - `description`: short, for example `Frontend: pricing page hero`

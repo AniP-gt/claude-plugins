@@ -6,11 +6,14 @@
 // The second stop arrives with stop_hook_active=true and always passes, so the hook cannot loop.
 // A background task notification continues the same turn and triggers a fresh stop without that flag, so
 // the gate also passes when its own feedback already follows the last edit: it asks once per edit.
+// While a Codex implementation run is in flight, the review is not due: its edits are half done and the turn may
+// end only to relay a Codex question or to wait. The controller marks the run with <git root>/.claude/omo/codex/IN_FLIGHT;
+// a marker younger than 24 hours holds the review check back, an older one is stale and ignored.
 // A second check blocks once when this turn ran omo-review but shows no sign of its Codex lane afterwards.
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { filesChangedSince, loadSnapshot } from "./turn-snapshot.mjs";
+import { filesChangedSince, gitRoot, loadSnapshot } from "./turn-snapshot.mjs";
 import { stripInjected } from "./ulw-keyword.mjs";
 
 const MARKER = "[OMO REVIEW GATE]";
@@ -23,6 +26,24 @@ const REVIEW_AGENT_PATTERN = /review|oracle|security-check/i;
 // The handoff ledger and notepads are bookkeeping, not product changes. Review skills write their reports
 // under docs/reviews/ after they run; counting those would ask for a review of the review.
 const IGNORED_PATH_PATTERN = /(^|\/)(?:\.claude\/omo|docs\/reviews)\//;
+
+const CODEX_IN_FLIGHT_MARKER = ".claude/omo/codex/IN_FLIGHT";
+const CODEX_IN_FLIGHT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// True when a Codex run's marker file exists under the git root of cwd, with an mtime within the last 24 hours
+// (a future mtime is not trusted).
+export function codexRunInFlight(cwd, now = Date.now()) {
+  if (cwd === undefined) return false;
+  const root = gitRoot(cwd);
+  if (root === null) return false;
+  try {
+    const marker = statSync(join(root, CODEX_IN_FLIGHT_MARKER));
+    const age = now - marker.mtimeMs;
+    return marker.isFile() && age >= 0 && age < CODEX_IN_FLIGHT_MAX_AGE_MS;
+  } catch {
+    return false;
+  }
+}
 
 export function minFiles(env = process.env) {
   const value = Number.parseInt(env.OMO_REVIEW_GATE_MIN_FILES ?? "", 10);
@@ -262,21 +283,24 @@ export function readTranscript(path) {
   }
 }
 
-export function run(input, { env = process.env, loadTranscript = readTranscript, changedFiles = gitChangedFiles } = {}) {
+export function run(
+  input,
+  { env = process.env, loadTranscript = readTranscript, changedFiles = gitChangedFiles, codexInFlight = codexRunInFlight } = {},
+) {
   if (typeof input !== "object" || input === null) return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
   if (input.stop_hook_active === true) return "";
   if (typeof input.transcript_path !== "string") return "";
   const entries = loadTranscript(input.transcript_path);
   if (!/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) {
-    const reason = reviewReason(entries, input, env, changedFiles);
+    const reason = reviewReason(entries, input, env, changedFiles, codexInFlight);
     if (reason !== null) return block(reason);
   }
   if (!/^(off|0|false)$/i.test(env.OMO_CODEX_GATE ?? "") && codexLaneMissing(entries)) return block(buildCodexReason());
   return "";
 }
 
-function reviewReason(entries, input, env, changedFiles) {
+function reviewReason(entries, input, env, changedFiles, codexInFlight) {
   const cwd = typeof input.cwd === "string" ? input.cwd : undefined;
   const turn = summarizeTurn(currentTurnToolUses(entries), cwd);
   if (turn.reviewed) return null;
@@ -286,6 +310,7 @@ function reviewReason(entries, input, env, changedFiles) {
   // With a git snapshot, sub-agent edits are already in the file list; without one, guess from the call.
   const delegatedEdit = fromGit === null && turn.delegatedEdit;
   if (files.size < minFiles(env) && !delegatedEdit) return null;
+  if (codexInFlight(cwd)) return null;
   const shown = [...files].map((file) => display(file, cwd)).sort();
   return buildReason({ files: shown, delegatedEdit });
 }

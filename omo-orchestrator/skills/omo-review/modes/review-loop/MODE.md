@@ -4,7 +4,7 @@ Plugin port of the personal `implementation-review-loop` skill, rebuilt on omo-o
 
 # OMO Review Loop
 
-Ralph-managed review workflow: `omo-implementer` implements, parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, the controller schedules fixes. The final gate (`omo-review` mode `review-work`, plus the `self-review` skill when installed) returns its verdict to `omo-ralph-loop`, the sole loop controller.
+Ralph-managed review workflow: the implementation lane implements (`omo-implementer`, or Codex when `omo-orchestrate` `references/codex-implementer.md` applies), parallel `omo-reviewer` lanes review one dimension each plus an evidence-gate lane (and an optional Copilot CLI lane), a synthesis judge classifies every finding, the controller schedules fixes. The final gate (`omo-review` mode `review-work`, plus the `self-review` skill when installed) returns its verdict to `omo-ralph-loop`, the sole loop controller.
 
 Triggers: "implement and review", "review loop", "auto-review", "quality loop", "implement with review".
 
@@ -150,7 +150,7 @@ After every lane returns, spawn one judge per `references/synthesis-judge.md`. I
 
 ### 3c. Fix
 
-A synthesis finding ends the current pass. Return it to Ralph; only after the controller reserves the next iteration may the fix dispatch run. Dispatch `omo-orchestrator:omo-implementer` with `synthesis.md`, `SPEC`, the ledger path, and the library evidence. The fix dispatch carries a `LOAD_SKILLS` line chosen per `omo-orchestrate` `references/skill-catalog.md`. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
+A synthesis finding ends the current pass. Return it to Ralph; only after the controller reserves the next iteration may the fix dispatch run. Implementation lane: when `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), send the synthesis directives to the same Codex tab as the next round through that protocol; otherwise dispatch `omo-orchestrator:omo-implementer`. Whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Either way the fix gets `synthesis.md`, `SPEC`, the ledger path, and the library evidence. Review lanes stay Claude plus the codex-lane (`omo-review` `references/codex-lane.md`); the implementing Codex session never reviews. The fix dispatch carries a `LOAD_SKILLS` line chosen per `omo-orchestrate` `references/skill-catalog.md`. It fixes `AUTO_FIX` items only (code fixes and evidence items), touches nothing unrelated, and appends to the ledger. `ASK_USER` items wait for the user.
 
 ### 3d. Verify
 

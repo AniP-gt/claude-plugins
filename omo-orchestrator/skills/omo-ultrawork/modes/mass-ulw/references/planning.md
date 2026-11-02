@@ -38,16 +38,18 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 
 | Upstream category | Claude Code owner | Use when |
 |---|---|---|
-| `quick` (default) | `omo-researcher` (haiku) for read-only; `omo-implementer` (sonnet default) for mechanical edits | Single file, pattern-following, batch scans |
-| `unspecified-low` | `omo-implementer` (sonnet default) | A few files, or a judgment call a template cannot make |
-| `unspecified-high` | `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface |
-| `writing` | `omo-implementer` with a prose-only scope | Docs, README, technical writing |
-| `visual-engineering` | `omo-implementer`, then `omo-visual-qa` | Frontend, UI, styling |
+| `quick` (default) | `omo-researcher` (haiku) for read-only; the Codex lane for mechanical edits when it applies, else `omo-implementer` (sonnet default) | Single file, pattern-following, batch scans |
+| `unspecified-low` | the Codex lane when it applies, else `omo-implementer` (sonnet default) | A few files, or a judgment call a template cannot make |
+| `unspecified-high` | the Codex lane when it applies, else `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface |
+| `writing` | the Codex lane when it applies, else `omo-implementer` with a prose-only scope | Docs, README, technical writing |
+| `visual-engineering` | the Codex lane when it applies, else `omo-implementer`; then `omo-visual-qa` | Frontend, UI, styling |
 | `git` | `omo-implementer` following `omo-git-master` | Git operations only |
 | external lookup | `omo-librarian` | Upstream source, library docs |
 | media | `omo-media-reader` | PDFs, images, diagrams |
 | `deep-*` / `ultrabrain` | `omo-oracle` | Hairy cross-module reasoning or a trade-off evidence cannot settle. At most one per graph for the single hardest decision everything else depends on |
 | review | `omo-reviewer` | Verification and final gate |
+
+The Codex lane is the protocol in `skills/omo-orchestrate/references/codex-implementer.md`; it applies inside Orca when an approved `omo-plan` exists or `omo-ultrawork` runs. Whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), dispatch `omo-implementer` and record `codex-impl: FALLBACK - <reason>`. Planned `writing` tasks (README, docs in the plan) go to the lane too; only research-lane prose-only wiki or docs writers stay with `omo-implementer` (`routing.md`). `git` stays with `omo-implementer` because Codex never makes commits. One Codex session per plan: Codex-owned tasks go to the same Codex tab in order, never parallel Codex tabs in one worktree, so they serialize even when ready together. While a Codex round runs, no task that writes to the working tree (the exempt prose-writer and git tasks included) runs in the same wave; it waits until the round ends, because Claude does not edit the tree during a Codex run and the post-run check would otherwise stop. Read-only lanes still fan out. A Codex result file is a done claim; a fresh `omo-reviewer` still verifies it.
 
 Do not route a lane to `general-purpose` or a skill runner: they inherit the main session's model. When no owner above fits, pass `model: "sonnet"` on that Agent call. Every lane prompt carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 

@@ -14,6 +14,7 @@ const EXPECTED = [
   "/plans/",
   "/reviews/",
   "/briefs/",
+  "/codex/",
   "",
 ].join("\n");
 
@@ -31,6 +32,10 @@ const post = (tool_name, extra) => ({ hook_event_name: "PostToolUse", tool_name,
 
 test("the ignore file content is exactly the documented text", () => {
   assert.equal(IGNORE_CONTENT, EXPECTED);
+});
+
+test("the Codex lane's scratch directory is ignored", () => {
+  assert.ok(IGNORE_CONTENT.split("\n").includes("/codex/"));
 });
 
 test("a write under .claude/omo creates .gitignore there, and the hook prints nothing", () => {

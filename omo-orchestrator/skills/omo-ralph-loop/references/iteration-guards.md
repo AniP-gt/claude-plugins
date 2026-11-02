@@ -63,7 +63,9 @@ Next exact action: <user decision or different strategy needed>
 
 ## Iteration Brief
 
-When an iteration is delegated to `omo-implementer`, send a self-contained brief:
+Implementation lane: when `codex-implementer.md` applies (see `omo-orchestrate` `references/codex-implementer.md`: inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the iteration's implementation or fix pass goes to Codex through that protocol. Otherwise dispatch `omo-implementer`; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, real-surface QA, and commits. The iteration count, cap, and stuck rules are unchanged, and a Codex fix round is one Ralph iteration.
+
+When an iteration is delegated to the lane or to `omo-implementer`, send a self-contained brief:
 
 ```text
 Task: <original goal>

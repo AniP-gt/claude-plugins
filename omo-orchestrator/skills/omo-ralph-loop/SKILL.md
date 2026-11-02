@@ -32,7 +32,7 @@ When `omo-review` mode `review-loop` is the entry, load this controller once and
 8. If review returns `INCONCLUSIVE`, append the result to the handoff ledger and block completion until the required evidence is obtained or the exact blocker is handed off.
 9. Iteration exhaustion, a satisfied promise, passing checks, or lack of new findings is not completion without final independent `APPROVE`.
 
-Iteration cap (default 20), measured goals, stuck detection (same error in 3 consecutive iterations stops the loop, an environment refusal stops it at once) with cause classification, the `omo-implementer` iteration brief, and per-task iteration shapes are in [iteration guards](references/iteration-guards.md).
+Iteration cap (default 20), measured goals, stuck detection (same error in 3 consecutive iterations stops the loop, an environment refusal stops it at once) with cause classification, the implementation-lane (`omo-orchestrate` `references/codex-implementer.md`, else `omo-implementer`) iteration brief, and per-task iteration shapes are in [iteration guards](references/iteration-guards.md).
 
 ## Recovery Contract
 

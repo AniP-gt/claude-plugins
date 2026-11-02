@@ -145,6 +145,8 @@ Required sections: Goal / Stack / Issue or TASK_ID / Base branch / Files to modi
 
 ### 2b. Delegate
 
+Implementation lane: when `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the implementation or fix pass goes to Codex through that protocol, with the prompt body below as its brief. Otherwise dispatch `omo-implementer` as below; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, real-surface QA, and commits.
+
 ```
 Agent(
   subagent_type="omo-orchestrator:omo-implementer",
@@ -163,7 +165,7 @@ Agent(
 )
 ```
 
-When `IS_FRONTEND=true`, add an aesthetic direction section to `SPEC` (purpose, tone, constraints, the one thing users remember) and plan an `omo-visual-qa` check for Phase 3.5. If the user has a dedicated frontend design skill listed, it may drive the design direction; implementation still goes to `omo-implementer`.
+When `IS_FRONTEND=true`, add an aesthetic direction section to `SPEC` (purpose, tone, constraints, the one thing users remember) and plan an `omo-visual-qa` check for Phase 3.5. If the user has a dedicated frontend design skill listed, it may drive the design direction; implementation still goes through the implementation lane above.
 
 ### 2c. Post-implementation check
 

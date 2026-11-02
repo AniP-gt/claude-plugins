@@ -20,6 +20,7 @@ export const IGNORE_CONTENT = [
   "/plans/",
   "/reviews/",
   "/briefs/",
+  "/codex/",
   "",
 ].join("\n");
 

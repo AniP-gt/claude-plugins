@@ -29,7 +29,7 @@ Dispatch `omo-orchestrator:omo-reviewer` (`LOAD_SKILLS: none`) as a QA design re
 - The tool exists here, the target is local, and setup and cleanup are concrete.
 - Each pass condition is binary and each scenario names its evidence path.
 
-On `REQUEST_CHANGES` or `INCONCLUSIVE`, redesign only the flagged rows and review again. After 3 rounds without `APPROVE`, stop and ask the user with the open rows. Do not run QA on a design that has not received `APPROVE`. Attach the approved design to the `omo-implementer` brief; the design review does not use a Ralph iteration.
+On `REQUEST_CHANGES` or `INCONCLUSIVE`, redesign only the flagged rows and review again. After 3 rounds without `APPROVE`, stop and ask the user with the open rows. Do not run QA on a design that has not received `APPROVE`. Attach the approved design to the Codex brief (`omo-orchestrate` `references/codex-implementer.md`) or to the `omo-implementer` brief, whichever runs the pass; the design review does not use a Ralph iteration.
 
 ## 3. Run
 
