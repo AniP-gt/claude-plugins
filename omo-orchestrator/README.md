@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 3.7.0 adds the `eval-integrity` mode to `omo-research`, adapting upstream PR #7593 at `0ef1af9d23`. It audits whether benchmark, A/B test, LLM judge, and user-study evidence supports the stated claim, distinguishing demonstrated dependence from missing provenance with PASS / FAIL / INCONCLUSIVE verdicts. It checks independent ground truth, contamination, controls, blinding, and post-result scorer tuning without running evaluations or changing artifacts. Use `/omo-research eval-integrity <claim and evidence>`. Adoption decisions and empirical checks are recorded in `docs/reports/2026-11-03-omo-upstream-refresh.md`.
+
 Version 3.6.1 lets `omo-work-with-pr` post reply-only follow-ups without waiting for a push, and makes `omo-git-master` finish a cherry-pick the user asked for instead of stopping at a conflict. Version 3.6.0 adds a Codex implementation lane for use inside Orca. See [Codex Implementation Lane](#codex-implementation-lane).
 
 Version 3.5.1 changes how the final gate reports runtime checks that could not run. When the local environment could not start, the unchecked findings are still listed with the command the user can run, but they are no longer presented as decisions or follow-up issues until they have run. Findings filed from code reading alone were all closed as already decided or wrong.
