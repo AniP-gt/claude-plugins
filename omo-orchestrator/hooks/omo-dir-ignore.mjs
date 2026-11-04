@@ -1,28 +1,31 @@
 #!/usr/bin/env node
-// PostToolUse hook: keep `.claude/omo/` (handoff ledgers, plans, review reports) out of Git without asking the
-// user to edit a project .gitignore or the global git config. After a write-like tool call, a `.gitignore`
-// is created inside an existing `.claude/omo/` directory. It lists each working-record subdirectory (and itself)
-// instead of using `*`, and has no negation: `init-deep.json` is left to `omo-init-deep`, whose local mode hides it
-// through `info/exclude` and whose `--committed` mode tracks it. A negation here would override that exclude entry.
-// A new omo subdirectory must be added to IGNORE_CONTENT.
-// OMO_DIR_IGNORE=off|0|false disables the hook.
-// The directory is never created here, an existing `.gitignore` is never touched, and every failure is silent.
-// Candidates: the `.claude/omo` that a tool's `file_path` points into, and `<git root>/.claude/omo` found by
-// walking up from `cwd`, which also covers files created through Bash.
+// PostToolUse hook: hide omo working records through a managed Git info/exclude block.
+// Resolve the exclude file with git rev-parse, preserving user lines and omo-init-deep's block.
+// Never create .claude/omo or ignore init-deep.json. Replace via a same-directory temp file.
+// Remove only exact known legacy hook .gitignore contents after the block is current.
+// OMO_DIR_IGNORE=off|0|false disables this hook; every failure is silent and stdout stays empty.
+// Candidates come from file_path and walking cwd upward to a Git root (including worktrees).
 import * as nodeFs from "node:fs";
-import { dirname, join } from "node:path";
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const IGNORE_CONTENT = [
-  "# Created by the omo-orchestrator plugin: omo working records stay out of Git.",
-  "/.gitignore",
-  "/handoffs/",
-  "/plans/",
-  "/reviews/",
-  "/briefs/",
-  "/codex/",
+export const EXCLUDE_BLOCK = [
+  "# >>> omo-orchestrator managed >>>",
+  ...["handoffs", "plans", "drafts", "reviews", "briefs", "codex"].map(name => `**/.claude/omo/${name}/`),
+  "# <<< omo-orchestrator managed <<<",
   "",
 ].join("\n");
+
+const legacy = [
+  "# Created by the omo-orchestrator plugin: omo working records stay out of Git.",
+  "/.gitignore", "/handoffs/", "/plans/", "/reviews/", "/briefs/",
+];
+export const LEGACY_GITIGNORE_CONTENTS = [
+  [...legacy, "/codex/", ""].join("\n"),
+  [...legacy, ""].join("\n"),
+];
 
 const TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit", "Bash"]);
 const OMO_SEGMENT = "/.claude/omo/";
@@ -51,21 +54,71 @@ function candidates(input, fs) {
   return [...new Set(found)];
 }
 
-function protect(dir, fs) {
+function protect(dir, fs, git, env) {
+  let temporary;
   try {
     if (!fs.statSync(dir).isDirectory()) return;
-    // The `wx` flag fails when a .gitignore already exists, so a user's own file is never overwritten.
-    fs.writeFileSync(join(dir, ".gitignore"), IGNORE_CONTENT, { flag: "wx" });
+    const gitEnv = { ...env };
+    for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"]) delete gitEnv[key];
+    const gitOptions = { cwd: dir, encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"], env: gitEnv };
+    const output = git("git", ["rev-parse", "--git-path", "info/exclude"], gitOptions).trim();
+    if (!output) return;
+    const resolved = resolve(dir, output);
+    let exists = false;
+    try {
+      fs.lstatSync(resolved);
+      exists = true;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    // A dangling link exists: let realpath fail silently rather than replace the link.
+    const path = exists ? fs.realpathSync(resolved) : resolved;
+    const mode = exists ? fs.statSync(path).mode & 0o7777 : undefined;
+    const existing = exists ? fs.readFileSync(path, "latin1") : "";
+    const starts = [...existing.matchAll(/^# >>> omo-orchestrator managed >>>(?=\r?$)/gm)];
+    const ends = [...existing.matchAll(/^# <<< omo-orchestrator managed <<<(?=\r?$)/gm)];
+    let next;
+    if (starts.length === 0 && ends.length === 0) {
+      next = existing + (existing && !existing.endsWith("\n") ? "\n" : "") + EXCLUDE_BLOCK;
+    } else if (starts.length === 1 && ends.length === 1 && starts[0].index < ends[0].index) {
+      let after = ends[0].index + ends[0][0].length;
+      if (existing.startsWith("\r\n", after)) after += 2;
+      else if (existing[after] === "\n" || existing[after] === "\r") after++;
+      next = existing.slice(0, starts[0].index) + EXCLUDE_BLOCK + existing.slice(after);
+    } else return;
+    if (next !== existing) {
+      fs.mkdirSync(dirname(path), { recursive: true });
+      temporary = join(dirname(path), `.omo-exclude-${process.pid}-${randomUUID()}.tmp`);
+      // latin1 round-trips every existing byte, including non-UTF-8 user comments.
+      fs.writeFileSync(temporary, next, { flag: "wx", encoding: "latin1" });
+      if (mode !== undefined) fs.chmodSync(temporary, mode);
+      fs.renameSync(temporary, path);
+      temporary = undefined;
+    }
+    const legacy = join(dir, ".gitignore");
+    if (fs.existsSync(legacy) && fs.lstatSync(legacy).isFile() &&
+        LEGACY_GITIGNORE_CONTENTS.includes(fs.readFileSync(legacy, "utf8"))) {
+      try {
+        git("git", ["ls-files", "--error-unmatch", "--", ".gitignore"], gitOptions);
+      } catch (error) {
+        // Only Git's normal unmatched-path result authorizes deletion, never a timeout/spawn error.
+        if (error.status === 1) fs.unlinkSync(legacy);
+      }
+    }
   } catch {
-    // Absent directory, existing .gitignore, or no permission: leave everything as it is.
+    // Git unavailable, missing directory, malformed state or permission failure: stay silent.
+  } finally {
+    if (temporary) {
+      try { fs.unlinkSync(temporary); } catch { /* Best-effort cleanup. */ }
+    }
   }
 }
 
-export function run(input, { fs = nodeFs, env = process.env } = {}) {
+export function run(input, { fs = nodeFs, env = process.env, git = execFileSync } = {}) {
   try {
     if (/^(off|0|false)$/i.test(env.OMO_DIR_IGNORE ?? "")) return "";
     if (typeof input !== "object" || input === null || !TOOLS.has(input.tool_name)) return "";
-    for (const dir of candidates(input, fs)) protect(dir, fs);
+    for (const dir of candidates(input, fs)) protect(dir, fs, git, env);
   } catch {
     // A hook must never disturb the tool call.
   }

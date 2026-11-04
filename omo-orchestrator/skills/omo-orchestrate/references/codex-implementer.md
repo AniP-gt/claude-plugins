@@ -54,7 +54,7 @@ One Codex session serves one worktree at a time. Waves of one plan are sent to t
 
 ### Snapshot
 
-The Codex scratch directory `.claude/omo/codex/` is ignored by git only through the `.claude/omo/.gitignore` that the 3.6.0 `omo-dir-ignore` hook creates (it never touches an existing one, so an older file needs `/codex/` added by hand), and Claude writes the ledger and evidence under `.claude/omo/` during a run. Review reports that Claude-side review skills write to `docs/reviews/` during a run are also not Codex edits. Every snapshot therefore excludes the whole `.claude/omo` bookkeeping tree (the review-gate hook ignores it too) and `docs/reviews` with the same pathspec, so neither Codex's result file nor Claude's own notes and review reports count as a change. These two trees are therefore not covered by the post-run check; the brief rule that Codex must not edit them is what covers them. Run this as one command from the repository root with `<name>` = `before` or `after`; it records the porcelain status, HEAD, the index entries (mode, object, and stage of tracked paths), the raw diff against HEAD (modes of the working tree files), and one content hash per changed or untracked file (a status line shows only path and state, so a further edit to an already-dirty file shows only in its hash line):
+The Codex scratch directory `.claude/omo/codex/` is kept out of Git from 3.9.0 through the `omo-dir-ignore` hook's managed block in the Git-resolved `info/exclude` file, and Claude writes the ledger and evidence under `.claude/omo/` during a run. Review reports that Claude-side review skills write to `docs/reviews/` during a run are also not Codex edits. Every snapshot therefore excludes the whole `.claude/omo` bookkeeping tree (the review-gate hook ignores it too) and `docs/reviews` with the same pathspec, so neither Codex's result file nor Claude's own notes and review reports count as a change. These two trees are therefore not covered by the post-run check; the brief rule that Codex must not edit them is what covers them. Run this as one command from the repository root with `<name>` = `before` or `after`; it records the porcelain status, HEAD, the index entries (mode, object, and stage of tracked paths), the raw diff against HEAD (modes of the working tree files), and one content hash per changed or untracked file (a status line shows only path and state, so a further edit to an already-dirty file shows only in its hash line):
 
 ```bash
 S=.claude/omo/codex/<slug>
@@ -66,7 +66,7 @@ git diff --raw HEAD -- . ':!.claude/omo' ':!docs/reviews' > "$S/<name>.raw"
   git ls-files --others --exclude-standard -z -- . ':!.claude/omo' ':!docs/reviews' | xargs -0 shasum --; } 2>/dev/null | sort -k2 > "$S/<name>.hash"
 ```
 
-The hash covers file content only. The index snapshot covers tracked paths, so a staged-only change and a mode change of a tracked file in the index show in the index diff, and the raw diff shows a working-tree-only mode change of an already-dirty tracked file. What stays uncovered is a mode or symlink-target change of an untracked file, and any change to a gitignored file.
+The hash covers file content only. The index snapshot covers tracked paths, so a staged-only change and a mode change of a tracked file in the index show in the index diff, and the raw diff shows a working-tree-only mode change of an already-dirty tracked file. What stays uncovered is a mode or symlink-target change of an untracked file, and any change to a file ignored by Git.
 
 ## Result contract
 

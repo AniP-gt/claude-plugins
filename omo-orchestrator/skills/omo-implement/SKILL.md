@@ -39,6 +39,8 @@ Ultrawork escalation: when invoked standalone, size the task first and decide wh
 10. Verify supplied findings against current code, tests, or a stated contract. Record unconfirmed findings as unconfirmed. A fix pass applies the confirmed scoped directives, validates them, and returns; it never dispatches another fix pass.
 11. Further repair and re-review require the next iteration of the same Ralph ledger and budget. Report blocking findings and evidence to the controller; do not claim task completion before its independent final `APPROVE`.
 
+When this pass ran from an `omo-plan` plan file, after final verification and the applicable review gate approves, flip the column-zero rows of the tasks it completed from `- [ ]` to `- [x]` in that plan file. Leave rows outside this pass's scope unchanged; do not check off tasks while verification or review is pending.
+
 ## Hard Rules
 
 - Do not use `as any`, `@ts-ignore`, or `@ts-expect-error` to suppress errors.

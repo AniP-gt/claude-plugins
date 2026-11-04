@@ -4,6 +4,8 @@
 
 Use this skill at the start of non-trivial work, especially when the task spans multiple files, has unclear dependencies, or may need handoff.
 
+The main context writes the approved plan to `.claude/omo/plans/<task-slug>.md` with its draft in `.claude/omo/drafts/`, per `omo-plan` SKILL.md Draft And Approval Gate.
+
 ## Kickoff Workflow
 
 1. Restate the goal, constraints, and non-goals.

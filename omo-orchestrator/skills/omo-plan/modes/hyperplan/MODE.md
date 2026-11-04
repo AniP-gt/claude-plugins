@@ -6,6 +6,8 @@ Use this skill when normal planning is not enough: broad scope, ambiguous archit
 
 This skill runs without automatic team-mode support; use parallel reviewers, or manual critique sections when agents are unavailable.
 
+The main context writes the approved plan to `.claude/omo/plans/<task-slug>.md` with its draft in `.claude/omo/drafts/`, per `omo-plan` SKILL.md Draft And Approval Gate.
+
 ## Flow
 
 1. Use `omo-plan-consultant` when available to state the intent, goal, non-goals, constraints, affected users, concrete `IS-*` ideal-state rows, `GAP-*` rows, and acceptance criteria.

@@ -27,11 +27,11 @@ Run at maximum safe parallelism: every independent unit is dispatched in one mes
 
 ## Phase 1: Select The Plan
 
-1. If `plan-path` was given, read it.
-2. Otherwise list `.claude/omo/plans/` and read `.claude/omo/handoffs/` for an active ledger whose source plan is unfinished.
-3. Exactly one unfinished ledger or exactly one plan: select it. Several candidates: ask one focused selection question.
+1. If `plan-path` was given, read it. Files under `.claude/omo/drafts/` are never executed; select an approved plan instead. If the matching `.claude/omo/drafts/<same-slug>.md` has `State: awaiting-approval`, stop and report that the plan awaits re-approval, even when `plan-path` was explicitly given.
+2. Otherwise list `.claude/omo/plans/` and keep only files with at least one unchecked column-zero checkbox row: `- [ ] N.` task rows, `- [ ] F<N>.` final-wave rows, or `- [ ] N-M.` task-file items. Plans with no column-zero checkbox rows (older format) are not auto-selected and run only with an explicit `plan-path`. Fully checked plans are finished history and are not candidates. A plan whose matching `.claude/omo/drafts/<same-slug>.md` has `State: awaiting-approval` is waiting for re-approval after a scope change and is not a candidate, including when an active ledger points to it. Read `.claude/omo/handoffs/` for an active ledger whose source plan is unfinished. Files under `.claude/omo/drafts/` are never execution candidates.
+3. Exactly one unfinished ledger or exactly one candidate plan: select it. Several candidates: ask one focused selection question.
 4. No plan, or only a brief without waves, tasks, and acceptance criteria: the brief is not decision-complete. Run `omo-plan` for the request, follow its approval gate, and continue here only after the user approves the plan. Do not invent an unapproved plan to keep moving.
-5. Before dispatch, check the plan is executable: exact files, per-task acceptance criteria, dependencies, and QA commands. For a large or risky plan with no prior review, run `omo-plan-reviewer` once. A `REJECT` with a critical finding stops execution and returns to `omo-plan`.
+5. Before dispatch, check the plan is executable: exact files, per-task acceptance criteria, dependencies, and QA commands. A plan file recording an `omo-plan` plan-review verdict `OKAY` counts as reviewed and skips another pass. Every other plan file (hand-written, no verdict, or `REJECT`) gets one `omo-plan-reviewer` pass before dispatch. A `REJECT` with a critical finding stops execution and returns to `omo-plan`.
 
 ## Phase 2: Goal, Todos, And Ledger
 

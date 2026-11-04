@@ -2,6 +2,8 @@
 
 An optional output format for one task whose research is already done. It turns existing findings into a checklist that an implementer can start without more research. Use the full plan format instead when research is still open, the work spans several concerns, or it needs parallel waves.
 
+An `omo-plan` plan already carries its checklist as checkbox rows, so a separate task file is written only when the user asks for one.
+
 The planning boundary, approval gate, and final plan requirements in `SKILL.md` still apply. The task file replaces only the output layout.
 
 ## Inputs
@@ -12,8 +14,8 @@ The planning boundary, approval gate, and final plan requirements in `SKILL.md` 
 
 ## Path
 
-- `docs/issues/{id}/task.md` when the repository already has `docs/issues/`. `{id}` is the issue number or the existing directory name.
-- Otherwise `.claude/omo/plans/<task-slug>-task.md`.
+- `.claude/omo/plans/<task-slug>-task.md` by default.
+- `docs/issues/{id}/task.md` only when the user names that path. `{id}` is the issue number or the named directory.
 
 Write the file only after approval. Create the directory when missing and state the path.
 
@@ -67,5 +69,5 @@ Name the file path and the options the user may start. Approval of the task file
 
 - Implementation lane: inside Orca, an approved task file qualifies for the Codex lane, so the implementation goes to Codex through `omo-orchestrate` `references/codex-implementer.md`. Otherwise, or whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record) (record `codex-impl: FALLBACK - <reason>`), use `omo-implementer`:
 - `omo-orchestrator:omo-implementer` via `Agent(subagent_type="omo-orchestrator:omo-implementer", prompt="LOAD_SKILLS: none\nImplement per <path>")`. Replace `none` with `[...]` chosen from `omo-orchestrate` `references/skill-catalog.md` when a row applies; a PreToolUse hook denies the dispatch without the line.
-- `omo-review` with args `review-loop <path>` for implementation with a review-fix loop. With the `docs` layout it finds `task.md` in the issue directory.
+- `omo-review` with args `review-loop <path>` for implementation with a review-fix loop. Only when the user named a `docs/issues/` path does it find `task.md` in that issue directory.
 - `omo-ultrawork` with args `ulw-execute <path>` to run it with an evidence ledger.

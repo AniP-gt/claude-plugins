@@ -22,6 +22,7 @@ Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool bef
 - Approval brief before final-plan creation. Approval authorizes planning only, never execution.
 - Files or modules likely involved.
 - Acceptance criteria.
+- Each task is a column-zero `- [ ] N. <title>` checkbox row followed by its indented contract. Executors flip it to `- [x]` after verification. Nested checkboxes belong only inside acceptance or evidence sections.
 - Ordered steps with safe parallel opportunities and explicit fallback paths for stalled background agents.
 - Dependency topology for every wave: parallelize independent lanes and serialize same-file writes, shared contracts, mutable state, and named predecessors.
 - Dependency matrix.

@@ -11,6 +11,8 @@ Scan, in order:
 - `.claude/omo/reviews/{TASK_ID}/` (a previous run of this skill)
 - `.claude/omo/handoffs/{TASK_ID}.md` (ledger)
 
+`omo-plan` plan checkbox rows are flipped only after the outer gate approves; see `outer-gate.md`.
+
 Files of interest: `spec.md`, `task.md`, `plan.md`, `metis-analysis.md` or other pre-planning analysis, and any `*.md` describing the implementation.
 
 | Situation | Action |

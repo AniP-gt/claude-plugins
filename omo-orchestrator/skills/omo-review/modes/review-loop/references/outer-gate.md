@@ -238,4 +238,6 @@ Append oracle responses verbatim to `CYCLE_LOG` and reference them in `LEDGER`. 
 
 ## Phase 7
 
+After the outer gate returns final `APPROVE` (including 6d2 when applicable), flip the column-zero checkbox rows of the completed plan tasks in scope from `- [ ]` to `- [x]` in the source plan file before reporting completion. Leave tasks outside scope and nested acceptance or evidence checkboxes unchanged. `REQUEST_CHANGES`, `INCONCLUSIVE`, or a pending gate never checks off rows.
+
 Present the final report (template in `templates.md`) in the response, not as a new review file. Link every saved gate report by absolute path, the 6d2 runtime report included, and list its Phase 4b results (checked and reproduced-then-fixed, not reproduced, not run with reason). Include the External Library Contract Checks evidence and gate decision, or the explicit N/A reason.
