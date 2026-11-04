@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 3.8.1 adds an opaque-artifact step to `omo-implement`. When a change replaces a binary or generated file that code loads at runtime, such as an ML model, a compiled library, or a bundled dataset, the pass compares the old and new file and checks the loading code against it. Effects that only the target hardware can show, such as memory, CPU, latency, or output quality, come back as a user-side check with numbered measurement steps, and the pass never reports "no impact" from the static comparison alone.
+
 Version 3.8.0 extends `omo-research eval-integrity` with comparison-environment provenance from upstream PR #12256 at `8c08758867`. It checks live MCP instruction drift, recommends equal run-scoped isolation of unrelated integrations, distinguishes startup settlement from required tool functionality, and limits golden parity claims to the captured surface. The audit remains read-only. Adoption and empirical checks are recorded in `docs/reports/2026-11-04-omo-upstream-refresh.md`.
 
 Version 3.7.0 adds the `eval-integrity` mode to `omo-research`, adapting upstream PR #7593 at `0ef1af9d23`. It audits whether benchmark, A/B test, LLM judge, and user-study evidence supports the stated claim, distinguishing demonstrated dependence from missing provenance with PASS / FAIL / INCONCLUSIVE verdicts. It checks independent ground truth, contamination, controls, blinding, and post-result scorer tuning without running evaluations or changing artifacts. Use `/omo-research eval-integrity <claim and evidence>`. Adoption decisions and empirical checks are recorded in `docs/reports/2026-11-03-omo-upstream-refresh.md`.
