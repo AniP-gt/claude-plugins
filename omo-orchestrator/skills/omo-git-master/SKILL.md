@@ -83,7 +83,7 @@ Rewrite safety by branch state:
 | No upstream, or all commits local | Fixup, autosquash, and `reset --soft` are safe. Never `reset --hard`. |
 | Pushed but not merged | Fixup allowed, but warn that force-with-lease will be required and confirm first |
 
-A full `reset --soft` to the merge-base to rebuild history is acceptable only when every commit involved is local and the user has confirmed it in this session. It discards commit boundaries, so never infer that permission from a general request to clean things up. Record the current HEAD first so the prior state can be recovered from the reflog.
+A full `reset --soft` to the merge-base to rebuild history is acceptable only when every commit involved is local and the user has confirmed it in this session, or for the pre-push fold in Step 6, which keeps every unit as its own commit. It discards commit boundaries, so never infer that permission from a general request to clean things up. Record the current HEAD first so the prior state can be recovered from the reflog.
 
 ### Step 5: Execute
 
@@ -95,7 +95,9 @@ Validate each message against the detected style before committing. If it does n
 
 ### Step 6: Verify
 
-Confirm the working tree is in the expected state, review the resulting log against the merge-base, and check that each commit stands alone and could be reverted independently. Report the commits created, any fixups merged, whether a force-with-lease push would be needed, and the exact push command for the user to run.
+Confirm the working tree is in the expected state, review the resulting log against the merge-base, and check that each commit stands alone and could be reverted independently.
+
+Before giving the push command, count the commits not yet on the remote. If they outnumber the logical units (one commit per review round, UI tweak, or follow-up fix to the same unit), fold each fix into its unit; this needs no confirmation while every commit involved is local (Step 4 table), and a project rule that stacks follow-up fixes as new commits during the work does not forbid it when that rule allows rewriting unpushed commits. Pick each fix's target unit by the files and intent it changes, and state the mapping first. Fix commits are usually not named `fixup!`, so rebuild the units with `reset --soft <merge-base>` and recommit them by path, rather than scripting a rebase todo (Rebase Mode Step 2). Record the old HEAD, confirm `git diff <old-HEAD> HEAD` is empty, and report the before and after commit counts. Report the commits created, any fixups merged, whether a force-with-lease push would be needed, and the exact push command for the user to run.
 
 ---
 
