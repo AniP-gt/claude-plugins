@@ -42,4 +42,6 @@ Sub-agents do not see what the orchestrator read. Before delegating to `omo-impl
 - `AGENTS.md`: test with `bun test`, given/when/then
 ```
 
-Give reviewers the same list so they can flag violations against it. Collect the rules once per repository or area and reuse them in later prompts; collect again only when the work moves to a new subtree or the user asks.
+The Codex implementation lane (`codex-implementer.md`) is the opposite case. Codex reads `AGENTS.md` by itself but loads neither `CLAUDE.md` nor `.claude/rules/`, so its brief carries the `CLAUDE.md` and `.claude/rules/` rules that apply to the target paths, plus any other agents' rule files found above except `AGENTS.md`.
+
+Give reviewers the same list as `omo-implementer` so they can flag violations against it. Collect the rules once per repository or area and reuse them in later prompts; collect again only when the work moves to a new subtree or the user asks.

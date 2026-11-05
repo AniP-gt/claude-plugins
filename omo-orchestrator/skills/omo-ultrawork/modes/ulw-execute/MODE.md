@@ -75,7 +75,7 @@ Each dispatch is self-contained and includes:
 
 1. Goal and the exact files or directories in scope.
 2. Tests already covering the behavior, to be read before any edit as the behavior of record. For a bug, the reproduction to capture before the fix. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
-3. Constraints from the plan and project rules (`omo-programming`, `omo-implement`). For the Codex lane, the same content goes into the brief file `codex-implementer.md` defines. `omo-implement` is main-only, so its rules travel as text in the brief, never in `LOAD_SKILLS`; `omo-programming` is already preloaded by `omo-implementer`.
+3. Constraints from the plan, the `omo-programming` and `omo-implement` rules, and the project rules that apply to the files in scope (chosen per `skills/omo-orchestrate/references/project-rules.md`). For the Codex lane, the same content goes into the brief file `codex-implementer.md` defines. `omo-implement` is main-only, so its rules travel as text in the brief, never in `LOAD_SKILLS`; `omo-programming` is already preloaded by `omo-implementer`.
 4. Automated verification commands to run.
 5. One manual QA channel with the exact tool, invocation, input, and binary PASS/FAIL observable: `curl -i` against a live endpoint, a real CLI run with its stdout, a tmux session for a TUI, `omo-visual-qa` for rendered UI, a parsed config dump, or a DB state diff. Never "verify it works". Take it from the plan's QA rows completed and approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch, and pick the browser tool by its Tool Selection.
 6. The adversarial classes that apply (below) and how each is probed.

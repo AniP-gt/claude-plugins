@@ -159,6 +159,8 @@ Agent(
   Ledger: {LEDGER} (append entries per omo-handoff).
   ## SPEC
   {full SPEC}
+  ## Project rules
+  {rules that apply to the files in scope, per `skills/omo-orchestrate/references/project-rules.md`, or none}
   One scoped pass only; return blockers to the controlling Ralph ledger.
   ## Fix directives (when present)
   {blocking findings and oracle directives from LEDGER, synthesis, QA, and CYCLE_LOG}
