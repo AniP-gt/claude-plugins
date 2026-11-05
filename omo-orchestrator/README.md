@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 3.10.1 runs every Codex call with `--dangerously-bypass-hook-trust` (the review lane, the adversarial run, both consults, and the implementation lane), which the user approved, so a hook-trust prompt cannot stall a non-interactive run. It does not widen the sandbox: the review lane and consults stay read-only. `hooks/review-gate.mjs` still counts `codex --dangerously-bypass-hook-trust exec` as the review lane.
+
 Version 3.10.0 adds manual resume reconciliation to `omo-guardrails`: after an interruption or reconnect, compare the ledger with fresh host state, ownership, deliverables, and verification before releasing dependent work. A parent resume request or stale running label cannot prove child completion; foreign live ownership is preserved. Adapted from upstream #12113, #12268, and #12343 at `cb7f76ecf6`. No scheduler or automatic recovery hook is installed. Adoption and empirical checks are recorded in `docs/reports/2026-11-05-omo-upstream-refresh.md`.
 
 Version 3.9.1 adds item 8 to the follow-up steps in `omo-work-with-pr`: the done report opens with one or two plain sentences on what the person relying on the changed thing can now count on and what went wrong before, with no method, constant, or file names; changed files and identifiers come after.

@@ -194,7 +194,9 @@ const CODEX_MARKER = "[OMO CODEX GATE]";
 const OMO_REVIEW_SKILL_PATTERN = /(^|:)omo-review$/;
 // A user-typed `/omo-review` lands as the prompt itself, not as a Skill call.
 const OMO_REVIEW_COMMAND_PATTERN = /<command-name>\/?(omo-orchestrator:)?omo-review<\/command-name>/;
-const CODEX_COMMAND_PATTERN = /(^|[\s;&|(])(codex\s+exec\b|command\s+-v\s+codex\b)/;
+// Every Codex run may put `--dangerously-bypass-hook-trust` between `codex` and `exec`.
+const CODEX_EXEC_PATTERN = /codex\s+(--dangerously-bypass-hook-trust\s+)?exec\b/;
+const CODEX_COMMAND_PATTERN = new RegExp(`(^|[\\s;&|(])(${CODEX_EXEC_PATTERN.source}|command\\s+-v\\s+codex\\b)`);
 // A consult (scratch dir `omo-consult/`) or an adversarial run (`.adv.` files) is read-only Codex use, but not the
 // review lane. Their preflight is `codex --version` without `command -v`, so only the lane's probe matches above.
 const NON_LANE_EXEC_PATTERN = /omo-consult\/|\.adv\./;
@@ -212,7 +214,7 @@ function withoutComments(command) {
 
 function isLaneCodexCommand(command) {
   if (!CODEX_COMMAND_PATTERN.test(command)) return false;
-  return !(/codex\s+exec\b/.test(command) && NON_LANE_EXEC_PATTERN.test(command));
+  return !(CODEX_EXEC_PATTERN.test(command) && NON_LANE_EXEC_PATTERN.test(command));
 }
 
 function textOf(content) {

@@ -88,6 +88,16 @@ test("passes when a Bash call ran codex exec after omo-review", () => {
   assert.equal(gate([prompt, omoReview, codex, reply]), null);
 });
 
+test("passes when the lane ran codex with --dangerously-bypass-hook-trust before exec", () => {
+  const codex = tool("Bash", { command: 'codex --dangerously-bypass-hook-trust exec --sandbox read-only -o "/tmp/x.md" "review" < /tmp/x.diff' });
+  assert.equal(gate([prompt, omoReview, codex, reply]), null);
+});
+
+test("a consult with --dangerously-bypass-hook-trust is still not the review lane", () => {
+  const consult = tool("Bash", { command: 'codex --dangerously-bypass-hook-trust exec --sandbox read-only -o "/tmp/omo-consult/codex/1.out.md" "debug" < "/tmp/omo-consult/codex/1.brief.md"' });
+  assert.ok(isCodexBlock(gate([prompt, omoReview, consult, reply])));
+});
+
 test("passes when the codex probe found no CLI, since the lane then records NOT_EXECUTED", () => {
   assert.equal(gate([prompt, omoReview, tool("Bash", { command: "command -v codex >/dev/null 2>&1 && codex --version" }), reply]), null);
 });

@@ -39,10 +39,10 @@ One Codex session serves one worktree at a time. Waves of one plan are sent to t
 
    ```bash
    orca terminal create --worktree active --title codex:<slug> \
-     --command "codex -s workspace-write -a never 'Read .claude/omo/codex/<slug>/brief.md and follow it. Round 1: write .claude/omo/codex/<slug>/result-1.md when done.'" --json
+     --command "codex --dangerously-bypass-hook-trust -s workspace-write -a never 'Read .claude/omo/codex/<slug>/brief.md and follow it. Round 1: write .claude/omo/codex/<slug>/result-1.md when done.'" --json
    ```
 
-   `-s workspace-write` limits writes to the worktree and `-a never` removes approval prompts, so the TUI never stalls on a prompt nobody answers. `orca agent launch --agent codex` is not used because it has no way to pass `-s` or `-a`. Record the returned terminal handle in the controller ledger and in the marker. A create failure removes the marker and falls back. After the create, Claude does not edit the working tree until the run ends.
+   `-s workspace-write` limits writes to the worktree and `-a never` removes approval prompts, so the TUI never stalls on a prompt nobody answers. `--dangerously-bypass-hook-trust` (approved by the user) skips the hook-trust prompt for the same reason. `orca agent launch --agent codex` is not used because it has no way to pass `-s` or `-a`. Record the returned terminal handle in the controller ledger and in the marker. A create failure removes the marker and falls back. After the create, Claude does not edit the working tree until the run ends.
 6. Wait. Run this with the Bash tool's `run_in_background: true`, so Claude is notified when it returns:
 
    ```bash
