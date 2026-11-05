@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 3.11.0 separates explicit exhaustive research from implementation context gathering. `omo-research ultraresearch` covers all applicable source lanes and material leads until convergence instead of imposing a default three-lane/two-expansion cap. Explicit user or caller limits, read-only and security boundaries, and host capabilities still apply; exhausted limits or blocked material evidence produce a partial report. Adapted from `packages/shared-skills/skills/ulw-research/SKILL.md` at upstream `cb7f76ecf6`. Adoption and empirical checks are recorded in `docs/reports/2026-11-05-omo-exhaustive-research-refresh.md`.
+
 Version 3.10.1 runs every Codex call with `--dangerously-bypass-hook-trust` (the review lane, the adversarial run, both consults, and the implementation lane), which the user approved, so a hook-trust prompt cannot stall a non-interactive run. It does not widen the sandbox: the review lane and consults stay read-only. `hooks/review-gate.mjs` still counts `codex --dangerously-bypass-hook-trust exec` as the review lane.
 
 Version 3.10.0 adds manual resume reconciliation to `omo-guardrails`: after an interruption or reconnect, compare the ledger with fresh host state, ownership, deliverables, and verification before releasing dependent work. A parent resume request or stale running label cannot prove child completion; foreign live ownership is preserved. Adapted from upstream #12113, #12268, and #12343 at `cb7f76ecf6`. No scheduler or automatic recovery hook is installed. Adoption and empirical checks are recorded in `docs/reports/2026-11-05-omo-upstream-refresh.md`.
