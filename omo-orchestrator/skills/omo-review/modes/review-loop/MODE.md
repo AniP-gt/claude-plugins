@@ -122,7 +122,8 @@ Each dimension prompt is assembled as: lane prompt + Lane Context block + `refer
 Lane Context block (identical for every lane):
 
 ```
-LOAD_SKILLS: {per lane, from `omo-orchestrate` `references/skill-catalog.md`, parent skill names only; e.g. security lane [omo-research], quality lane [omo-remove-ai-slop] only to judge slop patterns (reviewers do not edit), others none unless the diff calls for omo-test-design or omo-visual-qa}
+LOAD_SKILLS: {per lane, from `omo-orchestrate` `references/skill-catalog.md`, parent skill names only; e.g. security lane [omo-research], quality lane [omo-remove-ai-slop] only to judge slop patterns (reviewers do not edit), others none unless the diff calls for omo-test-design}
+Read visual QA procedure when needed: {absolute plugin-root}/skills/omo-implement/modes/visual-qa/MODE.md (controller resolves the path; no LOAD_SKILLS/MODES parent entry).
 MODES: {only when a lane needs a mode, on its own line directly under LOAD_SKILLS as `<parent>/<mode>`; e.g. security lane `omo-research/security-research`; omit the line otherwise}
 TASK_ID: {TASK_ID}    Ralph iteration: {N}/{CAP}    Ledger: {LEDGER}
 Stack: {DETECTED_STACK}    IS_CI_CHANGE: {true|false}

@@ -42,6 +42,6 @@ If nothing fits within the two-catalog bound, record the gap and implement an or
 
 ## Verification Handoff
 
-Add the actual states and mechanism to `omo-visual-qa`'s route/state list. For motion, include interruption and reduced-motion passes; include teardown and pause evidence for effects that allocate resources. Source review is not rendered QA and cannot produce visual `APPROVE` on its own.
+Add the actual states and mechanism to `omo-implement` mode `visual-qa`'s route/state list. For motion, include interruption and reduced-motion passes; include teardown and pause evidence for effects that allocate resources. Source review is not rendered QA and cannot produce visual `APPROVE` on its own.
 
 Adapted from [upstream component-catalog guidance at d55d03485](https://github.com/code-yeongyu/oh-my-openagent/blob/d55d03485041170e6bcb4cb6ba4365d1a18afbd0/packages/shared-skills/skills/frontend/references/design/component-catalogs.md). Runtime-specific helpers and registry-install exceptions are intentionally not carried over.

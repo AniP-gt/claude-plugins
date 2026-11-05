@@ -42,10 +42,10 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 | `unspecified-low` | the Codex lane when it applies, else `omo-implementer` (sonnet default) | A few files, or a judgment call a template cannot make |
 | `unspecified-high` | the Codex lane when it applies, else `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface |
 | `writing` | the Codex lane when it applies, else `omo-implementer` with a prose-only scope | Docs, README, technical writing |
-| `visual-engineering` | the Codex lane when it applies, else `omo-implementer`; then `omo-visual-qa` | Frontend, UI, styling |
+| `visual-engineering` | the Codex lane when it applies, else `omo-implementer`; then `omo-implement` mode `visual-qa` | Frontend, UI, styling. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`). |
 | `git` | `omo-implementer` following `omo-git-master` | Git operations only |
 | external lookup | `omo-librarian` | Upstream source, library docs |
-| media | `omo-media-reader` | PDFs, images, diagrams |
+| media | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` | PDFs, images, diagrams |
 | `deep-*` / `ultrabrain` | `omo-oracle` | Hairy cross-module reasoning or a trade-off evidence cannot settle. At most one per graph for the single hardest decision everything else depends on |
 | review | `omo-reviewer` | Verification and final gate |
 

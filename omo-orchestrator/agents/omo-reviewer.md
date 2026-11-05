@@ -20,12 +20,16 @@ For a final-gate review, require real-surface QA evidence from the final tree. A
 
 ## Skills
 
+If the brief names visual QA or visualize but supplies no path, do not guess: return INCONCLUSIVE (or ask the controller) naming the missing path.
+
 Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits) or `omo-implementer only` (it pre-approves unrestricted Bash or a launcher); you cannot dispatch sub-agents, so a `both` skill is used for its method only.
 
 - `omo-research` mode `security-research`: the change is a security review, vulnerability research, exploitability audit, or threat model validation — load `omo-research` with the Skill tool and Read its `modes/security-research/MODE.md`
 - `omo-test-design`: judging whether tests cover several conditions, boundaries, or states
-- `omo-visual-qa`: a UI change needs fresh visual evidence or a question whether a page, component, or TUI looks right
+- Visual QA: for UI changes or visual checks, Read the absolute `<plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md` path supplied by the controller in the brief; never load the main-only parent or name it in MODES. Reading grants no tools.
 - `omo-remove-ai-slop`: to judge slop patterns in AI-generated changes
+
+For charts, tables, or diagrams, Read the absolute `<plugin-root>/skills/omo-frontend/modes/visualize/MODE.md` path supplied by the controller to judge the artifact contract; do not load this implementer-only parent or name it in MODES.
 
 ## Checklist
 

@@ -1,7 +1,7 @@
 ---
 name: omo-implement
-description: Execute a code change with exploration first, a risk map for existing code, minimal edits, and test-first when needed. Use proactively for any non-trivial change request.
-argument-hint: "[task]"
+description: "Execute a code change with exploration first, a risk map for existing code, minimal edits, and test-first when needed. Use proactively for any non-trivial change request. Mode: visual-qa (check whether a page, component, or TUI looks right)."
+argument-hint: "[visual-qa] [task-or-surface]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
@@ -15,6 +15,19 @@ Plan first: when invoked standalone with no approved `omo-plan` for this change,
 Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only. Every dispatch to `omo-researcher`, `omo-reviewer`, `omo-implementer`, or `omo-planner` carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md` (`LOAD_SKILLS: none` when no row applies); a PreToolUse hook denies it otherwise.
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
+
+## Modes
+
+Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill. The flow below is the default when no mode applies.
+
+- Selection: (a) if the first word of the arguments is a mode name, use that mode and treat the rest as the goal; (b) otherwise, if the brief has a `MODES:` line, use the modes it names; (c) otherwise judge by the "Use when" triggers in the table, and fall back to the default flow below when none fits. An unknown first word is part of the goal, so use the default flow.
+- Workers: do not name this main-only parent in LOAD_SKILLS or MODES. Read only the absolute visual-qa MODE.md path supplied by the controller in the brief; it grants no tools.
+- Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-implement` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
+- Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `visual-qa` | - | replaces | check whether an existing rendered page, component, or TUI looks right and return a verdict (APPROVE / REQUEST_CHANGES / INCONCLUSIVE); not for building or changing UI (use the default `omo-implement` flow and `omo-frontend` for UI design) |
 
 ## Steps
 

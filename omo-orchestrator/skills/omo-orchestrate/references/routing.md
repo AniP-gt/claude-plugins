@@ -56,12 +56,12 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 |---|---|
 | Codebase search, patterns, bug hypotheses | `omo-researcher` (several in parallel for broad searches) |
 | External library docs, upstream source | `omo-librarian` |
-| PDF, image, diagram content | `omo-media-reader` |
+| PDF, image, diagram content | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` |
 | Pre-planning gap analysis | `omo-plan-consultant` |
 | File-level plan | `omo-planner`; hard or risky work: `omo-plan` mode `hyperplan` |
 | Plan executability check (a written plan file or omo-plan draft; not todo lists) | `omo-plan-reviewer` |
 | Implementation and fixes | Implementation lane: Codex through `references/codex-implementer.md` when it applies, else `omo-implementer` |
-| Standalone visual explanation, chart, table, or diagram | `omo-visual-qa` mode `visualize`, implementation through the implementation lane (row above), then `omo-visual-qa` |
+| Standalone visual explanation, chart, table, or diagram | `omo-frontend` mode `visualize`, implementation through the implementation lane (row above), then `omo-implement` mode `visual-qa`. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`). |
 | Implement plus review loop | `omo-review` mode `review-loop` |
 | Change review | `omo-reviewer` |
 | Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle`; for the debugging case and `HEAVY` plan review, also the Codex consult in `references/codex-consult.md` |

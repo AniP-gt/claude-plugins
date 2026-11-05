@@ -6,7 +6,7 @@ Every dispatch to a gated worker (`omo-implementer`, `omo-researcher`, `omo-revi
 
 ```markdown
 ## 0. LOAD_SKILLS
-LOAD_SKILLS: [omo-test-design, omo-ast-grep]
+LOAD_SKILLS: [omo-test-design, omo-research]
 (Or `none`. Choose per [skill-catalog.md](skill-catalog.md).)
 
 ## 1. TASK

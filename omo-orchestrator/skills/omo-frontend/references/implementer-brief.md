@@ -8,7 +8,8 @@ For multi-step work, append the brief to the task ledger at `.claude/omo/handoff
 
 ```markdown
 ## LOAD_SKILLS
-LOAD_SKILLS: [omo-frontend, omo-visual-qa]
+LOAD_SKILLS: [omo-frontend]
+Read visual QA procedure: <absolute plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md (controller resolves this to an absolute path before dispatch).
 (Add rows from [skill-catalog.md](../../omo-orchestrate/references/skill-catalog.md) that apply. A PreToolUse hook denies a brief without this line.)
 
 ## Goal
@@ -87,4 +88,4 @@ Split independent file sets across separate implementers in one message. Keep de
 1. Read the diff, not just the report.
 2. Run the token audit and consistency checklist from SKILL.md Phase 5.
 3. Send confirmed gaps back to the same implementer with the exact file:line and fix.
-4. Only then run `omo-visual-qa` on the rendered surface.
+4. Only then run `omo-implement` mode `visual-qa` on the rendered surface.

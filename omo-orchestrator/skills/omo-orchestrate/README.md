@@ -8,5 +8,5 @@ The files under `references/` stay here because other skills and hooks read them
 - `delegation-prompt.md`: the delegation prompt template and the pending delivery and late results contract.
 - `codex-implementer.md`, `codex-consult.md`: the Codex implementation lane and the read-only Codex consults.
 - `routing.md`: intent routing map and codebase assessment.
-- `handoff-template.md`: the ledger template used by `omo-handoff`.
+- `handoff-template.md`: the ledger template used by `omo-guardrails` mode `handoff`.
 - `project-rules.md`: other agents' rule files and how to pass them into delegation prompts.

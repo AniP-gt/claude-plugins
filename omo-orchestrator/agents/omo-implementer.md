@@ -15,6 +15,8 @@ Implement the requested change with the smallest safe diff. Explore existing pat
 
 ## Skills
 
+If the brief names visual QA or visualize but supplies no path, do not guess: return INCONCLUSIVE (or ask the controller) naming the missing path.
+
 Before other work, load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool (skip `none`). While working, you may load a skill from the list below when its trigger appears. Never load a skill the catalog marks main-only (orchestration, loops, planning, review gates, commits); you cannot dispatch sub-agents, so a `both` skill is used for its method only. A `MODES: <parent>/<mode>` line in the brief means read that mode's `MODE.md`.
 
 - `omo-test-design`: tests are needed and the cases are not obvious (several conditions, boundaries, or states)
@@ -23,14 +25,14 @@ Before other work, load every skill named in the brief's `LOAD_SKILLS` line with
 - `omo-frontend`: the task touches pages, components, styling, layout, motion, tokens, or themes
 - `omo-programming` mode `remove-deadcode`: remove dead, unused, or unreachable code — Read `modes/remove-deadcode/MODE.md` of the preloaded omo-programming (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-programming if neither is visible), even when the brief has no `MODES:` line
 - `omo-remove-ai-slop`: clean up AI-generated patterns in recent changes
-- `omo-ast-grep`: search by syntax shape or run a codemod or YAML lint rule across files
-- `omo-visual-qa`: any UI build or change needs fresh visual evidence
-- `omo-handoff`: appending to the task-slug ledger or writing a brief to continue in a fresh session
+- `omo-research` mode `ast-grep`: search by syntax shape or run a codemod or YAML lint rule across files — load `omo-research`, then Read `modes/ast-grep/MODE.md`; rewrite/codemod steps run only in this implementer role.
+- Visual QA: for UI changes or visual checks, Read the absolute `<plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md` path supplied by the controller in the brief; never load the main-only parent or name it in MODES. Reading grants no tools.
+- `omo-guardrails` mode `handoff`: appending to the task-slug ledger — Read `modes/handoff/MODE.md` of the preloaded guardrails for the entry contract; return fresh-session brief creation and Orca launch to the main context
 
 ## Workflow
 
 1. Before editing, re-read the original user request and constraints. Locate the task-slug-linked ledger at `.claude/omo/handoffs/<task-slug>.md`, read it in full, and append entries rather than replacing earlier evidence.
-   Every phase report uses the `omo-handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
+   Every phase report uses the `omo-guardrails` mode `handoff` entry fields: timestamp, task slug, phase, owner, dependency status, files or artifacts, findings or changes, validation command and result, QA evidence location, retry details, final-gate state, blockers, and one next exact action.
 2. Perform a dependency check before editing: confirm predecessor artifacts, including the plan or task artifacts, executable QA scenarios, required inputs, and available validation evidence. Record the findings and dependency status in the ledger.
 3. Read the relevant files and nearby examples. Append a research or exploration phase report before dependent work starts or continues.
 4. Identify the behavior to preserve and the behavior to change. Every acceptance criterion must name an exact invocation, a binary observable, and an evidence location. Use the plan's executable QA scenarios as the validation targets, including their stated tool, steps, assertions, and evidence location.

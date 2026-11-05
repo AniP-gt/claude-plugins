@@ -61,7 +61,8 @@ Agent(
   subagent_type="omo-orchestrator:omo-reviewer",
   description="Phase 3.5 verify in action",
   prompt="""
-  LOAD_SKILLS: {per `omo-orchestrate` `references/skill-catalog.md`; e.g. [omo-visual-qa] for a browser UI or TUI surface, else none}
+  LOAD_SKILLS: none
+  Read visual QA procedure for browser UI/TUI: {absolute plugin-root}/skills/omo-implement/modes/visual-qa/MODE.md (controller supplies the resolved absolute path; do not name the parent in LOAD_SKILLS or MODES).
   You are a QA verifier. Exercise the implemented behavior on its real surface. Do not
   edit product files. Run commands, requests, and sessions; record what you observe.
 
@@ -104,7 +105,7 @@ Agent(
 )
 ```
 
-When `IS_FRONTEND=true`, also run the `omo-visual-qa` skill on the affected pages and treat its `REQUEST_CHANGES` as FAIL and its `INCONCLUSIVE` as missing evidence.
+When `IS_FRONTEND=true`, also run the `omo-implement` mode `visual-qa` skill on the affected pages and treat its `REQUEST_CHANGES` as FAIL and its `INCONCLUSIVE` as missing evidence.
 
 | Result | Next action |
 |---|---|

@@ -1,7 +1,7 @@
 ---
 name: omo-frontend
-description: UI/UX and design-system workflow with source and reuse checks. Use for pages, components, HTML/CSS/SVG reports, figures, slides, styling, layout, motion, tokens, or themes, with or without mockups.
-argument-hint: "[ui-goal]"
+description: "UI/UX and design-system workflow with source and reuse checks. Use for pages, components, HTML/CSS/SVG reports, figures, slides, styling, layout, motion, tokens, or themes, with or without mockups. Mode: visualize (visualize, build or create a chart, table, diagram, or HTML/SVG visualization)."
+argument-hint: "[visualize] [ui-goal]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
@@ -12,15 +12,30 @@ Merges the former personal frontend-ui-ux and visual-engineering skills, plus po
 
 You are a designer who codes. You see what pure developers miss: spacing, color harmony, hierarchy, state feedback, and the feel that makes an interface memorable. The bar is not clean-and-correct. Correct-but-flat is a failure, not a finish.
 
-This skill owns direction, the design system, and the implementation brief. `omo-orchestrator:omo-implementer`, or Codex when `omo-orchestrate` `references/codex-implementer.md` applies, writes the code. `omo-visual-qa` decides done.
+This skill owns direction, the design system, and the implementation brief. `omo-orchestrator:omo-implementer`, or Codex when `omo-orchestrate` `references/codex-implementer.md` applies, writes the code. `omo-implement` mode `visual-qa` decides done.
 
 Ultrawork escalation: when invoked standalone, size the task first and decide whether to enter ultrawork by the `omo-ultrawork` skill's `references/auto-escalation.md`. Skip the check when an active controller delegated this skill.
 
 In the main context with no active controller, finish with `/omo-review` on the change, a one-file change included, and repeat fix and re-review until it returns `APPROVE`.
 
+## Modes
+
+Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill. The flow below is the default when no mode applies.
+
+- Selection: (a) if the first word of the arguments is a mode name, use that mode and treat the rest as the goal; (b) otherwise, if the brief has a `MODES:` line, use the modes it names; (c) otherwise judge by the "Use when" triggers in the table, and fall back to the default flow below when none fits. An unknown first word is part of the goal, so use the default flow.
+- Implementer workers only: a `MODES: omo-frontend/<mode>` line in the brief, or a trigger in the table that matches the task even without that line, means Read that MODE.md and follow it. This also applies when this skill was preloaded through `LOAD_SKILLS`.
+- Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-frontend` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
+- Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `visualize` | - | replaces | QA remains required; visualize, build or create a chart, table, diagram, or HTML/SVG visualization |
+
+Planner/reviewer workers Read `<plugin-root>/skills/omo-frontend/modes/visualize/MODE.md` by the absolute path the controller supplies in the brief; they do not load this implementer-only parent or name it in MODES.
+
 ## Inside A Sub-Agent
 
-When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the implementation-lane handoff, `omo-visual-qa`, review lanes, parallel workers, QA by another role) to the caller as named next actions.
+When neither the Agent nor the Task tool is available, you are running inside a sub-agent. Do not dispatch. Do the steps that fit your brief's scope yourself, and return the steps that need another agent (the implementation-lane handoff, `omo-implement` mode `visual-qa`, review lanes, parallel workers, QA by another role) to the caller as named next actions.
 
 ## References
 
@@ -43,7 +58,7 @@ Classify the brief before anything else.
 - **Reference.** A user-designated visual target (screenshot, mockup, Figma export, named live site) is the visual contract. Match its layout, spacing, copy, states, and responsive intent unless the user accepts a deviation. Extract tokens from it; never copy logos or trademarked assets. A catalog selected to study a mechanism is not a visual target: adapt it to the project's existing design system.
 - **Kind.** New build, redesign of existing UI (audit weak spots first, then fix surgically), or a design-system task.
 
-For a standalone chart, table, or explanatory diagram with no existing application, route to `omo-visual-qa` mode `visualize`. Its artifact contract replaces Phase 1's application discovery and Phase 2's application branches; use this skill's hierarchy, accessibility, direction, and implementer brief where applicable. Visualizations inside an existing application still follow every phase below.
+For a standalone chart, table, or explanatory diagram with no existing application, route to `omo-frontend` mode `visualize`. Its artifact contract replaces Phase 1's application discovery and Phase 2's application branches; use this skill's hierarchy, accessibility, direction, and implementer brief where applicable. Visualizations inside an existing application still follow every phase below.
 
 If the request is still ambiguous after two reads, ask one focused question ("minimal or premium?") before loading anything.
 
@@ -69,7 +84,7 @@ Record the chosen branch and the system location in the task ledger (`.claude/om
 
 ## Phase 3: Direction (mandatory before any code)
 
-For each changed screen, inventory every required input, datum, label, and piece of copy by name in the implementer brief. State the primary action, information priorities, and what will be left out on purpose. For existing UI, define states and widths and capture the before set through `omo-visual-qa` before the first edit; a reconstruction after editing is not a baseline. Missing capture access is an explicit QA gap, never an invented before image.
+For each changed screen, inventory every required input, datum, label, and piece of copy by name in the implementer brief. State the primary action, information priorities, and what will be left out on purpose. For existing UI, define states and widths and capture the before set through `omo-implement` mode `visual-qa` before the first edit; a reconstruction after editing is not a baseline. Missing capture access is an explicit QA gap, never an invented before image.
 
 Write 1 to 2 sentences covering:
 
@@ -84,7 +99,7 @@ For an expressive brief, sketch 2 to 3 genuinely different directions and pick t
 
 For a new or extended system, apply `references/quality-floor.md` Rendered Craft Checks and the scaffold defaults in `references/aesthetics.md`. Put concrete token values, scoped design exceptions, and planned computed probes in the brief before implementation; do not fabricate measured values or redesign unrelated established patterns.
 
-For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-visual-qa` mode `visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
+For cards, callouts, tiles, alerts, and rows, rounded or square, apply the edge-stripe check in `references/aesthetics.md` before writing the brief, not only during QA. Include HTML/CSS/SVG reports, figures, slides, and surfaces destined for print or image export; standalone artifacts follow the `omo-frontend` mode `visualize` route above. The check covers decoration and state, including pseudo-elements, inset shadows, gradient substitutes, accent underlines, and wide accent outlines on rounded cards. Name the replacement and retain legitimate focus, validation, and separator treatments. A user-designated visual target remains the contract from Phase 0; record its required edge as a reference exception rather than silently redesigning it.
 
 ## Phase 4: Implement via the implementation lane
 
@@ -99,7 +114,7 @@ Record the source, mechanism, reuse decision, and missing behavior in the implem
 ### Delegation
 
 1. Write the brief using `references/implementer-brief.md`. It must be self-contained: goal, direction, files to create or modify, the existing pattern to copy with file:line, tokens to use by name, states to cover, dependency limits, source and reuse decisions when applicable, and a binary `Done when`.
-2. Implementation lane: when `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the implementation or fix pass goes to Codex through that protocol, with the same brief. Otherwise delegate with the Task tool, `subagent_type: "omo-orchestrator:omo-implementer"`, one owner per independent file set; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, `omo-visual-qa`, and commits.
+2. Implementation lane: when `omo-orchestrate` `references/codex-implementer.md` applies (inside Orca, and an approved `omo-plan` exists for the change or `omo-ultrawork` runs), the implementation or fix pass goes to Codex through that protocol, with the same brief. Otherwise delegate with the Task tool, `subagent_type: "omo-orchestrator:omo-implementer"`, one owner per independent file set; whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), record `codex-impl: FALLBACK - <reason>`. Claude keeps exploration, design, review, verification, `omo-implement` mode `visual-qa`, and commits.
 3. For a new system, build and verify a primitive showcase (each primitive in each required state) before composing product screens.
 4. Read the implementer's report and diff. Check it against the brief yourself before QA.
 
@@ -109,10 +124,10 @@ Before QA, remove elements with no user task or information purpose using `refer
 
 1. **Token and edge-stripe audit on the diff.** Grep changed styles for raw hex, `rgb(`, arbitrary px, ad-hoc font sizes, one-off radii, `transition: all`, and animated layout properties. Every hit is fixed or justified as browser mechanics (`clamp()`, `%`, intrinsic sizing). Inspect side borders, pseudo-elements, inset shadows, hard-stop gradients, and `border-image` for the same visual stripe; classify each hit against the aesthetics exceptions and verify it in rendered QA. This is a source inspection, not an automated linter pass.
 2. **Consistency checklist.** Every color is a token. Every spacing value is on the scale. Every component follows the existing composition pattern. Every interactive element has hover, active, focus-visible, and disabled states. Zero magic numbers for visual properties. Any NO means not done.
-3. **Rendered QA handoff.** Give `omo-visual-qa` the complete route, state, reference, project-requirement, content-stress list, and constraint-to-proof mapping. Compare changed action controls' `getBoundingClientRect()` width and height across idle, hover, loading, success, and disabled at each required locale and viewport; unimplemented states are N/A with a reason. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison for a user-designated visual target; label mechanism-only references separately and verify their adaptations against the brief and existing design system.
+3. **Rendered QA handoff.** Give `omo-implement` mode `visual-qa` the complete route, state, reference, project-requirement, content-stress list, and constraint-to-proof mapping. Compare changed action controls' `getBoundingClientRect()` width and height across idle, hover, loading, success, and disabled at each required locale and viewport; unimplemented states are N/A with a reason. It owns capture dimensions, color-mode and scroll coverage, motion evidence, CJK inspection, checklist completion, and the full visual verdict. Use reference-fidelity comparison for a user-designated visual target; label mechanism-only references separately and verify their adaptations against the brief and existing design system.
 4. **Flatness check.** A bug-free render that reads generic next to the direction is still a failure. Raise the design (material, color ramp, type moment, the signature) and re-run QA on fresh evidence.
 
-Report done only when `omo-visual-qa` returns `APPROVE` on evidence captured after the final edit. `INCONCLUSIVE` is not done; report the missing surface or tool and the next action.
+Report done only when `omo-implement` mode `visual-qa` returns `APPROVE` on evidence captured after the final edit. `INCONCLUSIVE` is not done; report the missing surface or tool and the next action.
 
 ## Hard Rules
 

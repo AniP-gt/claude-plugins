@@ -18,10 +18,10 @@ Files of interest: `spec.md`, `task.md`, `plan.md`, `metis-analysis.md` or other
 | Situation | Action |
 |---|---|
 | Documents found | Read them. Extract issue number, goal, scope, directives, acceptance criteria. Use them as Phase 2 input and skip Phase 1 when the plan is complete. |
-| Ledger found | Read it in full and run SKILL.md "Resume and Stop-Continuation" first. Resume from its latest next exact action (`omo-handoff`) only when that check finds no block or the user confirmed the plan. |
+| Ledger found | Read it in full and run SKILL.md "Resume and Stop-Continuation" first. Resume from its latest next exact action (`omo-guardrails` mode `handoff`) only when that check finds no block or the user confirmed the plan. |
 | Nothing found | Proceed Phase 0 -> Phase 1 -> Phase 2. |
 
-Create the ledger if missing (`omo-handoff` template) and append a kickoff entry with the resolved paths.
+Create the ledger if missing (`omo-guardrails` mode `handoff` template) and append a kickoff entry with the resolved paths.
 
 ## Phase 0: Detection
 
@@ -156,7 +156,7 @@ Agent(
   prompt="""
   LOAD_SKILLS: {chosen per `omo-orchestrate` `references/skill-catalog.md`, or none}
   Implement SPEC. Finish when every Done when condition is satisfied and verified.
-  Ledger: {LEDGER} (append entries per omo-handoff).
+  Ledger: {LEDGER} (append entries per omo-guardrails mode handoff).
   ## SPEC
   {full SPEC}
   ## Project rules
@@ -169,7 +169,7 @@ Agent(
 )
 ```
 
-When `IS_FRONTEND=true`, add an aesthetic direction section to `SPEC` (purpose, tone, constraints, the one thing users remember) and plan an `omo-visual-qa` check for Phase 3.5. If the user has a dedicated frontend design skill listed, it may drive the design direction; implementation still goes through the implementation lane above.
+When `IS_FRONTEND=true`, add an aesthetic direction section to `SPEC` (purpose, tone, constraints, the one thing users remember) and plan an `omo-implement` mode `visual-qa` check for Phase 3.5. If the user has a dedicated frontend design skill listed, it may drive the design direction; implementation still goes through the implementation lane above. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`).
 
 ### 2c. Post-implementation check
 

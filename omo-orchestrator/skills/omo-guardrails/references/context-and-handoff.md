@@ -13,7 +13,7 @@ After delegating a search, do not run the same Grep, Glob, or Read yourself, and
 | Long agent result | Summarize before the next step |
 | Conversation being compacted | Move remaining work to sub-agents |
 | 10+ steps remaining | Delegate the remaining batch |
-| Approach changed, 2+ failed attempts in history, or the user will resume after a long break | Offer an `omo-handoff` fresh-session brief instead of `/compact` |
+| Approach changed, 2+ failed attempts in history, or the user will resume after a long break | Offer an `omo-guardrails` mode `handoff` fresh-session brief instead of `/compact` |
 
 Rules:
 
@@ -63,7 +63,7 @@ Raise the budget in the prompt when the task needs it (a long real-run verificat
 
 Sub-agents are stateless and see only their prompt. The coordinator bridges phases:
 
-1. After each phase, write the result to a handoff file (task-linked, see `omo-handoff` for the durable ledger).
+1. After each phase, write the result to a handoff file (task-linked, see `omo-guardrails` mode `handoff` for the durable ledger).
 2. Pass the file path, not a paraphrase, in the next agent's prompt.
 3. Keep one decisions file per task (architecture choices, scope boundaries, test approach, style) and reference it in every later prompt.
 4. Sub-agents read referenced files, write their own findings for the next phase, and never assume context without a handoff.

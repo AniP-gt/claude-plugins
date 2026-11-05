@@ -27,7 +27,7 @@ This is a manual, content-only contract. Manual `TodoWrite` state and the latest
 1. For each active task, maintain one current TodoWrite item and one corresponding ledger phase state. Both must name the same owner, dependency status, completion criteria or final-gate state, and one next exact action.
 2. Before dispatch, handoff, retry, review, and completion, compare the current TodoWrite state with the latest ledger entry. Do not proceed across that boundary until they agree.
 3. If the views disagree, update the current TodoWrite item and append a corrective ledger entry that identifies the correction. Never replace, delete, reorder, or rewrite earlier ledger history.
-4. Preserve failed attempts, blockers, retry details, validation results, and evidence locations in later ledger entries. Use `omo-handoff` for the required entry fields and append-only record rules.
+4. Preserve failed attempts, blockers, retry details, validation results, and evidence locations in later ledger entries. Use `omo-guardrails` mode `handoff` for the required entry fields and append-only record rules.
 5. Before a later operator manually continues after a context or owner change, read the full ledger, reconcile it with the current TodoWrite state, and take the recorded next exact action or append a corrected one.
 6. Block completion until TodoWrite and the latest ledger entry both show the same satisfied completion criteria and final gate. Where a review gate applies, only `APPROVE` permits completion; `REQUEST_CHANGES` and `INCONCLUSIVE` require another recorded next action.
 

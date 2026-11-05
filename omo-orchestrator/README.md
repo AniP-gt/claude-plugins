@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 5.0.0 consolidates `/omo-ast-grep` → `/omo-research ast-grep`, `/omo-handoff` → `/omo-guardrails handoff`, `/omo-visual-qa` → `/omo-implement visual-qa`, and `omo-visual-qa` mode `visualize` → `/omo-frontend visualize`; agent `omo-media-reader` is removed. The main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction uses `omo-researcher`. Workers Read visual QA and planner/reviewer visualization MODE.md files by absolute paths supplied in briefs, without loading restricted parent skills. Ast-grep rewrites/codemods run only under `omo-implementer`. Handoff fresh-session brief creation and Orca launch are main-context only; the ledger path is unchanged. None of the merged or removed items was invoked in 792 sessions (2026-09-29 to 2026-11-05). The handoff and ast-grep modes no longer pre-approve Edit, Write, Orca, or ast-grep; the host prompts for those operations. Visual QA now lives in `omo-implement` and runs as verdict-only, making no edits. `/omo-implement visual-qa` and `/omo-frontend visualize` run under their respective parents' allowed-tools (Edit, Write, and Bash pre-approved); the old `omo-visual-qa` skill and its `visualize` mode pre-approved only Read tools, so "no edits" for visual QA is now a procedure rule in `modes/visual-qa/MODE.md`, not a tool restriction. For Codex UI work, the `omo` plugin (`$omo:frontend`) is available in `AniP-gt/codex-plugin`; install it with `codex plugin marketplace add <path-to-codex-plugin>` then `codex plugin add omo@anip-codex-plugins`.
+
 Version 4.0.2 makes every agent and skill frontmatter valid YAML. Seven `description` values contained `: ` unquoted (`agents/omo-oracle.md` and the `omo-plan`, `omo-programming`, `omo-research`, `omo-review`, `omo-ultrawork`, and `omo-visual-qa` skills), and three `argument-hint` values with several `[...]` groups failed to parse, so a strict YAML parser such as js-yaml rejected them. Claude Code loaded them anyway. These values are now double-quoted, as are all bracketed `argument-hint` values, which a strict parser would otherwise read as lists. The text itself is unchanged.
 
 Version 4.0.1 fixes two prompt gaps. The `omo-oracle` agent description now holds the whole `ESCALATE: fable` rule, so a caller that reads only the description knows to re-run the consult once with `model: "fable"` without asking, attach the Opus answer and the point, and keep the Opus answer if Fable fails; `omo-ultrawork` points to it instead of copying it. The `omo-implementer` brief, the review-loop Phase 2b prompt, the `ulw-execute` brief, and the Codex brief now carry the project rules that apply to the files in scope, chosen per `project-rules.md`, since Codex does not load CLAUDE.md or `.claude/rules`.
@@ -182,25 +184,28 @@ Version 1.26.0 refreshes portable planning and execution contracts against upstr
 
 ## Included Skills
 
-The plugin ships 17 skills. Seventeen former skills are modes inside seven of them (migration table in Version 2.0.0 above); call a mode as `/omo-<parent> <mode> …`.
+The plugin ships 14 skills. Specialist workflows are modes inside nine parent skills (migration notes in Versions 5.0.0 and 2.0.0 above); call a mode as `/omo-<parent> <mode> …`.
 
 - `omo-plan`: file-level planning with an approval brief before the executable plan, dependency matrix, QA scenarios, blockers, and verification commands. Approval writes the plan only. It does not authorize implementation.
   - Mode `start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
   - Mode `hyperplan` (alias `hpp`): adversarial planning for hard, risky, or ambiguous work.
 - `omo-implement`: one scoped implementation/fix pass with exploration, minimal edits, real-surface QA, and validation; further passes belong to Ralph.
+  - Mode `visual-qa`: manual rendered-surface QA for browser pages and terminal TUIs, requiring fresh visual evidence and an `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` verdict.
 - `omo-research`: read-only local/codebase research workflow.
+  - Mode `ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept next to the mode file).
   - Mode `ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions. Main context only.
   - Mode `tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`. Main context only.
   - Mode `security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
   - Mode `coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
   - Mode `get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
+  - Mode `eval-integrity`: assess the trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, and user studies.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
   - Mode `review-work`: post-implementation review gate with evidence-based `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` outcomes.
   - Mode `review-loop`: implement-review-fix loop. `omo-implementer` builds, parallel `omo-reviewer` lanes review by dimension (security, robustness, quality, alignment, evidence gate, optional Copilot CLI), a synthesis judge splits findings into AUTO_FIX and ASK_USER, and the final `review-work` gate (plus `self-review` when installed) returns a verdict to Ralph. All implementation, feedback, QA repair, and gate retries share Ralph's default 20-iteration budget; only independent final APPROVE completes the task. Rebuilt from the personal `implementation-review-loop` skill.
   - Mode `pre-publish-review`: release gate for versioning, packaging, docs, validation, and security risk.
 - `omo-guardrails`: context, duplication, circuit-breaker, error-recovery, and handoff safety rules.
+  - Mode `handoff`: manual durable handoff workflow for a task-linked append-only phase ledger, plus a short fresh-session brief (decisions changed, code state, failed directions, unverified items) that can start the next Claude session through the Orca CLI.
 - `omo-ralph-loop`: sole manual continuation controller for implementation, repair, review, validation, and handoff; one shared default budget of 20 iterations.
-- `omo-handoff`: manual durable handoff workflow for a task-linked append-only phase ledger, plus a short fresh-session brief (decisions changed, code state, failed directions, unverified items) that can start the next Claude session through the Orca CLI.
 
 ## Specialized Skills
 
@@ -214,14 +219,12 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
   - Mode `ulw-execute`: runs a written plan wave by wave through sub-agents with an evidence ledger, independently verified done claims, and a final `review-work` gate. The orchestrator never implements. Ported from upstream `ulw-execute`.
   - Mode `mass-ulw` (alias `mulw`): splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
 - `omo-remove-ai-slop`: regression-first cleanup for AI-generated comments, complexity, duplication, and weak abstractions.
-- `omo-visual-qa`: manual rendered-surface QA for browser pages and terminal TUIs, requiring fresh visual evidence and an `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE` verdict.
-  - Mode `visualize`: traceable standalone HTML/SVG charts, tables, and diagrams with self-contained assets, readable static content, explicit empty/error states, and rendered QA; existing application charts retain the frontend design-system gate.
 - `omo-work-with-pr`: end-to-end PR lifecycle workflow from issue understanding through review and validation.
   - Mode `github-triage`: issue and PR triage workflow for classification, priority, evidence, and next action.
 - `omo-git-master`: git workflow for atomic commits, rebase and squash, and history archaeology. Detects commit style and language from existing history instead of assuming a convention.
 - `omo-init-deep`: explicit, content-only generation and maintenance of a hierarchical Claude Code rule set for a Git worktree.
-- `omo-ast-grep`: search and rewrite code by AST shape with the ast-grep CLI, preview-first rewrites, and YAML rules. Never auto-installs. Ported from upstream `ast-grep` (MIT, license kept in the skill directory).
-- `omo-frontend`: UI and UX work plus the design-system workflow (analyze the existing system, build tokens if missing, implement through `omo-implementer` with a token-level brief, verify with `omo-visual-qa`). Merges the former personal `frontend-ui-ux` and `visual-engineering` skills with portable ideas from upstream `frontend`.
+- `omo-frontend`: UI and UX work plus the design-system workflow (analyze the existing system, build tokens if missing, implement through `omo-implementer` with a token-level brief, verify with `omo-implement` mode `visual-qa`). Merges the former personal `frontend-ui-ux` and `visual-engineering` skills with portable ideas from upstream `frontend`.
+  - Mode `visualize`: traceable standalone HTML/SVG charts, tables, and diagrams with self-contained assets, readable static content, explicit empty/error states, and rendered QA; existing application charts retain the frontend design-system gate.
 - `omo-test-design`: test case design that follows the project's existing spec style (RSpec, Jest, Vitest), with black-box and white-box techniques, domain risk checklists, a prioritized case table for approval, and specs written and run afterward.
 
 ## OMO Init Deep
@@ -286,7 +289,7 @@ Version 1.4.0 folds the owner's former personal skills and agents into existing 
 - `omo-orchestrate`: intent routing map, ambiguity thresholds, codebase-state table, and the full delegation prompt template (`references/routing.md`, `references/delegation-prompt.md`).
 - `omo-plan`, `omo-planner`, `omo-plan-consultant`, `omo-plan-reviewer`: optional six-lane rigorous plan review, `RISK_LEVEL` table, required F1 to F4 final verification wave, readiness checklist, and approval-biased reviewer framing (`references/rigorous-review.md`).
 - `omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-debugging`: execution and final-report rules, search method, review checklist with severity scale, and multi-signal error analysis.
-- `omo-handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
+- `omo-guardrails` mode `handoff`, `omo-ralph-loop`, `omo-ultrawork`: resume summary, iteration guards with stuck detection, and implementer brief contract.
 - `omo-get-unpublished-changes`, `omo-pre-publish-review`: baseline detection per ecosystem, report template, and three-layer parallel release review.
 - `omo-remove-ai-slop`, `omo-programming`: comment pattern catalog and modular-code defaults that yield to project conventions.
 
@@ -339,7 +342,7 @@ printf '%s' '{"hook_event_name":"UserPromptSubmit","prompt":"ulw fix the tests"}
 
 Version 1.20.0 adds two hooks so that hidden impact gets checked even when the user never asks for planning or review. Version 1.21.0 makes the gate read changed files from git instead of only the transcript.
 
-- `hooks/load-skills-gate.mjs` (PreToolUse, matcher `Agent|Task`): denies a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner` whose prompt has no `LOAD_SKILLS: [...]` / `LOAD_SKILLS: none` line, or whose list names a skill the catalog marks `main-only`; for `omo-researcher`, `omo-reviewer`, and `omo-planner` it also denies a skill whose catalog When cell says `omo-implementer only` (`omo-programming`, `omo-frontend`, and `omo-handoff`, which keep unrestricted Bash or a launcher pre-approval). Since 2.0.0 it also reads an optional `MODES: <parent>/<mode>[, …]` line, normalizes `parent:mode` and `parent/mode` to the parent name, and applies the same two rules to that parent. The `main-only` modes of `omo-research` (`ultraresearch`, `tech-debt-audit`) are not denied, because the worker returns their steps instead of running them. Both sets are read from `skills/omo-orchestrate/references/skill-catalog.md` on each call; an unreadable catalog or malformed input lets the dispatch through. `OMO_LOAD_SKILLS_GATE=off` disables it. Tests: `node --test omo-orchestrator/hooks/load-skills-gate.test.mjs`.
+- `hooks/load-skills-gate.mjs` (PreToolUse, matcher `Agent|Task`): denies a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner` whose prompt has no `LOAD_SKILLS: [...]` / `LOAD_SKILLS: none` line, or whose list names a skill the catalog marks `main-only`; for `omo-researcher`, `omo-reviewer`, and `omo-planner` it also denies a skill whose catalog When cell says `omo-implementer only` (`omo-programming` and `omo-frontend`, which keep unrestricted Bash pre-approval). Since 2.0.0 it also reads an optional `MODES: <parent>/<mode>[, …]` line, normalizes `parent:mode` and `parent/mode` to the parent name, and applies the same two rules to that parent. The `main-only` modes of `omo-research` (`ultraresearch`, `tech-debt-audit`) are not denied, because the worker returns their steps instead of running them. Both sets are read from `skills/omo-orchestrate/references/skill-catalog.md` on each call; an unreadable catalog or malformed input lets the dispatch through. `OMO_LOAD_SKILLS_GATE=off` disables it. Tests: `node --test omo-orchestrator/hooks/load-skills-gate.test.mjs`.
 - `hooks/preflight.mjs` (UserPromptSubmit): when a prompt asks for a code change (Japanese or English change verbs such as 実装, 修正, fix, add, refactor), it injects a short `<omo-preflight>` checklist: who else is affected, up to three undefined or contradictory cases, and a caller search for every existing unit about to change. Since 1.45.0 it also sends the change to `omo-plan` before the first edit (typo, wording, and config value changes excepted) and names the executor to pick by size after approval. A GitHub issue link the user typed routes to the `github-triage` mode of `omo-work-with-pr` and then `omo-plan`. Since 3.0.0 a prompt that asks for a plan or a design (計画, 設計, 段取り, plan, design) routes to `omo-plan` as a plan request, which runs `omo-plan-consultant`, `omo-planner`, and `omo-plan-reviewer`; a request whose main clause asks for the plan itself (計画を立てて at the end of a Japanese sentence, create a plan for ... at the start of an English one) is checked after the issue route and before the change verbs, because 移行 or create in such a prompt is not a change request; any other prompt with both a plan word and a change verb keeps the change checklist plus a line offering the planning agents. When a prompt asks for a review (レビュー, 監査, review, audit), it instead tells Claude to load `omo-review`, the single review entry, and to follow each changed value past the diff: who reads a status the change now writes, what the old failure path did, and whether a repeated call is safe. A model does not choose `omo-review` on its own for a plain review request, so this routing is what makes review requests use it. Prompts that name a reviewer (`review-pr`, `code-review`, `self-review`), slash commands, and prompts with a `ulw` keyword are left alone. Version 1.25.0 adds a third route, checked first: when the prompt carries a link to a PR review thread (`/pull/<n>#discussion_r<id>`, `#pullrequestreview-<id>`) or a review thread id (`PRRT_...`), even inside pasted content, it points Claude at the follow-up section of `omo-work-with-pr` and asks for an `omo-review` run on the whole branch diff, one reply draft per handled comment, and a PR body draft before the work is called done. Review tools hand over the comments to address as a paste, and fixes made that way used to end with "should I also review, update the body, or reply?". Apart from that route, text inside code spans, injected system or task blocks, and pasted content (`<pasted_content>`) is ignored. Pasted content still counts as user input for turn tracking. Tests: `node --test omo-orchestrator/hooks/pasted.test.mjs`.
 - `hooks/review-gate.mjs` (Stop): when the current turn changed 1 or more files inside the working directory (2 or more before 3.1.0) and no review skill or reviewer, oracle, or security-check agent ran after the last edit, it blocks the stop once. The reason asks Claude for a light review: a risk map of hidden reach for modified units, undefined cases, and the checks actually run, with `omo-review` for 3+ files, public or CLI behavior, persistence, or security. The follow-up stop carries `stop_hook_active` and always passes, so the gate cannot loop. A background task notification continues the same turn and stops again without that flag; the gate then passes as long as its own feedback already follows the last edit, so it asks once per edit. A `!` shell command the user runs also continues the turn, since it fires no prompt hook and the snapshot stays at the last prompt. Files under `.claude/omo/` or `docs/reviews/` and outside the working directory do not count. The same hook also runs the Codex check described under version 2.4.0 (`OMO_CODEX_GATE=off` disables it).
 - `hooks/review-gate.mjs` also reads the Codex lane marker `.claude/omo/codex/IN_FLIGHT` (since 3.6.0): a marker younger than 24 hours holds the review check back, an older one is ignored. See [Codex Implementation Lane](#codex-implementation-lane).
@@ -388,7 +391,7 @@ node omo-orchestrator/scripts/impact.mjs --file src/auth/login.ts  # files that 
 node omo-orchestrator/scripts/impact.mjs --base main               # every changed code file against main
 ```
 
-A chain of Grep and Read calls puts every match into the conversation, and those bytes are resent on every later turn. The script returns counts, `path (n: L10,L22)` entries, and test files, capped by `--limit` (default 15). It matches words, not a call graph: dynamic access and names built at runtime still need Grep or LSP references, and literal text such as messages belongs to Grep. The pre-flight hook, `omo-research`, and `omo-researcher` point to it for caller and impact questions. Version 1.23.0 also adds the `omo-handoff` fresh-session brief and an Orca CLI launch for the next session.
+A chain of Grep and Read calls puts every match into the conversation, and those bytes are resent on every later turn. The script returns counts, `path (n: L10,L22)` entries, and test files, capped by `--limit` (default 15). It matches words, not a call graph: dynamic access and names built at runtime still need Grep or LSP references, and literal text such as messages belongs to Grep. The pre-flight hook, `omo-research`, and `omo-researcher` point to it for caller and impact questions. Version 1.23.0 also adds the `omo-guardrails` mode `handoff` fresh-session brief and an Orca CLI launch for the next session.
 
 ## Single Review Entry
 
@@ -423,7 +426,6 @@ The run compares the plugin against a no-plugin baseline by default. Results go 
 - `omo-oracle`: read-only strategic advisor for architecture decisions, plan review before heavy work, debugging after 2+ failed fix attempts, and security or performance tradeoffs. Gives one recommendation with an effort estimate. Uses `model: opus`, `effort: high`. When it judges the problem beyond what it can settle, it gives its best answer and ends with `ESCALATE: fable — <point>`; the caller then re-runs the consult once with `model: "fable"`, without asking, and keeps the Opus answer if Fable refuses or fails.
 - `omo-librarian`: read-only external source researcher for unfamiliar libraries and dependency history. Requires permalinks or versioned documentation URLs for every claim. Uses `model: sonnet`, `effort: medium`.
 - `omo-external-reviewer`: runs the installed `self-review` skill with the caller's contract, without preloading any skill, and returns the verdict, findings verbatim, report path, and changed files (by content hash, checked against the skill's fix log). In fix mode it reports the re-review verdict and allows edits only to files in the diff and new tests; in both modes it never commits, pushes, stashes, switches branches, or posts. It inherits the caller's model, `effort: medium`. `omo-review` and the controller final gates dispatch it in place of a general-purpose agent.
-- `omo-media-reader`: read-only interpreter for PDFs, images, and diagrams. Extracts only what was asked so the caller never loads the raw file. Uses `model: sonnet`, `effort: medium`; callers pass `model: opus` for dense charts or diagrams.
 
 ## Model Guidance
 
@@ -445,7 +447,7 @@ Haiku is sufficient for routine use of these prompt-only skills when the task is
 - `omo-research` (including its `coding-agent-sessions` mode)
 - `omo-plan` for its `start-work` mode
 
-Use Sonnet or stronger for the `ultraresearch` mode of `omo-research` (decision-critical research) and `omo-visual-qa` (visual judgment).
+Use Sonnet or stronger for the `ultraresearch` mode of `omo-research` (decision-critical research) and `omo-implement` mode `visual-qa` (visual judgment).
 
 ## Claude Code Adaptation Scope
 
@@ -540,7 +542,7 @@ For release or PR work, run `/omo-research get-unpublished-changes` before `/omo
 
 ## Manual Handoffs
 
-For multi-phase work, use `/omo-handoff` to create and maintain `.claude/omo/handoffs/<task-slug>.md`. The ledger has immutable task metadata and append-only phase entries for dependencies, evidence, QA results, retries, gate state, blockers, and one next exact action.
+For multi-phase work, use `/omo-guardrails handoff` to create and maintain `.claude/omo/handoffs/<task-slug>.md`. The ledger has immutable task metadata and append-only phase entries for dependencies, evidence, QA results, retries, gate state, blockers, and one next exact action.
 
 The handoff is manual. No hook creates it, no process updates it, and no later session resumes it automatically. A later operator reads the full ledger and manually takes the recorded next action.
 
@@ -599,7 +601,7 @@ const fs = require('node:fs');
 const read = (path) => fs.readFileSync(path, 'utf8');
 const required = [
   'content-only',
-  'omo-handoff',
+  'handoff',
   '.claude/omo/handoffs/<task-slug>.md',
   'APPROVE',
   'REQUEST_CHANGES',
@@ -620,10 +622,10 @@ const required = [
   'the Explore equivalent',
   '`omo-oracle`',
   '`omo-librarian`',
-  '`omo-media-reader`',
+  'The main context Reads PDFs/images directly',
   '`omo-git-master`',
   '`coding-agent-sessions`',
-  '`omo-visual-qa`',
+  '`visual-qa`',
   '`omo-init-deep`',
   '/omo-init-deep --create-new',
   '/omo-init-deep --committed',
@@ -655,7 +657,7 @@ const required = [
   '`ulw-execute`',
   '`mass-ulw`',
   '`tech-debt-audit`',
-  '`omo-ast-grep`',
+  '`ast-grep`',
   '`review-loop`',
   'Version 2.0.0',
   'MODES: <parent>/<mode>',

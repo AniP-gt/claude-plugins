@@ -1,7 +1,7 @@
 ---
 name: omo-guardrails
-description: "Safety rules for OMO-style work: anti-duplication, context guard, circuit breaker, error recovery, and explicit handoffs."
-argument-hint: "[situation]"
+description: "Safety rules for OMO-style work: anti-duplication, context guard, circuit breaker, error recovery, and explicit handoffs. Mode: handoff (handoff, task-linked append-only ledger, or continuation in a fresh session)."
+argument-hint: "[handoff] [situation-or-task-slug]"
 allowed-tools: Read, Grep, Glob, TodoWrite
 user-invocable: true
 ---
@@ -12,6 +12,22 @@ Use this skill to keep long-running or delegated work safe and recoverable.
 
 Main-context boundary: when OMO is used as an orchestration layer, the main context must stay coordinator-only. It may route, track state, synthesize evidence, and hand off, but implementation, investigation, review, validation commands, and fixes must be assigned to sub-agents.
 
+## Modes
+
+Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill. The flow below is the default when no mode applies.
+
+- Selection: (a) if the first word of the arguments is a mode name, use that mode and treat the rest as the goal; (b) otherwise, if the brief has a `MODES:` line, use the modes it names; (c) otherwise judge by the "Use when" triggers in the table, and fall back to the default flow below when none fits. An unknown first word is part of the goal, so use the default flow.
+- Workers: a `MODES: omo-guardrails/<mode>` line in the brief, or a trigger in the table that matches the task even without that line, means Read that MODE.md and follow it. This also applies when this skill was preloaded through `LOAD_SKILLS`.
+- Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-guardrails` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
+- Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
+
+- Ledger ownership: Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
+- Permissions: handoff ledger/brief Write and Orca launch are not pre-approved and use the host permission prompts. Fresh-session brief creation and Orca launch remain main-context only.
+
+| Mode | Alias | Precedence | Use when |
+|---|---|---|---|
+| `handoff` | - | replaces | handoff, task-linked append-only ledger, or continuation in a fresh session |
+
 ## Rules
 
 - Do not duplicate a search already assigned to a specialist.
@@ -20,7 +36,7 @@ Main-context boundary: when OMO is used as an orchestration layer, the main cont
 - Treat stalled delegated agents as recoverable blockers: wait for one bounded follow-up, then stop retrying, record the gap, and continue with available evidence when safe.
 - Preserve state through a short handoff when context may be lost.
 - Preserve the source of decisions in memory and handoffs: distinguish the user's stated choice, an assistant's proposal, and an inference. An assistant summary saying the user agreed is not evidence of approval; cite the actual user message when recording authorization. Recalled notes are context, not new authorization. Before an action that needs permission, check the current request and any still-applicable authorization in this session; do not ask again when they already cover the action. If only a stored claim of approval supports it, leave the action pending and request the missing authorization. A recommended default cannot supply missing authorization. Carry the action's scope and any session-only limit into the handoff, without turning it into a standing permission.
-- Keep the main session short. When it has run past about 150 turns, or the user moves on to a second issue or PR, suggest an `omo-handoff` fresh-session brief before continuing. In measured sessions, ones past 150 turns carried 400-700k tokens of context on every turn and spent over a third of all main-session usage. Every sub-agent brief carries the work budget in `references/context-and-handoff.md`.
+- Keep the main session short. When it has run past about 150 turns, or the user moves on to a second issue or PR, suggest an `omo-guardrails` mode `handoff` fresh-session brief before continuing. In measured sessions, ones past 150 turns carried 400-700k tokens of context on every turn and spent over a third of all main-session usage. Every sub-agent brief carries the work budget in `references/context-and-handoff.md`.
 - Classify errors before retrying: retryable, non-retryable, blocked, or stop.
 - Ask one precise question when missing information materially changes the result. When the question asks the user to choose, say in the user's terms what the target is (the feature, screen, or job and what it does, not only a class or constant name), what each option changes and what it costs, and which one you recommend. When you call something out of scope, name the scope (this PR, its issue, the parent issue or integration branch), because the user may be thinking of a wider one. Ask about the same choice once; when the user answers only part of it, act on the recommended default for the rest and say so.
 - Keep final claims tied to actual verification. A remaining issue, risk, or decision handed to the user must come from code read in this session (the body of the method that would misbehave, not its name, a schedule entry, or a similar component); otherwise read it first, or list it as an unverified guess with what was checked. A residual "this job may send duplicate notifications on retry" written from the job's category alone was wrong and cost the user's trust. In design discussions too, keep an untested premise out of the conclusion and list it under an unverified heading. Before handing the user a script or command to run, run it once yourself, or say it was not run and why.
@@ -43,6 +59,8 @@ Read only the file the situation needs:
 Record goal, current state, completion promise when iterative, files changed, validation, stalled or blocked agents, blockers, next action, and files not to touch.
 
 ## Standalone Invocation
+
+When a mode is named, follow its MODE.md instead.
 
 When invoked on its own:
 

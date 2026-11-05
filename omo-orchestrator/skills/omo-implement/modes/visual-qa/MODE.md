@@ -1,37 +1,19 @@
----
-name: omo-visual-qa
-description: "Manual visual verification for browser pages and terminal TUIs with fresh evidence and APPROVE, REQUEST_CHANGES, or INCONCLUSIVE outcomes. Use for any UI build or change, or when asked whether a page, component, or TUI looks right. Modes: visualize (build or create a chart, table, diagram, or HTML/SVG visualization)."
-argument-hint: "[surface-or-goal]"
-allowed-tools: Read, Grep, Glob, TodoWrite
-user-invocable: true
----
-
 # OMO Visual QA
 
+This mode returns a QA verdict only and makes no edits; the parent skill's implementation steps do not apply.
+
+`<plugin-root>` is two directories above the Base directory shown when any omo-orchestrator skill was loaded (`<plugin-root>/skills/<skill>`); the controller supplies resolved absolute paths.
+
+Workers Read this file by the absolute path supplied by the controller in the brief: `<plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md`. Do not load the main-only parent through LOAD_SKILLS or MODES. Reading this procedure grants no tools.
+
 Use this skill after changing a browser-rendered page or terminal/TUI surface. It is a content-only workflow. It does not provide browser automation, screenshot or diff scripts, browser runtimes, profile tooling, hooks, or services.
-
-## Modes
-
-Choose a mode in this order. (a) If the first word of the arguments is a mode name or a one-word alias, use that mode. (b) Otherwise, if the brief has a `MODES:` line naming this skill's mode, use it. (c) Otherwise, judge by the trigger words in the table. If none fits, run this file's default flow. An unknown first word is part of the goal text; run the default flow.
-
-A worker whose brief carries `MODES: omo-visual-qa/visualize`, or whose task matches a trigger word below, reads the MODE.md with Read. When the brief does not name a mode, a matching trigger word is enough.
-
-Mode paths: `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to the Base directory shown when this skill was loaded. A bare `references/...` path inside a MODE.md is relative to `modes/<mode>/`. A path that names another skill (`` `omo-x` `references/y.md` ``) is relative to that skill's directory. A `skills/<name>/references/...` path is relative to the plugin root.
-
-| Mode | Alias | Precedence | Use when |
-| --- | --- | --- | --- |
-| `visualize` (`modes/visualize/MODE.md`) | - | replaces; its QA step is this file's procedure | build or create a chart, table, diagram, or HTML/SVG visualization; requests that only check how an existing one looks use the default flow |
-
-"Replaces" means follow the MODE.md as the procedure. This file applies only where the MODE.md names it; here, that is the QA procedure in `visualize` step 4 (Select The Target through Report).
-
-This skill does not pre-approve Edit, Write, Task, or Skill. When `visualize` needs one of them, it asks for permission.
 
 ## Select The Target
 
 1. Create a preflight inventory of the supplied rendered fixture or surface, access route or launch command, required states, viewports or terminal sizes, references, credentials, and available inspection tools. Mark every missing item before testing.
 2. Classify the target as `BROWSER_PAGE` or `TERMINAL_TUI`. If it has both surfaces, test each separately.
 3. List every required route, screen, tab, modal, state, viewport, terminal size, scroll position, color mode, and motion setting. Do not approve a sampled subset.
-4. Use a browser, terminal, renderer, or inspection tool already available in the current environment. For a browser page, pick it by `omo-implement` `references/real-surface-qa.md` (Tool Selection): Orca's embedded browser inside an Orca session, else the `playwright:playwright-step` skill when installed. Drive the real rendered surface. Reading source code is not visual evidence.
+4. Use a browser, terminal, renderer, or inspection tool already available in the current environment. For a browser page, pick it by `<plugin-root>/skills/omo-implement/references/real-surface-qa.md` (Tool Selection): Orca's embedded browser inside an Orca session, else the `playwright:playwright-step` skill when installed. Drive the real rendered surface. Reading source code is not visual evidence.
 5. For authenticated work, use an isolated or cloned test profile with only the access required for the check. Never use, inspect, copy, or alter a live user browser profile.
 6. Record unavailable tools, credentials, references, or surfaces as evidence gaps. Do not infer success from source code or an unrendered artifact.
 
@@ -57,7 +39,7 @@ For every listed browser page or state, interact with the actual page and record
 - Responsive layout at every required viewport. Check overflow, clipping, scroll behavior, navigation, focus, hover, active, disabled, loading, empty, error, and modal states where they apply.
 - Functional and design-system integrity. Confirm live controls work, semantic content is present, reusable components render as intended, and no screenshot or static image substitutes for an interactive surface.
 - Visual fidelity. Compare layout, hierarchy, spacing, typography, colors, icons, borders, radii, shadows, assets, copy, and alignment with the stated intent or reference. When a reference exists, inspect matching viewports and settled states.
-- Rendered craft. Read `omo-frontend` `references/quality-floor.md` Rendered Craft Checks and `references/aesthetics.md` Anti-Patterns for changed or audited regions. Record computed heading ratios, effective section/group gaps, actual prose wrapping, display size/tracking, browser-detail states, and scaffold findings in the matrix. Compare against scoped design exceptions from the brief or project; do not treat an intentional kicker, mono heading, or shadow as a defect. Check real contrast on tinted surfaces, keyboard focus, reflow, and reduced motion even for exceptions. Missing required measurements are evidence gaps, not passes; absent elements are N/A. No detector SDK is bundled: use available browser inspection, and never claim an automated check ran without its actual output.
+- Rendered craft. Read `<plugin-root>/skills/omo-frontend/references/quality-floor.md` Rendered Craft Checks and `<plugin-root>/skills/omo-frontend/references/aesthetics.md` Anti-Patterns for changed or audited regions. Record computed heading ratios, effective section/group gaps, actual prose wrapping, display size/tracking, browser-detail states, and scaffold findings in the matrix. Compare against scoped design exceptions from the brief or project; do not treat an intentional kicker, mono heading, or shadow as a defect. Check real contrast on tinted surfaces, keyboard focus, reflow, and reduced motion even for exceptions. Missing required measurements are evidence gaps, not passes; absent elements are N/A. No detector SDK is bundled: use available browser inspection, and never claim an automated check ran without its actual output.
 - Motion and interaction. Check the planned normal, reduced-motion, and interruption evidence for meaningful animation, hover, focus, click, load, and scroll effects. A moving surface is not evidence until its settled state is checked.
 - Text and CJK precision. Check line breaks, orphaned particles or final characters, clipped glyphs, missing glyphs, detached labels, wrapped citations, baselines, and natural Korean, Japanese, and Chinese phrase wrapping.
 - Browser console and rendered error state when the available surface exposes them. Record console errors, warnings that affect the result, failed assets, and visible error boundaries.

@@ -53,4 +53,4 @@ Implementation, tests, and QA are one continuous flow: after the edit, run diagn
 | Library | A small driver that imports the public API and calls it as a caller would. |
 | Job | A real worker process with its real queue and lock store (`SKILL.md` step 7). |
 
-For a browser UI change, also run `omo-visual-qa` with the same tool.
+For a browser UI change, also run `omo-implement` mode `visual-qa` with the same tool. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`).

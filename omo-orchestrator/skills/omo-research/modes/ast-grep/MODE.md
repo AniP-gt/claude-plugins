@@ -1,11 +1,3 @@
----
-name: omo-ast-grep
-description: Search and rewrite code by AST shape with the ast-grep `sg` CLI. Use for syntax patterns, codemods, and YAML lint rules; plain text, comments, and file names go to Grep.
-argument-hint: "[pattern-or-goal]"
-allowed-tools: Read, Grep, Glob, Edit, Bash(ast-grep *), Bash(command -v *)
-user-invocable: true
----
-
 # OMO ast-grep
 
 Claude Code adaptation of oh-my-openagent `packages/shared-skills/skills/ast-grep`, which vendors code-yeongyu/ast-grep-skill (MIT, Copyright (c) 2026 Yeongyu Kim). The license text is in `LICENSE` next to this file. Upstream scripts, installers, and tests are not included.
@@ -40,6 +32,8 @@ Always single-quote patterns in the shell so `$VAR` is not expanded. Set `--lang
 3. Report the match count **and** the number of files affected.
 
 ## Rewrite Workflow
+
+Rewrite and codemod steps, including `--update-all`, `scan -U`, and Edit, run only under `omo-implementer`. Researchers perform structural searches and return proposed changes to the caller. This mode grants no ast-grep pre-approval; commands use the host permission flow.
 
 Rewrites can silently hit the wrong code. `--interactive` needs a TTY, so the agent cannot use it. Follow this order every time:
 

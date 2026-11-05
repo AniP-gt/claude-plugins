@@ -242,7 +242,7 @@ test("other agents are not gated", () => {
     "Explore",
     "omo-orchestrator:omo-oracle",
     "omo-orchestrator:omo-librarian",
-    "omo-orchestrator:omo-media-reader",
+    "omo-oracle",
     "omo-orchestrator:omo-plan-consultant",
     "omo-orchestrator:omo-plan-reviewer",
     "omo-orchestrator:omo-external-reviewer",
@@ -342,14 +342,14 @@ test("an implementer-only skill passes for the implementer, and other skills pas
   assert.equal(gate(dispatch("LOAD_SKILLS: none", "omo-planner")), "");
 });
 
-test("the implementer-only skills of the real catalog are exactly the three that pre-approve broad Bash", (t) => {
+test("the implementer-only skills of the real catalog are exactly the two that pre-approve broad Bash", (t) => {
   const catalogPath = fileURLToPath(new URL("../skills/omo-orchestrate/references/skill-catalog.md", import.meta.url));
   if (!existsSync(catalogPath)) {
     t.skip("skill-catalog.md does not exist yet");
     return;
   }
   const names = implementerOnlySkills(readFileSync(catalogPath, "utf8"));
-  assert.deepEqual([...names].sort(), ["omo-frontend", "omo-handoff", "omo-programming"]);
+  assert.deepEqual([...names].sort(), ["omo-frontend", "omo-programming"]);
   for (const name of names) {
     assert.ok(existsSync(fileURLToPath(new URL(`../skills/${name}`, import.meta.url))), `${name} has no skills/ directory`);
   }
@@ -372,13 +372,13 @@ test("the main-only skills of the real catalog are exactly the eight workflows t
   );
 });
 
-// The real catalog: research and visual-qa are `both` skills, so a read-only worker may load them and name their modes.
+// The real catalog permits research modes for read-only workers; restricted visual-QA/visualize parents require absolute-path Read instead of MODES.
 const realCatalog = readTemplate("../skills/omo-orchestrate/references/skill-catalog.md");
 const realGate = (input) => run(input, { env: {}, catalogText: realCatalog });
 
-test("a researcher may load omo-research and omo-visual-qa, and name a mode of omo-research", () => {
+test("a researcher may load omo-research and omo-remove-ai-slop, and name a research mode", () => {
   assert.equal(realGate(dispatch("LOAD_SKILLS: none\nMODES: omo-research/security-research", "omo-researcher")), "");
-  assert.equal(realGate(dispatch("LOAD_SKILLS: [omo-visual-qa]", "omo-researcher")), "");
+  assert.equal(realGate(dispatch("LOAD_SKILLS: [omo-remove-ai-slop]", "omo-researcher")), "");
   assert.equal(realGate(dispatch("LOAD_SKILLS: [omo-research]", "omo-researcher")), "");
 });
 
@@ -451,4 +451,32 @@ test("a MODES line is ignored when the gate is off or the agent is not gated", (
   assert.equal(gate(dispatch(prompt), { OMO_LOAD_SKILLS_GATE: "off" }), "");
   assert.equal(gate(dispatch(prompt, "omo-orchestrator:omo-oracle")), "");
   assert.equal(run(dispatch(prompt), { env: {}, catalogText: undefined }), "");
+});
+
+const assertCatalogSkillsExist = (text) => {
+  const names = [...text.matchAll(/^\|\s*`(omo-[^`\s|]+)`\s*\|/gm)].map((match) => match[1]);
+  assert.ok(names.length > 0, "no catalog skill rows parsed");
+  for (const name of names) {
+    assert.ok(existsSync(fileURLToPath(new URL(`../skills/${name}/SKILL.md`, import.meta.url))), `${name} has no skills/<name>/SKILL.md`);
+  }
+};
+
+test("every catalog row names an existing skills/<name>/SKILL.md", () => {
+  assertCatalogSkillsExist(realCatalog);
+  const temporaryCatalog = `${realCatalog}\n| \`omo-nonexistent-catalog-probe\` | worker | probe |`;
+  assert.throws(() => assertCatalogSkillsExist(temporaryCatalog), /omo-nonexistent-catalog-probe has no skills/);
+});
+
+test("the real catalog denies visual-qa MODES for a reviewer", () => {
+  const hook = decision(realGate(dispatch("LOAD_SKILLS: none\nMODES: omo-implement/visual-qa", "omo-reviewer")));
+  assert.equal(hook.permissionDecision, "deny");
+  assert.match(hook.permissionDecisionReason, /main-only skill/);
+  assert.match(hook.permissionDecisionReason, /omo-implement/);
+});
+
+test("the real catalog denies visualize MODES for a planner", () => {
+  const hook = decision(realGate(dispatch("LOAD_SKILLS: none\nMODES: omo-frontend/visualize", "omo-planner")));
+  assert.equal(hook.permissionDecision, "deny");
+  assert.match(hook.permissionDecisionReason, /omo-implementer only/);
+  assert.match(hook.permissionDecisionReason, /omo-frontend/);
 });

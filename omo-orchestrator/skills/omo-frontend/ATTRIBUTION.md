@@ -7,7 +7,7 @@ and visual-QA routing adapt ideas examined in oh-my-openagent at
 
 - `packages/shared-skills/skills/frontend/references/perfection/craft-floor.md`
 - `packages/shared-skills/skills/frontend/ATTRIBUTION.md`, section 6
-- `packages/shared-skills/skills/visual-qa/SKILL.md`
+- `packages/shared-skills/skills/visual-qa/SKILL.md` (also adapted in `skills/omo-implement/modes/visual-qa/MODE.md`; the upstream notice covers that procedure too)
 
 Source: https://github.com/code-yeongyu/oh-my-openagent/tree/9eaaedfb24e421c29561767b143ec1ce9ae08570/packages/shared-skills/skills/frontend
 

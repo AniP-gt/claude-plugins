@@ -1,18 +1,14 @@
----
-name: omo-handoff
-description: Manual handoff workflow. Keeps a task-linked append-only phase ledger, or writes a short brief to continue in a fresh session instead of compacting. Use when the user asks for a handoff or to continue in a new session.
-argument-hint: "[task-slug]"
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash(orca:*)
-user-invocable: true
----
-
 # OMO Handoff
+
+Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
 
 Use this skill when work must survive a context change, an operator change, or a pause between phases. Keep one ledger per task at `.claude/omo/handoffs/<task-slug>.md`.
 
-This is a manual workflow. It provides no hook, automatic creation, automatic persistence, or automatic continuation. An operator creates the record, appends each entry, and reads it before taking the next action. The only command it runs is the Orca launch in [Fresh-Session Brief](#fresh-session-brief), and only when the user asks for it in that turn; it never starts a session on its own.
+This is a manual workflow. It provides no hook, automatic creation, automatic persistence, or automatic continuation. The controller or `omo-implementer` creates the record and appends entries; every operator reads it before taking the next action. The only command it runs is the Orca launch in [Fresh-Session Brief](#fresh-session-brief), and only when the user asks for it in that turn; it never starts a session on its own.
 
 ## Fresh-Session Brief
+
+Main-context only: writing the fresh-session brief and launching Orca run in the main context, with the existing user request/permission flow. Workers use the ledger and entry-field contract below and return a fresh-session request to the caller. This mode grants no tools or Orca pre-approval.
 
 A long conversation resends every earlier turn, including dead-end hypotheses, failed commands, and rejected options. `/compact` lets the model choose what survives and keeps adding to the same session. A brief lets you choose, and the next session starts from zero.
 
@@ -108,4 +104,4 @@ Append `REQUEST_CHANGES` and `INCONCLUSIVE` gate results before retrying or stop
 - `REQUEST_CHANGES`, `INCONCLUSIVE`, a satisfied completion promise, exhausted retries, or passing validation do not permit completion without `APPROVE`.
 - Do not claim that the ledger resumes work on its own. A later operator must read it and manually continue.
 
-Use the [handoff template](../omo-orchestrate/references/handoff-template.md) for the metadata block and every phase entry.
+Use the [handoff template](../../../omo-orchestrate/references/handoff-template.md) for the metadata block and every phase entry.

@@ -117,7 +117,7 @@ Sequence by test necessity: a task that needs tests (see Intent And Decision Rou
 
 ## Cross-Context Handoff
 
-When planning crosses a context, operator, or pause, use `omo-handoff` to maintain the append-only ledger at `.claude/omo/handoffs/<task-slug>.md`. Do not claim the record is created or resumed automatically.
+When planning crosses a context, operator, or pause, use `omo-guardrails` mode `handoff` to maintain the append-only ledger at `.claude/omo/handoffs/<task-slug>.md`. Do not claim the record is created or resumed automatically.
 
 Before handoff, ensure the latest checkpoint includes:
 
@@ -128,7 +128,7 @@ Before handoff, ensure the latest checkpoint includes:
 - The final-plan path or visible draft reference.
 - One next exact action, written as a concrete command, review, decision, or planning step.
 
-The handoff entry must follow the `omo-handoff` phase-entry contract. Never rewrite earlier ledger entries. Correct prior information with a later append-only entry.
+The handoff entry must follow the `omo-guardrails` mode `handoff` phase-entry contract. Never rewrite earlier ledger entries. Correct prior information with a later append-only entry.
 
 ## Output Shape
 

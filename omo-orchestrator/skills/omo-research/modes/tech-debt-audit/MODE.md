@@ -18,7 +18,7 @@ Use this skill for a codebase health check, tech debt audit, architecture review
 
 Check once in Phase 0 and record the result in the report.
 
-- Structural search: use `sg` (ast-grep) only if `command -v sg` succeeds. See the `omo-ast-grep` skill for pattern syntax. Otherwise fall back to Grep and state that structural checks were approximated.
+- Structural search: use `sg` (ast-grep) only if `command -v sg` succeeds. Read `modes/ast-grep/MODE.md` under the `omo-research` skill for pattern syntax. Otherwise fall back to Grep and state that structural checks were approximated.
 - Type diagnostics and references: use LSP only if available in the session. Otherwise use the project's own type checker if it runs without side effects, or mark the metric `unmeasured`.
 - Tests: run the project's test command only if it is read-only in effect and reasonably fast; otherwise inventory tests statically and mark runtime health `unmeasured`.
 

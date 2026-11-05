@@ -69,7 +69,7 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Planning | `omo-planner` |
 | Hard problem, architecture, 2+ failed fix attempts | `omo-oracle` |
 | Implementation | the Codex lane in `skills/omo-orchestrate/references/codex-implementer.md` when it applies, else `omo-implementer`; one owner per independent file set |
-| PDFs, images, diagrams | `omo-media-reader` |
+| PDFs, images, diagrams | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` |
 | Review gate | `omo-reviewer` |
 | Research that writes files, long command-driven verification | see `omo-orchestrate` `references/routing.md` |
 
@@ -128,7 +128,7 @@ Started: <ISO timestamp>
 ## Learnings (patterns and pitfalls)
 ```
 
-After compaction or context loss, re-read the notepad and resume. For work that spans sessions, also use `omo-handoff`.
+After compaction or context loss, re-read the notepad and resume. For work that spans sessions, also use `omo-guardrails` mode `handoff`.
 
 ## Evidence
 
@@ -148,7 +148,7 @@ Evidence stays valid until one of its inputs changes. When a change affects an i
 | Adds or modifies a CLI command | Run it with Bash and show the output |
 | Changes build output | Run the build and inspect the output files |
 | Modifies API behavior | Call the endpoint and show the response |
-| Changes UI or a TUI layout | Use `omo-visual-qa` on the rendered surface |
+| Changes UI or a TUI layout | Use `omo-implement` mode `visual-qa` on the rendered surface. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`). |
 | Adds a tool, hook, or feature | Exercise it end-to-end in a real scenario |
 | Modifies config handling | Load the config and verify it parses |
 | Touches a path with an external side effect (upload, outbound send, payment, write to a third party) | Do not trigger the real effect: replace the boundary in-process, drive the path with fixed fake data, and report the range that could not be verified |

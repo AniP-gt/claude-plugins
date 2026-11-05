@@ -1,7 +1,7 @@
 ---
 name: omo-research
-description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
-argument-hint: "[question]"
+description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ast-grep (syntax-shape search, codemods, YAML lint rules; rewrites under omo-implementer only), ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
+argument-hint: "[ast-grep|ultraresearch|tech-debt-audit|security-research|coding-agent-sessions|get-unpublished-changes|eval-integrity] [question]"
 allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *), TodoWrite, Task
 user-invocable: true
 ---
@@ -18,10 +18,11 @@ Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill
 - Workers: a `MODES: omo-research/<mode>` line in the brief, or a trigger in the table that matches the task even without that line, means Read that MODE.md and follow it. This also applies when this skill was preloaded through `LOAD_SKILLS`.
 - Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-research` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
 - Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
-- Permissions: `ultraresearch` and `tech-debt-audit` need Bash and Write beyond this skill's `allowed-tools`. In the main context those commands ask for permission.
+- Permissions: `ultraresearch` and `tech-debt-audit` need Bash and Write beyond this skill's `allowed-tools`. In the main context those commands ask for permission. The `ast-grep` mode's CLI calls are not pre-approved and use the host permission prompts; rewrite/codemod steps run only under `omo-implementer`.
 
 | Mode | Alias | Precedence | Use when |
 |---|---|---|---|
+| `ast-grep` | - | adds to | ast-grep, syntax-shape search, codemods, YAML lint rules; rewrite steps under omo-implementer only |
 | `ultraresearch` | - | replaces, main-only | exhaustive or saturation research on a decision-critical question; hook keyword `ulw research` |
 | `tech-debt-audit` | - | replaces, main-only | tech debt, debt audit, or code health, written to a `TECH_DEBT_AUDIT.md` report |
 | `security-research` | - | adds to | security review, vulnerability research, exploitability, threat model |
@@ -35,7 +36,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 
 ## Research Contract
 
-- Stay read-only.
+- Stay read-only. The one exception is the `ast-grep` mode's rewrite/codemod steps, which apply only when the loading agent is `omo-implementer`; every other caller stays read-only and returns the rewrite plan.
 - Search for the exact behavior, then nearby variants.
 - Inspect callers and dependencies when root cause matters.
 - Return paths, symbols, evidence, and recommended next steps.
@@ -43,7 +44,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 
 ## Pick The Tool By Question
 
-- Relationship questions (who calls this, what breaks if it changes, which tests to run): start with `node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" --symbol <name>` or `--file <path>`. With no arguments it covers every changed file. It returns callers and tests in a few lines instead of a chain of Grep and Read results. Follow up with LSP references, `omo-ast-grep`, or a semantic code search tool when names are overloaded or reached indirectly.
+- Relationship questions (who calls this, what breaks if it changes, which tests to run): start with `node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" --symbol <name>` or `--file <path>`. With no arguments it covers every changed file. It returns callers and tests in a few lines instead of a chain of Grep and Read results. Follow up with LSP references, `omo-research` mode `ast-grep`, or a semantic code search tool when names are overloaded or reached indirectly.
 - Literal questions (where a message, key, or config value appears): Grep. Index and graph tools match symbols, not arbitrary text, and miss these.
 - Everything a search returns stays in the conversation for the rest of the session. Run broad or verbose searches inside a sub-agent and bring back `path:line` and the conclusion, not the matched source.
 
