@@ -223,13 +223,34 @@ function textOf(content) {
   return content.map((block) => (typeof block?.text === "string" ? block.text : "")).join("\n");
 }
 
+// Launch results of background work. Their id is the <task-id> of the notification that reports the end.
+const BACKGROUND_LAUNCH_PATTERNS = [
+  /^\s*Async agent launched successfully[\s\S]*?agentId:\s*([\w-]+)/,
+  /^\s*Command running in background with ID:\s*([\w-]+)/,
+];
+const TASK_NOTIFICATION_PATTERN = /<task-notification>([\s\S]*?)<\/task-notification>/g;
+
+function backgroundTaskId(text) {
+  for (const pattern of BACKGROUND_LAUNCH_PATTERNS) {
+    const match = pattern.exec(text);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 // True when this turn invoked omo-review and nothing after the last invocation shows its Codex lane: a Bash
 // call that ran or probed `codex`, or a Codex status line in a sub-agent's result. Only Agent/Task results
-// count, because a Read of codex-lane.md or the skill text carries the same status line as an example.
+// and their task notifications count, because a Read of codex-lane.md or the skill text carries the same
+// status line as an example.
+// While background work launched after the invocation (a sub-agent running the review, or a background Bash
+// command) has not reported back, the turn ends only to wait: its notification continues the turn and triggers
+// a fresh stop. Launches are recognized only at the start of a tool result, so a report quoting them is not one.
 export function codexLaneMissing(entries) {
   const start = turnStart(entries);
   let pending = start > 0 && OMO_REVIEW_COMMAND_PATTERN.test(textOf(entries[start - 1]?.message?.content));
   const delegateIds = new Set();
+  const backgroundUseIds = new Set();
+  const running = new Map();
   for (const entry of entries.slice(start)) {
     if (isGateFeedback(entry, CODEX_MARKER)) {
       pending = false;
@@ -237,19 +258,33 @@ export function codexLaneMissing(entries) {
     }
     if (entry?.isSidechain === true) continue;
     const content = entry?.message?.content;
+    if (entry?.type === "user") {
+      for (const [, body] of textOf(content).matchAll(TASK_NOTIFICATION_PATTERN)) {
+        const taskId = /<task-id>\s*([\w-]+)\s*<\/task-id>/.exec(body)?.[1];
+        if (taskId === undefined || !running.has(taskId)) continue;
+        if (running.get(taskId) && CODEX_STATUS_PATTERN.test(body)) pending = false;
+        running.delete(taskId);
+      }
+    }
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       if (entry.type === "assistant" && block?.type === "tool_use") {
         const input = block.input ?? {};
-        if (block.name === "Skill" && OMO_REVIEW_SKILL_PATTERN.test(String(input.skill ?? ""))) pending = true;
-        else if (block.name === "Bash" && isLaneCodexCommand(withoutComments(input.command))) pending = false;
+        if (block.name === "Skill" && OMO_REVIEW_SKILL_PATTERN.test(String(input.skill ?? ""))) {
+          pending = true;
+          running.clear();
+        } else if (block.name === "Bash" && isLaneCodexCommand(withoutComments(input.command))) pending = false;
         else if (DELEGATE_TOOLS.has(block.name)) delegateIds.add(block.id);
-      } else if (entry.type === "user" && block?.type === "tool_result" && delegateIds.has(block.tool_use_id)) {
-        if (CODEX_STATUS_PATTERN.test(textOf(block.content))) pending = false;
+        if (input.run_in_background === true || DELEGATE_TOOLS.has(block.name)) backgroundUseIds.add(block.id);
+      } else if (entry.type === "user" && block?.type === "tool_result") {
+        const text = textOf(block.content);
+        if (delegateIds.has(block.tool_use_id) && CODEX_STATUS_PATTERN.test(text)) pending = false;
+        const taskId = backgroundUseIds.has(block.tool_use_id) ? backgroundTaskId(text) : null;
+        if (pending && taskId !== null) running.set(taskId, delegateIds.has(block.tool_use_id));
       }
     }
   }
-  return pending;
+  return pending && running.size === 0;
 }
 
 export function buildCodexReason() {

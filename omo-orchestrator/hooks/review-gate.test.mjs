@@ -83,6 +83,49 @@ test("blocks when omo-review ran with no Codex lane afterwards", () => {
   assert.ok(isCodexBlock(gate([prompt, omoReview, reply])));
 });
 
+const asyncLaunch = (id, agentId) =>
+  result(id, `Async agent launched successfully.\nagentId: ${agentId} (internal ID)\nThe agent is working in the background.`);
+const taskDone = (taskId, text) => ({
+  type: "user",
+  message: { content: `<task-notification>\n<task-id>${taskId}</task-id>\n<status>completed</status>\n<result>${text}</result>\n</task-notification>` },
+});
+const bgReviewer = tool("Agent", { subagent_type: "omo-orchestrator:omo-reviewer", run_in_background: true }, "agent-bg");
+
+test("waits while a background sub-agent launched after omo-review is still running", () => {
+  assert.equal(gate([prompt, omoReview, bgReviewer, asyncLaunch("agent-bg", "a1"), reply]), null);
+});
+
+test("blocks once the background sub-agent finished without a Codex status line", () => {
+  const entries = [prompt, omoReview, bgReviewer, asyncLaunch("agent-bg", "a1"), reply, taskDone("a1", "ISSUES_FOUND: NO"), reply];
+  assert.ok(isCodexBlock(gate(entries)));
+});
+
+test("a Codex status line in the background sub-agent's notification is evidence", () => {
+  const entries = [prompt, omoReview, bgReviewer, asyncLaunch("agent-bg", "a1"), reply, taskDone("a1", "Codex 実行: OK"), reply];
+  assert.equal(gate(entries), null);
+});
+
+test("a notification for another task does not end the wait", () => {
+  const entries = [prompt, omoReview, bgReviewer, asyncLaunch("agent-bg", "a1"), reply, taskDone("zz", "done"), reply];
+  assert.equal(gate(entries), null);
+});
+
+test("waits while a background Bash command launched after omo-review is still running", () => {
+  const bg = tool("Bash", { command: "orca terminal wait", run_in_background: true }, "bash-bg");
+  const launched = result("bash-bg", "Command running in background with ID: b1. Output is being written to: /tmp/b1.output");
+  assert.equal(gate([prompt, omoReview, bg, launched, reply]), null);
+  assert.ok(isCodexBlock(gate([prompt, omoReview, bg, launched, reply, taskDone("b1", "exit 0"), reply])));
+});
+
+test("a sub-agent report quoting a launch message does not hold the check", () => {
+  const quoted = result("agent-bg", "ISSUES_FOUND: NO\nログ: Command running in background with ID: b1.");
+  assert.ok(isCodexBlock(gate([prompt, omoReview, bgReviewer, quoted, reply])));
+});
+
+test("a background task launched before omo-review does not hold the check", () => {
+  assert.ok(isCodexBlock(gate([prompt, bgReviewer, asyncLaunch("agent-bg", "a1"), omoReview, reply])));
+});
+
 test("passes when a Bash call ran codex exec after omo-review", () => {
   const codex = tool("Bash", { command: 'codex exec --sandbox read-only -o "/tmp/x.md" "review" < /tmp/x.diff' });
   assert.equal(gate([prompt, omoReview, codex, reply]), null);
