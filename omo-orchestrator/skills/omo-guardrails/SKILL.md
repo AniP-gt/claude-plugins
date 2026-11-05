@@ -36,7 +36,7 @@ Read only the file the situation needs:
 
 - `references/circuit-breaker.md`: tool-loop, delegation-depth, and stuck-iteration thresholds with actions.
 - `references/error-recovery.md`: error class patterns, tool and agent failure recovery, escalation order.
-- `references/context-and-handoff.md`: anti-duplication while waiting, context signals, agent output contract, cross-agent handoff files.
+- `references/context-and-handoff.md`: anti-duplication while waiting, context signals, resume reconciliation, agent output contract, cross-agent handoff files.
 
 ## Handoff Minimum
 

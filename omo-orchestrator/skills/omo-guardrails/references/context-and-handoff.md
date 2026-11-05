@@ -21,6 +21,17 @@ Rules:
 - Track files already read; re-read only files modified since.
 - Every 3 to 5 tool calls, note: done / remaining, 1-2 key findings, next action.
 
+## Resume Reconciliation
+
+After interruption, reconnect, or compaction, treat the ledger and status widget as historical evidence, not current execution state. Before resuming a dependent phase:
+
+1. Read the task ledger and fetch a fresh task/session inventory through the available host tools. Match task identity, workspace, owner, dependencies, and expected deliverable; record the observation time and any unavailable fields.
+2. Reconcile recorded and live states. A displayed running task may be paused or lost; a released parent Stop does not prove its children resumed. Confirm each required child's live state and inspect its deliverable and verification evidence before counting it complete.
+3. Continue unaffected independent work. Keep dependent work blocked while a required child is paused, missing, or unverified. Use the host's supported resume path only for work this session owns and whose continuation is authorized; never kill, take over, or duplicate work owned by another live session.
+4. If recovery fails, preserve the transcript and artifacts, record the lane as INCONCLUSIVE with the attempted recovery and missing evidence, and name a bounded next action. Silence, a stale running label, or an accepted resume request is not completion. Do not retry indefinitely or invent a host API when live inspection is unavailable.
+
+This is a manual reconciliation procedure, not a scheduler or automatic recovery hook. Adapted from upstream oh-my-openagent #12113, #12268, and #12343 at `cb7f76ecf6`.
+
 ## Agent Output Contract
 
 Put this in delegation prompts to keep results compact:

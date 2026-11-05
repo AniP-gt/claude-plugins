@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 3.10.0 adds manual resume reconciliation to `omo-guardrails`: after an interruption or reconnect, compare the ledger with fresh host state, ownership, deliverables, and verification before releasing dependent work. A parent resume request or stale running label cannot prove child completion; foreign live ownership is preserved. Adapted from upstream #12113, #12268, and #12343 at `cb7f76ecf6`. No scheduler or automatic recovery hook is installed. Adoption and empirical checks are recorded in `docs/reports/2026-11-05-omo-upstream-refresh.md`.
+
 Version 3.9.1 adds item 8 to the follow-up steps in `omo-work-with-pr`: the done report opens with one or two plain sentences on what the person relying on the changed thing can now count on and what went wrong before, with no method, constant, or file names; changed files and identifiers come after.
 
 Version 3.8.1 adds an opaque-artifact step to `omo-implement`. When a change replaces a binary or generated file that code loads at runtime, such as an ML model, a compiled library, or a bundled dataset, the pass compares the old and new file and checks the loading code against it. Effects that only the target hardware can show, such as memory, CPU, latency, or output quality, come back as a user-side check with numbered measurement steps, and the pass never reports "no impact" from the static comparison alone.
