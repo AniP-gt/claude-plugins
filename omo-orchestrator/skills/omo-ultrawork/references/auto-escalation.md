@@ -4,7 +4,7 @@ Implementation skills (`omo-implement`, `omo-programming` (modes `refactor`, `de
 
 ## When the check runs
 
-Run the check once, at the start of the task, after reading enough context to size it. Skip it entirely when the skill was delegated by an active controller: `omo-ultrawork` (including modes `ulw-execute` and `mass-ulw`), `omo-review` (mode `review-loop`), `omo-ralph-loop`, or `omo-orchestrate`. A delegated skill returns to its caller and never starts ultrawork, so controllers do not nest.
+Run the check once, at the start of the task, after reading enough context to size it. Skip it entirely when the skill was delegated by an active controller: `omo-ultrawork` (including modes `ulw-execute` and `mass-ulw`), `omo-review` (mode `review-loop`), or `omo-ralph-loop`. A delegated skill returns to its caller and never starts ultrawork, so controllers do not nest.
 
 ## Escalate when any applies
 

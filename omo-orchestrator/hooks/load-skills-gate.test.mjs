@@ -355,7 +355,7 @@ test("the implementer-only skills of the real catalog are exactly the three that
   }
 });
 
-test("the main-only skills of the real catalog are exactly the nine workflows the main context runs", () => {
+test("the main-only skills of the real catalog are exactly the eight workflows the main context runs", () => {
   const names = mainOnlySkills(readTemplate("../skills/omo-orchestrate/references/skill-catalog.md"));
   assert.deepEqual(
     [...names].sort(),
@@ -363,7 +363,6 @@ test("the main-only skills of the real catalog are exactly the nine workflows th
       "omo-git-master",
       "omo-implement",
       "omo-init-deep",
-      "omo-orchestrate",
       "omo-plan",
       "omo-ralph-loop",
       "omo-review",

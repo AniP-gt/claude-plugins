@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 4.0.0 removes the `omo-orchestrate` entry skill. Session logs from 2026-09-29 to 2026-11-05 show no call to it outside this repository: the hooks send change and plan requests to `omo-plan`, reviews to `omo-review`, GitHub issues and PR review comments to `omo-work-with-pr`, and `ulw` to `omo-ultrawork`, and `omo-plan` starts `omo-implement`, `omo-review review-loop`, or `omo-ultrawork ulw-execute`, never `omo-orchestrate`. `/omo-orchestrate` no longer exists. The shared files under `skills/omo-orchestrate/references/` keep their paths, because the other skills and `hooks/load-skills-gate.mjs` read them there (`skills/omo-orchestrate/README.md` lists them). The pending delivery and late results contract moved from the removed `SKILL.md` into `references/delegation-prompt.md`, which now also links `references/project-rules.md`. `references/workflow.md`, which only the removed `SKILL.md` read, is deleted. The skill catalog drops the `omo-orchestrate` row.
+
 Version 3.11.0 separates explicit exhaustive research from implementation context gathering. `omo-research ultraresearch` covers all applicable source lanes and material leads until convergence instead of imposing a default three-lane/two-expansion cap. Explicit user or caller limits, read-only and security boundaries, and host capabilities still apply; exhausted limits or blocked material evidence produce a partial report. Adapted from `packages/shared-skills/skills/ulw-research/SKILL.md` at upstream `cb7f76ecf6`. Adoption and empirical checks are recorded in `docs/reports/2026-11-05-omo-exhaustive-research-refresh.md`.
 
 Version 3.10.1 runs every Codex call with `--dangerously-bypass-hook-trust` (the review lane, the adversarial run, both consults, and the implementation lane), which the user approved, so a hook-trust prompt cannot stall a non-interactive run. It does not widen the sandbox: the review lane and consults stay read-only. `hooks/review-gate.mjs` still counts `codex --dangerously-bypass-hook-trust exec` as the review lane.
@@ -176,9 +178,8 @@ Version 1.26.0 refreshes portable planning and execution contracts against upstr
 
 ## Included Skills
 
-The plugin ships 18 skills. Seventeen former skills are modes inside seven of them (migration table in Version 2.0.0 above); call a mode as `/omo-<parent> <mode> …`.
+The plugin ships 17 skills. Seventeen former skills are modes inside seven of them (migration table in Version 2.0.0 above); call a mode as `/omo-<parent> <mode> …`.
 
-- `omo-orchestrate`: main workflow for complex multi-step work.
 - `omo-plan`: file-level planning with an approval brief before the executable plan, dependency matrix, QA scenarios, blockers, and verification commands. Approval writes the plan only. It does not authorize implementation.
   - Mode `start-work`: kickoff workflow for non-trivial tasks, context gathering, plans, evidence targets, and handoff setup, with manual TodoWrite and append-only ledger equivalence at phase boundaries.
   - Mode `hyperplan` (alias `hpp`): adversarial planning for hard, risky, or ambiguous work.
@@ -464,7 +465,7 @@ The main context must not directly implement, edit files, run task commands, per
 
 Examples:
 
-- Aggregator model -> `omo-orchestrate` routes work, merge evidence, and decide whether to continue, review, or stop.
+- Aggregator model -> the active controller (`omo-ralph-loop` with `omo-implement`, `omo-review review-loop`, or `omo-ultrawork`) routes work, merges evidence, and decides whether to continue, review, or stop.
 - Ultrawork -> explicit parallel waves, bounded follow-up, evidence-first outputs, and no duplicate searches once an owner is assigned.
 - Planning -> classify outcome clarity, research defaults for unclear goals, and ask only for irreducible owner decisions before a plan approval brief.
 - Session investigation -> inspect raw transcript artifacts and linked child sessions, while reporting usage, token, model, time, and cost fields as accounting metadata rather than transcript content.
@@ -509,7 +510,7 @@ If a future version ever gains runtime pieces, keep them optional and separate f
 
 ## Recommended Workflow
 
-Use `/omo-orchestrate` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff. The workflow classifies intent, gathers context for routing, plans concrete work, delegates the smallest safe steps to sub-agents, runs dependency-aware waves, runs review-fix loops through sub-agents, verifies delegated evidence, and records handoff state when work spans sessions or agents.
+Start with `/omo-plan` for work that touches 2+ files, changes public/API/CLI behavior, affects data flow, or needs review before handoff; the `preflight` hook sends change requests there on its own. The approved plan names the executor by size: `/omo-implement` for one scoped pass on 1-2 files, `/omo-review review-loop <plan-path>` for several tasks or review-fix rounds, and `/omo-ultrawork ulw-execute <plan-path>` for dependent waves across many files. These controllers delegate the smallest safe steps to sub-agents, run dependency-aware waves and review-fix loops, verify delegated evidence, and record handoff state when work spans sessions or agents.
 
 Background agents are advisory, not blocking. Wait for one bounded follow-up when a delegated agent stalls, returns no usable output, or repeats the same result. If it still does not produce usable evidence, continue with available findings, record the agent as stalled or blocked, and escalate only when the missing evidence is critical.
 

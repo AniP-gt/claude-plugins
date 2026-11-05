@@ -32,7 +32,6 @@ Controllers choose the `LOAD_SKILLS` line of every delegation prompt from this t
 |---|---|---|
 | `omo-ultrawork` | main-only | The user says ulw or ultrawork and wants plan, parallel waves, and real-surface verification. Modes: `ulw-execute` (ulw execute, run a written omo plan wave by wave), `mass-ulw` (mass ulw, mulw, fan-out where some tasks wait on others) |
 | `omo-ralph-loop` | main-only | The user wants a goal loop or durable, checkpointed execution with bounded retries |
-| `omo-orchestrate` | main-only | Complex multi-step work needs intent classification, routing, delegation, and a handoff |
 | `omo-plan` | main-only | The user asks for a plan, or before the first edit of a change request or GitHub issue. Modes: `start-work` (kick off non-trivial work with context, plan, evidence targets, and handoff setup), `hyperplan` (hyperplan, hpp, adversarial plan for hard or high-risk work) |
 | `omo-review` | main-only | Local changes need review: after any change outside an active controller (one file included) or before calling work done. Modes: `review-work` (final review gate for controllers returning APPROVE, REQUEST_CHANGES, or INCONCLUSIVE), `review-loop` (implement plus review fix loop with a final gate), `pre-publish-review` (pre-publish or release review) |
 | `omo-implement` | main-only | A non-trivial change request needs exploration, a risk map, minimal edits, and test-first |

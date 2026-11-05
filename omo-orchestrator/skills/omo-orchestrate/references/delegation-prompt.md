@@ -40,7 +40,16 @@ LOAD_SKILLS: [omo-test-design, omo-ast-grep]
 
 - Before: collect findings, decisions, and artifacts from earlier phases and put them in CONTEXT.
 - After: check the result against EXPECTED OUTCOME, existing patterns, and the MUST DO / MUST NOT DO lists. Record what changed or was decided, then mark the task done. Do not start a dependent task before this check passes.
-- For acknowledged background delivery, missing output, or a late result, apply the parent skill's **Pending delivery and late results** contract. Keep the original task/attempt identity and write ownership until termination is established; a follow-up timeout does not authorize resending or replacement. Reconcile late failures before reusing dependent claims or evidence.
+- For acknowledged background delivery, missing output, or a late result, apply **Pending delivery and late results** below. Keep the original task/attempt identity and write ownership until termination is established; a follow-up timeout does not authorize resending or replacement. Reconcile late failures before reusing dependent claims or evidence.
+- Put the project rules that apply to the target paths into CONTEXT, found and filtered per [project-rules.md](project-rules.md).
+
+## Pending delivery and late results
+
+- An acknowledgement, queued delivery, or background continuation is not a completed task. Record the task/agent ID, attempt, owned write paths, and the available result channel in the ledger. Use only status, output, notification, or messaging capabilities the current tools actually provide.
+- Exhausting the one bounded missing-output follow-up marks evidence unavailable, not execution terminated. Keep a live task `running` with that annotation; its consumers remain pending until their prerequisites are verified. Continue independent authorized work when safe, and report a critical missing result as a blocker.
+- Do not resend an acknowledged instruction or dispatch a replacement over the same write paths while the original execution may still run. Before retrying, establish terminal failure or confirmed cancellation and release of its write ownership. Evidence is a terminal tool status or an explicit owner report that execution and any spawned writers have stopped; an acknowledgement of a cancellation request is insufficient. If detached writers exist, verify their termination separately. If the available tools cannot establish that, leave replacement work blocked; elapsed time is not proof of termination. Apply this condition to all stalled/no-output recovery rules.
+- Reconcile a late success or failure with its original task and attempt before using it. Record the outcome and evidence; verify a late success normally. A late failure corrects any provisional claims based on that attempt and invalidates only dependent evidence. Preserve unrelated verified results. A result from a superseded attempt cannot complete the current attempt; conflicting writes require inspection and revalidation before consumers resume.
+- Correct already-shared claims in the next user update and ledger. For an external destination, prepare the correction and send it only within existing explicit authorization. Choose the available result channel and a finite follow-up window suited to the session; record both before waiting rather than inventing a runtime default.
 
 ## Auto-continue
 
