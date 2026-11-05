@@ -1,7 +1,7 @@
 ---
 name: omo-guardrails
 description: "Safety rules for OMO-style work: anti-duplication, context guard, circuit breaker, error recovery, and explicit handoffs."
-argument-hint: [situation]
+argument-hint: "[situation]"
 allowed-tools: Read, Grep, Glob, TodoWrite
 user-invocable: true
 ---

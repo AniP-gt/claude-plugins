@@ -1,7 +1,7 @@
 ---
 name: omo-plan
-description: Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use when the user asks for a plan or a design (計画, 設計), and proactively before the first edit of any change request or GitHub issue, except a typo, wording, or config value change. Modes: start-work (kick off non-trivial work), hyperplan / hpp (adversarial plan for hard, high-risk work).
-argument-hint: [goal]
+description: "Create OMO-style executable plans or task files with acceptance criteria, dependency matrix, QA scenarios, and plan review. Use when the user asks for a plan or a design (計画, 設計), and proactively before the first edit of any change request or GitHub issue, except a typo, wording, or config value change. Modes: start-work (kick off non-trivial work), hyperplan / hpp (adversarial plan for hard, high-risk work)."
+argument-hint: "[goal]"
 allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite, AskUserQuestion
 user-invocable: true
 ---

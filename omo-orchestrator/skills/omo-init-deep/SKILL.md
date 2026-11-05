@@ -1,7 +1,7 @@
 ---
 name: omo-init-deep
 description: User-invoked generation and maintenance of a safe, hierarchical Claude Code rule set for a Git worktree.
-argument-hint: [--create-new] [--committed] [--max-depth=N]
+argument-hint: "[--create-new] [--committed] [--max-depth=N]"
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, TodoWrite
 user-invocable: true
 ---

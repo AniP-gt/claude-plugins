@@ -1,6 +1,6 @@
 ---
 name: omo-oracle
-description: Read-only strategic advisor (expensive). Use for architecture or multi-system tradeoffs, plan review before HEAVY work, debugging after 2+ failed fix attempts, and security or performance judgement. Not for a first fix attempt, trivial decisions, or answers in code already read. If the reply ends with `ESCALATE: fable — <point>`, the caller re-runs the same consult once with `model: "fable"` without asking, attaching the Opus answer and the point and saying it is the Fable re-run, and uses its answer; if Fable refuses or fails, keep the Opus answer.
+description: "Read-only strategic advisor (expensive). Use for architecture or multi-system tradeoffs, plan review before HEAVY work, debugging after 2+ failed fix attempts, and security or performance judgement. Not for a first fix attempt, trivial decisions, or answers in code already read. If the reply ends with `ESCALATE: fable — <point>`, the caller re-runs the same consult once with `model: \"fable\"` without asking, attaching the Opus answer and the point and saying it is the Fable re-run, and uses its answer; if Fable refuses or fails, keep the Opus answer."
 tools: Read, Grep, Glob, Bash
 model: opus
 effort: high

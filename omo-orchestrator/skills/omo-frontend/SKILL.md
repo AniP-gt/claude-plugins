@@ -1,7 +1,7 @@
 ---
 name: omo-frontend
 description: UI/UX and design-system workflow with source and reuse checks. Use for pages, components, HTML/CSS/SVG reports, figures, slides, styling, layout, motion, tokens, or themes, with or without mockups.
-argument-hint: [ui-goal]
+argument-hint: "[ui-goal]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---

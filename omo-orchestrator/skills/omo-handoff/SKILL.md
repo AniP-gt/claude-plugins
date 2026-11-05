@@ -1,7 +1,7 @@
 ---
 name: omo-handoff
 description: Manual handoff workflow. Keeps a task-linked append-only phase ledger, or writes a short brief to continue in a fresh session instead of compacting. Use when the user asks for a handoff or to continue in a new session.
-argument-hint: [task-slug]
+argument-hint: "[task-slug]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash(orca:*)
 user-invocable: true
 ---

@@ -1,7 +1,7 @@
 ---
 name: omo-research
-description: Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies).
-argument-hint: [question]
+description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
+argument-hint: "[question]"
 allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *), TodoWrite, Task
 user-invocable: true
 ---

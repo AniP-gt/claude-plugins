@@ -1,7 +1,7 @@
 ---
 name: omo-remove-ai-slop
 description: Clean AI-generated code patterns with regression lock first, better comments, lower complexity, deduplication, and real verification. Use when the user asks to clean up, deslop, or remove AI-slop patterns from recent changes.
-argument-hint: [diff-or-files]
+argument-hint: "[diff-or-files]"
 allowed-tools: Read, Grep, Glob, Edit, Write, TodoWrite, Task, Skill
 user-invocable: true
 ---

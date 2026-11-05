@@ -1,7 +1,7 @@
 ---
 name: omo-review
-description: The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes, with a required Codex CLI review. Use proactively after any change outside an active controller (one file included) or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review).
-argument-hint: [mode] [diff-or-goal]
+description: "The single review entry. Runs an evidence-first omo review, then the self-review skill to review and fix local changes, with a required Codex CLI review. Use proactively after any change outside an active controller (one file included) or before calling work done. Modes: review-work (final review gate for controllers, APPROVE / REQUEST_CHANGES / INCONCLUSIVE), review-loop (implement + review fix loop with a final gate), pre-publish-review (pre-publish or release review)."
+argument-hint: "[mode] [diff-or-goal]"
 allowed-tools: Read, Grep, Glob, Bash, Task, Skill, Edit, Write, Agent, TodoWrite
 user-invocable: true
 ---

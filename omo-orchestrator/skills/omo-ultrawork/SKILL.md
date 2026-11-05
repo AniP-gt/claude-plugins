@@ -1,7 +1,7 @@
 ---
 name: omo-ultrawork
-description: Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork. Modes: ulw-execute (ulw execute, run a written omo plan wave by wave), mass-ulw (mass ulw, mulw, fan-out where some tasks wait on others).
-argument-hint: [mode] [goal]
+description: "Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork. Modes: ulw-execute (ulw execute, run a written omo plan wave by wave), mass-ulw (mass ulw, mulw, fan-out where some tasks wait on others)."
+argument-hint: "[mode] [goal]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill, AskUserQuestion
 user-invocable: true
 ---

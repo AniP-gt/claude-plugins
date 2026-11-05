@@ -1,7 +1,7 @@
 ---
 name: omo-visual-qa
-description: Manual visual verification for browser pages and terminal TUIs with fresh evidence and APPROVE, REQUEST_CHANGES, or INCONCLUSIVE outcomes. Use for any UI build or change, or when asked whether a page, component, or TUI looks right. Modes: visualize (build or create a chart, table, diagram, or HTML/SVG visualization).
-argument-hint: [surface-or-goal]
+description: "Manual visual verification for browser pages and terminal TUIs with fresh evidence and APPROVE, REQUEST_CHANGES, or INCONCLUSIVE outcomes. Use for any UI build or change, or when asked whether a page, component, or TUI looks right. Modes: visualize (build or create a chart, table, diagram, or HTML/SVG visualization)."
+argument-hint: "[surface-or-goal]"
 allowed-tools: Read, Grep, Glob, TodoWrite
 user-invocable: true
 ---

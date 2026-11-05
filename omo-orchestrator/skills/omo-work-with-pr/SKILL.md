@@ -1,7 +1,7 @@
 ---
 name: omo-work-with-pr
 description: "Content-only PR workflow for preparing reviewable changes, summaries, check artifacts, commands, and operator handoffs. Use when preparing a change for a PR or answering PR review threads. Modes: github-triage (triage GitHub issues or PRs)."
-argument-hint: [pr-or-issue]
+argument-hint: "[pr-or-issue]"
 allowed-tools: Read, Grep, Glob, Bash, TodoWrite, Task
 user-invocable: true
 ---
