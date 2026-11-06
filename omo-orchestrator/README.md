@@ -13,7 +13,7 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
-Version 5.1.0 checks delegation references against the current session and installed files, treats optional helpers as conditional, and keeps required verification blocked when its capability is missing. External libraries are sources, not assumed callable skills. Adapted from upstream `992187090f`; adoption and empirical checks are recorded in `docs/reports/2026-11-06-omo-upstream-refresh.md`.
+Version 5.1.1 makes PR follow-ups measure a reviewer's runtime concern (lock wait, duration) on a local reproduction before replying, and has the first answer to a CI bot detection name the PR and commit that introduced it and whether it fires on every run. Version 5.1.0 checks delegation references against the current session and installed files, treats optional helpers as conditional, and keeps required verification blocked when its capability is missing. External libraries are sources, not assumed callable skills. Adapted from upstream `992187090f`; adoption and empirical checks are recorded in `docs/reports/2026-11-06-omo-upstream-refresh.md`.
 
 Version 5.0.1 makes `omo-git-master` fold follow-up fix commits that are not yet pushed into their logical units before it gives the push command (Commit Mode Step 6), with no confirmation needed while every commit involved is local.
 
