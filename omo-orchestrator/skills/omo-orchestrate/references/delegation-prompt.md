@@ -39,6 +39,9 @@ LOAD_SKILLS: [omo-test-design, omo-research]
 ## Before and after each delegation
 
 - Before: collect findings, decisions, and artifacts from earlier phases and put them in CONTEXT.
+- Resolve every named skill, agent, mode, and local reference against the current session inventory and installed plugin files before dispatch. A catalog entry describes eligibility, not proof that a component is installed or callable. Use the current parent/mode name after a rename; verify the mode file exists.
+- For optional helpers, include only those available to this session and permitted for the chosen worker by [skill-catalog.md](skill-catalog.md). If absent, omit the helper, preserve the required outcome with available tools, and record the fallback. If a required capability or reference is missing, block only its dependent work and report the exact missing item; never invent a tool, silently drop verification, or substitute a worker forbidden by the catalog.
+- Distinguish external documentation or libraries from callable skills. A URL is a source to inspect, not an installed skill name; pass a resolved local path when the worker must Read a reference.
 - After: check the result against EXPECTED OUTCOME, existing patterns, and the MUST DO / MUST NOT DO lists. Record what changed or was decided, then mark the task done. Do not start a dependent task before this check passes.
 - For acknowledged background delivery, missing output, or a late result, apply **Pending delivery and late results** below. Keep the original task/attempt identity and write ownership until termination is established; a follow-up timeout does not authorize resending or replacement. Reconcile late failures before reusing dependent claims or evidence.
 - Put the project rules that apply to the target paths into CONTEXT, found and filtered per [project-rules.md](project-rules.md).
