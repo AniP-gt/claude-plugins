@@ -1,7 +1,7 @@
 ---
 name: omo-research
-description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ast-grep (syntax-shape search, codemods, YAML lint rules; rewrites under omo-implementer only), ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), coding-agent-sessions (past sessions, transcripts, subagent runs), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
-argument-hint: "[ast-grep|ultraresearch|tech-debt-audit|security-research|coding-agent-sessions|get-unpublished-changes|eval-integrity] [question]"
+description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ast-grep (syntax-shape search, codemods, YAML lint rules; rewrites under omo-implementer only), ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
+argument-hint: "[ast-grep|ultraresearch|tech-debt-audit|security-research|get-unpublished-changes|eval-integrity] [question]"
 allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *), TodoWrite, Task
 user-invocable: true
 ---
@@ -27,7 +27,6 @@ Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill
 | `tech-debt-audit` | - | replaces, main-only | tech debt, debt audit, or code health, written to a `TECH_DEBT_AUDIT.md` report |
 | `security-research` | - | adds to | security review, vulnerability research, exploitability, threat model |
 | `eval-integrity` | - | replaces | whether a benchmark, metric, A/B test, holdout, LLM judge, or user study supports its claim |
-| `coding-agent-sessions` | - | adds to | finding past sessions, transcripts, or subagent runs |
 | `get-unpublished-changes` | - | adds to | changes since the last release, unpublished changes, changelog |
 
 ## Inside A Sub-Agent

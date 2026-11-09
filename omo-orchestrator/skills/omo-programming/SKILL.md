@@ -1,6 +1,6 @@
 ---
 name: omo-programming
-description: "Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files. Modes: debugging (crash, silent failure, hang, wrong response, memory leak, async misbehavior), refactor (refactor, simplify, extract, restructure, modernize), remove-deadcode (dead, unused, unreachable code)."
+description: "Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files. Modes: debugging (crash, silent failure, hang, wrong response, memory leak, async misbehavior), refactor (refactor, simplify, extract, restructure, modernize). Dead-code removal (dead, unused, unreachable code) is covered in the body."
 argument-hint: "[task]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
@@ -12,13 +12,12 @@ Use this skill when writing or editing production code.
 
 ## Modes
 
-This skill has three modes. Each mode's procedure lives in `modes/<mode>/MODE.md`.
+This skill has two modes. Each mode's procedure lives in `modes/<mode>/MODE.md`.
 
 | Mode | Alias | Precedence | Use when |
 |---|---|---|---|
 | `debugging` | - | adds to | crash, silent failure, hang, wrong response, memory leak, async misbehavior |
 | `refactor` | - | adds to | refactor, simplify, extract, restructure, modernize |
-| `remove-deadcode` | - | adds to | dead, unused, unreachable code |
 
 - "adds to" means this file's policy stays in force and the MODE.md adds its procedure.
 - Selection: (a) when the first word of the arguments is a mode name, use that mode; (b) otherwise, when the brief has a `MODES:` line, use the mode it names; (c) otherwise, pick a mode by the Use-when triggers, and when none fits, follow this file's default flow. An unknown first word is part of the goal, not a mode.
@@ -40,6 +39,11 @@ This skill has three modes. Each mode's procedure lives in `modes/<mode>/MODE.md
 - When a change tightens a precondition (for example, making an identifier required), find every direct and synchronous invocation path and every test helper that reaches the code, and check that no broad error handler swallows the new failure and leaves a test passing without exercising anything.
 - State the requested boundary explicitly: what was requested, which files or behaviors changed to satisfy it, and which adjacent work remained out of scope.
 
+## Dead-Code Removal
+- The former `remove-deadcode` mode has no MODE.md; follow this section whether requested by the first argument, a `MODES:` line, or a trigger.
+- Inventory candidates and classify each as safe delete, keep, needs migration, or inconclusive; delete only safe-delete candidates.
+- Delete in small batches and update registrations, docs, tests, and snapshots that legitimately referenced the removed code; do not delete tests to make removal pass or mix in unrelated refactors.
+- Report deleted items, evidence that each was unreachable, kept and inconclusive candidates, validation run, and residual risk.
 ## Hard Rules
 
 - Do not use `as any`, `@ts-ignore`, or `@ts-expect-error` to silence errors.
@@ -48,7 +52,7 @@ This skill has three modes. Each mode's procedure lives in `modes/<mode>/MODE.md
 - Do not widen scope with cleanup or refactors unless they are required for the requested change.
 - Do not edit unrelated dirty files.
 - Do not add fallback logic unless an existing contract requires it.
-- Do not delete code as dead unless references, registries, tests, docs, and runtime entry points have been checked or explicitly marked inconclusive.
+- Do not delete code as dead unless references, registries, tests, docs, and runtime entry points (including dynamic, string-based, and shell-script references) have all been checked. Keep candidates whose reference checks are inconclusive.
 - Before deleting generated files, metadata, or registrations, identify their generator or owning metadata and check every registration or manifest that can publish, load, package, or reference them. Report the evidence, or mark the check inconclusive and do not claim deletion safety.
 
 ## Delivery Contract

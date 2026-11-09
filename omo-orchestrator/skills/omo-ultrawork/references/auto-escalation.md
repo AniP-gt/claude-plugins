@@ -1,6 +1,6 @@
 # Ultrawork Auto-Escalation
 
-Implementation skills (`omo-implement`, `omo-programming` (modes `refactor`, `debugging`, `remove-deadcode`), `omo-remove-ai-slop`, `omo-frontend`) may enter ultrawork mode on their own judgment, without the `ulw` keyword. This file is the single source for that decision.
+Implementation skills (`omo-implement`, `omo-programming` (modes `refactor`, `debugging`), `omo-remove-ai-slop`, `omo-frontend`) may enter ultrawork mode on their own judgment, without the `ulw` keyword. This file is the single source for that decision.
 
 ## When the check runs
 

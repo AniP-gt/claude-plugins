@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 6.0.0 folds the `remove-deadcode` mode into the Dead-Code Removal section of `omo-programming` and requires keeping candidates whose reference checks are inconclusive. Standalone dead-code removal no longer runs the ultrawork auto-escalation check; for a multi-file removal use `omo-implement` or `ulw`. The `coding-agent-sessions` mode is removed; use context-mode `ctx_search` or the episodic plugin instead. Claude Code transcripts from 2026-09-29 to 2026-11-09 (925 files), Codex sessions since 2026-04 (816 files), and the Obsidian daily log since 2026-08-31 showed no Skill call, `MODES:` line, or MODE.md read of either mode outside this repository's own maintenance sessions. The `omo-programming` body stays because `omo-implementer` preloads it. No aliases are provided.
+
 Version 5.2.0 refreshes portable guidance against upstream oh-my-openagent `4dd2565923`. In `review-work`, a reviewer that is still running is waited for, and one that ends without a decision line gets exactly one replacement before the lane is `INCONCLUSIVE`. In `ulw-execute`, the controller never verifies a task itself; with no independent verifier the task stays open as `needs-human-review`. `omo-frontend visualize` aggregates inside the database, cuts day buckets at the reader's midnight with the time zone named, marks a still-filling bucket partial, and cross-checks one headline number against a second source. `visual-qa` adds `1920x1080` for full page layouts and records the device pixel ratio when it cannot be pinned. Refactor baselines include pass counts and pre-existing diagnostics, and accent marks one primary action. Adoption and empirical checks are recorded in `docs/reports/2026-11-09-omo-upstream-refresh.md`.
 
 Version 5.1.1 makes PR follow-ups measure a reviewer's runtime concern (lock wait, duration) on a local reproduction before replying, and has the first answer to a CI bot detection name the PR and commit that introduced it and whether it fires on every run. Version 5.1.0 checks delegation references against the current session and installed files, treats optional helpers as conditional, and keeps required verification blocked when its capability is missing. External libraries are sources, not assumed callable skills. Adapted from upstream `992187090f`; adoption and empirical checks are recorded in `docs/reports/2026-11-06-omo-upstream-refresh.md`.
@@ -100,11 +102,11 @@ Migration table:
 | `omo-github-triage` | `omo-work-with-pr` | `github-triage` | `skills/omo-work-with-pr/modes/github-triage/MODE.md` |
 | `omo-debugging` | `omo-programming` | `debugging` | `skills/omo-programming/modes/debugging/MODE.md` |
 | `omo-refactor` | `omo-programming` | `refactor` | `skills/omo-programming/modes/refactor/MODE.md` |
-| `omo-remove-deadcode` | `omo-programming` | `remove-deadcode` | `skills/omo-programming/modes/remove-deadcode/MODE.md` |
+| `omo-remove-deadcode` | `omo-programming` | - | omo-programming body (dead-code removal section) |
 | `omo-ultraresearch` | `omo-research` | `ultraresearch` | `skills/omo-research/modes/ultraresearch/MODE.md` |
 | `omo-tech-debt-audit` | `omo-research` | `tech-debt-audit` | `skills/omo-research/modes/tech-debt-audit/MODE.md` |
 | `omo-security-research` | `omo-research` | `security-research` | `skills/omo-research/modes/security-research/MODE.md` |
-| `omo-coding-agent-sessions` | `omo-research` | `coding-agent-sessions` | `skills/omo-research/modes/coding-agent-sessions/MODE.md` |
+| `omo-coding-agent-sessions` | - | - | not ported (removed in 6.0.0); use context-mode `ctx_search` or the episodic plugin |
 | `omo-get-unpublished-changes` | `omo-research` | `get-unpublished-changes` | `skills/omo-research/modes/get-unpublished-changes/MODE.md` |
 | `omo-visualize` | `omo-visual-qa` | `visualize` | `skills/omo-visual-qa/modes/visualize/MODE.md` |
 
@@ -202,7 +204,6 @@ The plugin ships 14 skills. Specialist workflows are modes inside nine parent sk
   - Mode `ultraresearch`: read-only research mode with a source matrix, evidence thresholds, bounded lead expansion, convergence, non-goals, and stop conditions. Main context only.
   - Mode `tech-debt-audit`: read-only, file-cited technical debt audit across 9 dimensions with severity, effort, and prioritized fixes, written to `TECH_DEBT_AUDIT.md`. Ported from upstream `tech-debt-audit`. Main context only.
   - Mode `security-research`: exploitability-first security research with threat model, evidence, and severity calibration.
-  - Mode `coding-agent-sessions`: read-only local session investigation that keeps transcript evidence separate from accounting metadata, inspects linked child sessions, and records evidence gaps.
   - Mode `get-unpublished-changes`: diff-based release impact analysis against a published or agreed baseline.
   - Mode `eval-integrity`: assess the trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, and user studies.
 - `omo-review`: PR-style security, robustness, quality, goal-alignment, and test-coverage review gate.
@@ -220,7 +221,7 @@ These are LazyCodex-inspired Claude Code translations. They are content-only pro
 - `omo-programming`: implementation policy for type safety, minimal diffs, tests, diagnostics, and honest validation.
   - Mode `debugging`: hypothesis-driven debugging with reproduction first, root cause proof, failing validation, minimal fix, and verification.
   - Mode `refactor`: safe refactoring with behavior lock first, caller and callee inventory, small steps, and drift checks.
-  - Mode `remove-deadcode`: deletion-safe dead-code cleanup with reference checks and zero-false-positive discipline.
+  - Dead-code removal lives in the `omo-programming` body.
 - `omo-ultrawork`: ultrawork (`ulw`) mode ported from the upstream ultrawork directive: `ULTRAWORK MODE ENABLED!` bootstrap, binding goal block, skill survey, mandatory planner for non-trivial work, delegate-by-default, scenario contract, durable notepad, manual QA mandate, reviewer gate, and zero-tolerance completion rules.
   - Mode `ulw-execute`: runs a written plan wave by wave through sub-agents with an evidence ledger, independently verified done claims, and a final `review-work` gate. The orchestrator never implements. Ported from upstream `ulw-execute`.
   - Mode `mass-ulw` (alias `mulw`): splits a large job into a dependency-ordered task graph and runs every ready wave in parallel, with bounded retry and amend recovery and a final review gate. The `Workflow` tool is used only when the user's own words ask for it. Ported from upstream `mass-ulw`.
@@ -450,7 +451,7 @@ Haiku is sufficient for routine use of these prompt-only skills when the task is
 
 - `omo-guardrails`
 - `omo-programming`
-- `omo-research` (including its `coding-agent-sessions` mode)
+- `omo-research`
 - `omo-plan` for its `start-work` mode
 
 Use Sonnet or stronger for the `ultraresearch` mode of `omo-research` (decision-critical research) and `omo-implement` mode `visual-qa` (visual judgment).
@@ -469,6 +470,11 @@ Version 1.15.0 re-checks `d55d03485041170e6bcb4cb6ba4365d1a18afbd0` (upstream `d
 
 This is a Claude-compatible adaptation, not runtime parity. The plugin retains only behavior that can be expressed as visible Claude Code prompt contracts and tool semantics.
 
+#### Upstream skills not ported or merged
+
+- `skills/omo-remove-deadcode` → `omo-programming` body (dead-code removal section).
+- `skills/omo-coding-agent-sessions` → not ported; use context-mode `ctx_search` or the episodic plugin.
+
 ## Main Context Orchestration-Only Policy
 
 When using OMO as the work controller, the main context is restricted to orchestration. It should classify intent, maintain todos or handoff state, dispatch sub-agents, read enough evidence to verify delegated results, synthesize findings, ask the user for missing decisions, and produce the final handoff.
@@ -480,7 +486,6 @@ Examples:
 - Aggregator model -> the active controller (`omo-ralph-loop` with `omo-implement`, `omo-review review-loop`, or `omo-ultrawork`) routes work, merges evidence, and decides whether to continue, review, or stop.
 - Ultrawork -> explicit parallel waves, bounded follow-up, evidence-first outputs, and no duplicate searches once an owner is assigned.
 - Planning -> classify outcome clarity, research defaults for unclear goals, and ask only for irreducible owner decisions before a plan approval brief.
-- Session investigation -> inspect raw transcript artifacts and linked child sessions, while reporting usage, token, model, time, and cost fields as accounting metadata rather than transcript content.
 - Visual QA -> drive the real rendered surface, capture fresh visual evidence for the final tree, and return `APPROVE`, `REQUEST_CHANGES`, or `INCONCLUSIVE`.
 - Dependency routing -> fan out independent lanes while serializing shared state, same-file writes, shared contracts, and named predecessors.
 - Discovered work -> report out-of-scope findings, then record and scope required follow-up before assigning it. Do not silently expand or defer the request.
@@ -630,7 +635,6 @@ const required = [
   '`omo-librarian`',
   'The main context Reads PDFs/images directly',
   '`omo-git-master`',
-  '`coding-agent-sessions`',
   '`visual-qa`',
   '`omo-init-deep`',
   '/omo-init-deep --create-new',
@@ -673,9 +677,6 @@ const required = [
   'bounded lead expansion',
   'Research converges',
   'manual TodoWrite state and the latest append-only ledger entry as equivalent views of the same work state',
-  'transcript evidence',
-  'accounting metadata',
-  'linked child sessions',
   'fresh visual evidence for the final tree',
   'No bundled helpers',
   'Separate specialist aliases and `stop-continuation` are deferred',
