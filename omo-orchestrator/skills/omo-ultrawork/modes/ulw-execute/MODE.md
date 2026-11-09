@@ -132,7 +132,7 @@ repro: <exact command or steps>
 ```
 
 - `confirmed` is the only pass. Every other verdict blocks the task.
-- The verifier must be independent of the executor. You may verify yourself only if you neither implemented nor materially rewrote that task, and only by reading and rerunning, never by editing.
+- The verifier must be independent of the executor. The controller never verifies a task itself, even one it did not implement: it records the verifier's verdict. When no independent verifier can run, the task stays open with the verdict `needs-human-review`.
 - The verifier probes the applicable adversarial classes, always including stale state, dirty worktree, and misleading success output when their triggers hold.
 - On a non-confirmed verdict: append the feedback to the ledger, reset the todo to `in_progress`, and return the exact failure to Ralph for the next scoped repair iteration. Use its shared blocker history and oracle/stuck rules; do not create a task-local review loop.
 

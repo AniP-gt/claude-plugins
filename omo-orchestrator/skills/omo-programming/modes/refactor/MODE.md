@@ -13,7 +13,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 ## Workflow
 
 1. Define the refactor boundary and non-goals.
-2. Capture the baseline: relevant behavior, validation results, and pre-existing changes that must remain untouched.
+2. Capture the baseline: relevant behavior, validation results (pass counts per test command, and the diagnostics and lint warnings already present), and pre-existing changes that must remain untouched. A step passes validation only when every test that passed at the baseline still passes and no diagnostic or warning appears that the baseline lacks.
 3. Lock behavior first with existing tests or added regression coverage.
 4. Inventory callers, callees, inputs, outputs, and side effects. Include callers outside the requested scope that a moved rule will also reach, and check git history or commit messages before treating a caller whose behavior looks inverted as a scope expansion.
 5. Refactor in small reversible steps. For each meaningful step, record its exact file-level delta, intended behavior-preserving transformation, validation target, undo method, and last safe state so its delta can be undone without touching pre-existing changes.

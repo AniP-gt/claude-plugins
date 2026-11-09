@@ -31,7 +31,7 @@ Match implementation complexity to the vision. Maximalist work needs elaborate l
 
 - Commit to a cohesive palette with roles (surface, text, border, accent, status). Dominant neutrals with one sharp accent beat timid, evenly spread palettes.
 - Build a real ramp: multiple perceptual stops (OKLCH works well), not one brand hex reused at varied opacity.
-- Accent marks the one or two most likely actions on a screen, on the control's background. A restrained accent heading or glyph can identify a group; avoid decorative edge stripes as described below.
+- Accent marks the screen's one primary action, on the control's background; a second likely action takes a quieter style. A restrained accent heading or glyph can identify a group; avoid decorative edge stripes as described below.
 - Define light and dark values together when the product supports both.
 - Avoid: purple-to-blue gradients on white, rainbow gradients, every card a different tint.
 
