@@ -21,10 +21,10 @@ const review = {
 const notification = { type: "user", origin: { kind: "task-notification" }, message: { content: "<task-notification>\n<status>completed</status>\n</task-notification>" } };
 const reply = { type: "assistant", message: { content: [{ type: "text", text: "ok" }] } };
 
-function gate(entries, changed = null, stopHookActive = false) {
+function gate(entries, changed = null, stopHookActive = false, reports = {}) {
   const feedback = run(
     { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd, stop_hook_active: stopHookActive },
-    { env: {}, loadTranscript: () => entries, changedFiles: () => changed },
+    { env: {}, loadTranscript: () => entries, changedFiles: () => changed, readReport: (path) => reports[path] ?? "" },
   );
   return feedback.length === 0 ? null : { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${JSON.parse(feedback).reason}` } };
 }
@@ -143,6 +143,21 @@ test("a consult with --dangerously-bypass-hook-trust is still not the review lan
 
 test("passes when the codex probe found no CLI, since the lane then records NOT_EXECUTED", () => {
   assert.equal(gate([prompt, omoReview, tool("Bash", { command: "command -v codex >/dev/null 2>&1 && codex --version" }), reply]), null);
+});
+
+test("passes when the sub-agent answers in prose and the report file it names carries the status line", () => {
+  const agent = tool("Agent", { subagent_type: "omo-orchestrator:omo-external-reviewer" }, "agent-1");
+  const answer = result("agent-1", "Codex は実行されました。REPORT: docs/reviews/self/x_self_review_1.md");
+  const reports = { "docs/reviews/self/x_self_review_1.md": "## 判定: Approve\n- **Codex 実行**: OK" };
+  assert.equal(gate([prompt, omoReview, agent, answer, reply], null, false, reports), null);
+  assert.equal(gate([prompt, omoReview, agent, answer, reply], null, false, { "docs/reviews/self/x_self_review_1.md": "CODEX_EXECUTION: EXECUTED" }), null);
+});
+
+test("blocks when the named report file has no Codex status line or cannot be read", () => {
+  const agent = tool("Agent", { subagent_type: "omo-orchestrator:omo-external-reviewer" }, "agent-1");
+  const answer = result("agent-1", "レビュー完了。REPORT: docs/reviews/self/x_self_review_1.md");
+  assert.ok(isCodexBlock(gate([prompt, omoReview, agent, answer, reply], null, false, { "docs/reviews/self/x_self_review_1.md": "## 判定: Approve" })));
+  assert.ok(isCodexBlock(gate([prompt, omoReview, agent, answer, reply])));
 });
 
 test("passes when a review sub-agent returned a Codex status line", () => {

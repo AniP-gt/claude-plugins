@@ -202,7 +202,26 @@ const CODEX_COMMAND_PATTERN = new RegExp(`(^|[\\s;&|(])(${CODEX_EXEC_PATTERN.sou
 const NON_LANE_EXEC_PATTERN = /omo-consult\/|\.adv\./;
 // Status lines a review sub-agent returns: `codex: …` from codex-lane.md and self-review's `Codex 実行: …`.
 // `codex: run by caller` is left out: it hands the lane to the caller, which still has to run it.
-const CODEX_STATUS_PATTERN = /codex:\s*(OK|NOT_EXECUTED)|Codex 実行\**\s*[:：]\s*\**\s*(OK|NOT_EXECUTED)/i;
+const CODEX_STATUS_PATTERN =
+  /codex:\s*(OK|NOT_EXECUTED)|Codex 実行\**\s*[:：]\s*\**\s*(OK|NOT_EXECUTED)|CODEX_EXECUTION\**\s*[:：]\s*\**\s*(EXECUTED|NOT_EXECUTED)/i;
+// A review sub-agent often answers in free prose and leaves the status line in the report file it names.
+const REPORT_PATH_PATTERN = /[^\s`'"()<>]*review[^\s`'"()<>]*\.md\b/gi;
+const MAX_REPORTS_READ = 3;
+
+export function readReportFile(path, cwd) {
+  try {
+    return readFileSync(isAbsolute(path) || !cwd ? path : resolve(cwd, path), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+// True when the sub-agent's result carries a Codex status line, or names a review report file that does.
+function hasCodexStatus(text, readReport) {
+  if (CODEX_STATUS_PATTERN.test(text)) return true;
+  const paths = [...new Set(text.match(REPORT_PATH_PATTERN) ?? [])].slice(0, MAX_REPORTS_READ);
+  return paths.some((path) => CODEX_STATUS_PATTERN.test(readReport(path)));
+}
 
 // Comment lines mention commands without running them.
 function withoutComments(command) {
@@ -239,13 +258,14 @@ function backgroundTaskId(text) {
 }
 
 // True when this turn invoked omo-review and nothing after the last invocation shows its Codex lane: a Bash
-// call that ran or probed `codex`, or a Codex status line in a sub-agent's result. Only Agent/Task results
+// call that ran or probed `codex`, or a Codex status line in a sub-agent's result or in the review report file
+// that result names. Only Agent/Task results
 // and their task notifications count, because a Read of codex-lane.md or the skill text carries the same
 // status line as an example.
 // While background work launched after the invocation (a sub-agent running the review, or a background Bash
 // command) has not reported back, the turn ends only to wait: its notification continues the turn and triggers
 // a fresh stop. Launches are recognized only at the start of a tool result, so a report quoting them is not one.
-export function codexLaneMissing(entries) {
+export function codexLaneMissing(entries, readReport = () => "") {
   const start = turnStart(entries);
   let pending = start > 0 && OMO_REVIEW_COMMAND_PATTERN.test(textOf(entries[start - 1]?.message?.content));
   const delegateIds = new Set();
@@ -262,7 +282,7 @@ export function codexLaneMissing(entries) {
       for (const [, body] of textOf(content).matchAll(TASK_NOTIFICATION_PATTERN)) {
         const taskId = /<task-id>\s*([\w-]+)\s*<\/task-id>/.exec(body)?.[1];
         if (taskId === undefined || !running.has(taskId)) continue;
-        if (running.get(taskId) && CODEX_STATUS_PATTERN.test(body)) pending = false;
+        if (running.get(taskId) && hasCodexStatus(body, readReport)) pending = false;
         running.delete(taskId);
       }
     }
@@ -278,7 +298,7 @@ export function codexLaneMissing(entries) {
         if (input.run_in_background === true || DELEGATE_TOOLS.has(block.name)) backgroundUseIds.add(block.id);
       } else if (entry.type === "user" && block?.type === "tool_result") {
         const text = textOf(block.content);
-        if (delegateIds.has(block.tool_use_id) && CODEX_STATUS_PATTERN.test(text)) pending = false;
+        if (delegateIds.has(block.tool_use_id) && hasCodexStatus(text, readReport)) pending = false;
         const taskId = backgroundUseIds.has(block.tool_use_id) ? backgroundTaskId(text) : null;
         if (pending && taskId !== null) running.set(taskId, delegateIds.has(block.tool_use_id));
       }
@@ -322,7 +342,13 @@ export function readTranscript(path) {
 
 export function run(
   input,
-  { env = process.env, loadTranscript = readTranscript, changedFiles = gitChangedFiles, codexInFlight = codexRunInFlight } = {},
+  {
+    env = process.env,
+    loadTranscript = readTranscript,
+    changedFiles = gitChangedFiles,
+    codexInFlight = codexRunInFlight,
+    readReport = readReportFile,
+  } = {},
 ) {
   if (typeof input !== "object" || input === null) return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
@@ -333,7 +359,10 @@ export function run(
     const reason = reviewReason(entries, input, env, changedFiles, codexInFlight);
     if (reason !== null) return block(reason);
   }
-  if (!/^(off|0|false)$/i.test(env.OMO_CODEX_GATE ?? "") && codexLaneMissing(entries)) return block(buildCodexReason());
+  if (!/^(off|0|false)$/i.test(env.OMO_CODEX_GATE ?? "")) {
+    const cwd = typeof input.cwd === "string" ? input.cwd : undefined;
+    if (codexLaneMissing(entries, (path) => readReport(path, cwd))) return block(buildCodexReason());
+  }
   return "";
 }
 
