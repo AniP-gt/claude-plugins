@@ -1,4 +1,4 @@
-<!-- upstream: packages/shared-skills/skills/ulw-research/SKILL.md at cb7f76ecf6; allowed-tools: Read, Grep, Glob, Bash, TodoWrite -->
+<!-- upstream: packages/shared-skills/skills/ulw-research/SKILL.md at f71b3fe8c5; allowed-tools: Read, Grep, Glob, Bash, TodoWrite -->
 
 # OMO Ultraresearch
 
@@ -75,6 +75,7 @@ For each record:
 - Assign each material assertion a claim ID, priority, decision impact, and status: `SUPPORTED`, `DISPUTED`, or `UNKNOWN`.
 - Link each claim to direct evidence, source location or URL, access or capture timestamp, source type, and confidence.
 - Keep contradictory evidence attached to the same claim. Do not flatten a dispute into a conclusion.
+- Ground every conclusion in an observation a tool produced in this run: a page read, a file read, or a command run. This covers a claim's status, a lead closed as a dead end, the convergence call, and your own judgment that a question is settled. What you or a worker recalls without such an observation is a lead to probe, never evidence.
 - Label inferences as unverified until direct evidence or sufficient corroboration supports them. A missing source remains `UNKNOWN`.
 - Treat snapshots, cached pages, search snippets, indirect reports, and generated summaries as proxy evidence. Corroborate a material proxy with a primary source, an independent source, or an empirical check before treating it as support.
 - State whether each source is live, archived, version-pinned, inaccessible, or unavailable. If browsing is unavailable, blocked, authenticated, dynamic, or incomplete, record that limitation and its impact on confidence. Do not hard-depend on any browsing tool.
@@ -92,6 +93,8 @@ Build a source matrix before dispatch. Run applicable independent lanes in paral
 Skip a lane only when it is inapplicable, excluded, unavailable, or cannot change the decision. Record the reason. Parallelize only independent lanes. Serialize a lane that depends on another lane's version, artifact, or finding.
 
 Every worker return must include the assigned question, sources inspected, evidence with paths or URLs, claim IDs affected, confidence, limitations, and leads. A lead must include its source, the triggering evidence, why it could change the decision or resolve a material gap, and a suggested owner. Missing, stalled, or inaccessible results are evidence gaps, not negative findings.
+
+Each claim in a return carries `OBSERVED: <URL read | file:line | command and its output>`, and each lead the worker closed carries `PROBED: <the searches, reads, or commands that exhausted it>`. Put both requirements in every worker prompt. A claim the worker only remembers comes back as a lead. An observation supports only what it shows; the part of a claim that goes beyond it is a separate unverified inference. A return missing either line is incomplete: send that worker one follow-up covering every missing line. If any is still missing, keep the claim `UNKNOWN` and the lead open.
 
 ## Bounded Lead Expansion
 
@@ -127,7 +130,7 @@ Remain read-only: keep records in the reply, or return them to the existing writ
 
 ## Convergence And Stop Conditions
 
-Research converges when the declared evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence without changing a claim status. When a declared blocking gap prevents a responsible answer, stop the dependent investigation and state the exact missing source, access, decision, or empirical check needed. Finish independent accessible checks within the existing budget and return their supported findings alongside the blocked claims; do not expand scope to bypass the gap.
+Research converges when the declared evidence threshold is met, remaining leads are non-material, or further searches repeat known evidence without changing a claim status. When repetition is the stop reason, name the searches or reads that repeated. When a declared blocking gap prevents a responsible answer, stop the dependent investigation and state the exact missing source, access, decision, or empirical check needed. Finish independent accessible checks within the existing budget and return their supported findings alongside the blocked claims; do not expand scope to bypass the gap.
 
 Do not close research while a `P0` or `P1` contradiction remains unresolved unless the output marks it `DISPUTED` and explains its decision impact. Stop when an explicit time or expansion budget is exhausted, or when all applicable lanes and their material leads are resolved or recorded as blocked or unavailable and additional accessible leads cannot materially change the answer. A lane returning does not close a material lead it discovered. Report budget exhaustion or blocked material evidence as partial coverage. Do not turn research into implementation or an automatic continuation loop.
 
@@ -152,6 +155,6 @@ Return:
 1. The research brief, source matrix, browsing status, exclusions, and declared thresholds.
 2. The claim and evidence graph, with `SUPPORTED`, `DISPUTED`, and `UNKNOWN` claims kept separate.
 3. Parallel lane results, empirical-check results, source provenance, capture times, confidence, and limitations.
-4. The lead and expansion log, including rejected leads and each bounded budget outcome.
+4. The lead and expansion log, including rejected leads, closed leads with what was probed, and each bounded budget outcome.
 5. The convergence or stop reason, unresolved P0 or P1 contradictions, and the recommended next decision or exact evidence needed.
 6. Visual evidence or specifications for material numerical and structural findings, with captions, accessible descriptions, provenance, rendering status, and any exact handoff needed; otherwise the reason no visual helps.

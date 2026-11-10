@@ -70,7 +70,7 @@ A task prompt is the only thing the sub-agent sees. It has no conversation histo
 1. **TASK**: one imperative sentence naming the deliverable.
 2. **DELIVERABLE**: files changed, the exact report shape, the evidence produced.
 3. **SCOPE**: what it may read and write, with exact paths, as a hard boundary. Name what is out of scope when a sibling task owns it.
-4. **VERIFY**: the literal command it runs on its own work and the expected result.
+4. **VERIFY**: the literal command it runs on its own work and the expected result, plus the observation behind each conclusion it reports. A conclusion comes from reading the source or file or running a tool, never from plausibility, recall, or the shape of the code.
 5. **STOP WHEN**: the single observable condition that ends the task.
 6. **LOAD_SKILLS**: for a prompt to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner`, add a plain line `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` (not a bold label value), chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
 
@@ -108,6 +108,7 @@ Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task
 When the user combines the mass trigger with research ("mass ulw research", "mulw research"), define the known harvest -> expand -> verify chains in one phase graph and follow `omo-research` mode `ultraresearch` for its evidence contract and convergence rules. Slot limits determine dispatch batches within that phase.
 
 - Wave 1 over-collects: enumerate every angle (source territory, sub-question, entity, time window, competing approach) and give each its own task. Coverage is the deliverable.
+- Harvest and expand reports tag every claim `OBSERVED:` and every closed lead `PROBED:` as `ultraresearch` Source Lanes defines; a claim the task only remembers goes in as a lead. The verify task re-opens each `OBSERVED:` source and passes only a claim whose observation it reproduces: a source that shows something else fails the claim, an unreachable source leaves it `UNKNOWN`, and a claim with no `OBSERVED:` line goes back to the coordinator as a lead.
 - Route across the owner table in one graph; one owner tier across every task is the routing failure above.
 - Verified leads determine additional chains whose scope was unknown, not permission to postpone already-known stages. Register those chains before dispatch, deduplicate against leads already seen, and stop expanding when new waves repeat known evidence.
 - Synthesis reduces through several parallel slice tasks reading bounded digests, then one final reducer (`omo-oracle` when the merge needs judgment). Never hand dozens of raw outputs to one task.
