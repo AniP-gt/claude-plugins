@@ -431,7 +431,7 @@ The run compares the plugin against a no-plugin baseline by default. Results go 
 ## Included Agents
 
 - `omo-planner`: executable plans, affected-user ideal states, gap closure, blockers, and QA mappings. Uses `model: opus`, `effort: medium` because planning quality is high leverage. The `hyperplan` mode of `omo-plan` passes `model: "fable"` for hard, high-risk work.
-- `omo-implementer`: deep executor for minimal verified changes. Uses `model: sonnet`, `effort: high`; callers pass `model: opus` for multi-file work with a real integration surface.
+- `omo-implementer`: deep executor for minimal verified changes. Uses `model: sonnet`, `effort: high`; callers pass `model: opus` for multi-file work with a real integration surface, and for a migration or a performance optimization even when the spec is clear.
 - `omo-researcher`: the Explore equivalent for read-only codebase investigation, with evidence labels and access limits disclosed. External library, upstream source, and dependency-history questions go to `omo-librarian`. Uses `model: haiku`, `effort: low`; callers pass `model: sonnet` when the task needs bug hypotheses rather than location.
 - `omo-plan-consultant`: read-only pre-planning consultant for intent classification, exploration, affected-user ideal-state gaps, and planning directives. Uses `model: sonnet`, `effort: high`.
 - `omo-plan-reviewer`: read-only plan executability reviewer with an approval-biased `OKAY` or `REJECT` verdict. Uses `model: sonnet`, `effort: medium`.

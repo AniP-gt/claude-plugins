@@ -46,9 +46,13 @@ These are manual operator checks, adapted from upstream start-failure diagnosis 
 ## Escalation Order
 
 1. RETRYABLE only: retry the same approach after the delegated-state checks above when applicable. The generic three-try ceiling applies to local tool recovery, never as an additional implementation/review allowance.
-2. Try an alternative approach.
-3. Consult `omo-oracle`.
-4. Report to the user: error, each approach tried with its result, oracle advice, current state (done vs remaining), recommended next step.
+2. Check that the worker can verify its own result: a test, a build, or a script that hits the real surface. When it has none, give it one in the next brief before anything else; a self-check usually costs less than a bigger model or more effort.
+3. Try an alternative approach.
+4. Re-dispatch one step up, in this order: one effort level higher on the same agent, then the next model up at the agent's default effort or lower (`omo-implementer`: pass `model: "opus"`). Past `high`, move up a model instead of raising effort again: one more level can cost as much as the bigger model. More effort does not add knowledge or skill the model lacks. This re-dispatch counts as a fix attempt in `references/circuit-breaker.md`.
+5. Consult `omo-oracle`.
+6. Report to the user: error, each approach tried with its result, oracle advice, current state (done vs remaining), recommended next step.
+
+When a batch of tasks each has an automatic pass/fail check (tests, a build, a grader), run every task at the agent's default effort first, then re-dispatch only the failures one step up as in step 4. Do not raise the whole batch.
 
 ## Preserve Progress
 

@@ -1,6 +1,6 @@
 ---
 name: omo-researcher
-description: Read-only codebase investigator for structure, existing patterns, references, and bug hypotheses. Use when 2+ modules are involved or the location is unknown, firing several in parallel for broad searches. Not for a known file or a single keyword.
+description: Read-only codebase investigator for structure, existing patterns, and references. Callers pass `model: "sonnet"` when the question is a bug hypothesis rather than a location. Use when 2+ modules are involved or the location is unknown, firing several in parallel for broad searches. Not for a known file or a single keyword.
 tools: Read, Grep, Glob, Bash, Skill
 skills:
   - omo-orchestrator:omo-research

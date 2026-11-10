@@ -4,7 +4,7 @@
 
 Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw`. The `mass ulw` / `mulw` / `ulw mass` keywords point here. Every `omo-ultrawork` rule (goal block, certainty before implementation, evidence, manual QA, zero tolerance) still binds; this skill adds how the work is decomposed into a task graph, run wave by wave, and recovered.
 
-Use it when real dependencies exist: task C needs A and B finished first. For fully independent work, plain parallel agent calls under `omo-ultrawork` are simpler. A graph with two tasks and no edge between them is not a graph.
+Use it when real dependencies exist: task C needs A and B finished first. For fully independent work, plain parallel agent calls under `omo-ultrawork` are simpler. A graph with two tasks and no edge between them is not a graph. A single chain of dependent steps, or work that fits in one context window, is not a graph either: run it in one lane.
 
 Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
 

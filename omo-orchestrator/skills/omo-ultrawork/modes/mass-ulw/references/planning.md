@@ -40,7 +40,7 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 |---|---|---|
 | `quick` (default) | `omo-researcher` (haiku) for read-only; the Codex lane for mechanical edits when it applies, else `omo-implementer` (sonnet default) | Single file, pattern-following, batch scans |
 | `unspecified-low` | the Codex lane when it applies, else `omo-implementer` (sonnet default) | A few files, or a judgment call a template cannot make |
-| `unspecified-high` | the Codex lane when it applies, else `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface |
+| `unspecified-high` | the Codex lane when it applies, else `omo-implementer` with `model: opus` | Standard multi-file feature or fix with real integration surface, or a migration or performance optimization even with a clear spec |
 | `writing` | the Codex lane when it applies, else `omo-implementer` with a prose-only scope | Docs, README, technical writing |
 | `visual-engineering` | the Codex lane when it applies, else `omo-implementer`; then `omo-implement` mode `visual-qa` | Frontend, UI, styling. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`). |
 | `git` | `omo-implementer` following `omo-git-master` | Git operations only |
