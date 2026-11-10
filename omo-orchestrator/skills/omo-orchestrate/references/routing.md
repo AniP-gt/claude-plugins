@@ -72,7 +72,7 @@ Implementation lane: when `references/codex-implementer.md` applies (inside Orca
 
 ## Model for agents outside this matrix
 
-`general-purpose` and skill-runner agents have no model of their own and inherit the main session's model, usually Opus. In one week of measured sessions they spent about three quarters of all sub-agent usage, while every `omo-*` agent together spent under 5%. Prefer a row above. When no row fits and you must use one of them, pass `model: "sonnet"` on the Agent call, or `model: "haiku"` for read-only search. Use `opus` only with a one-line reason, such as a judgment the cheaper model got wrong in this task. Every brief also carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
+`general-purpose` and skill-runner agents have no model of their own and inherit the main session's model, Opus or Fable. Fable costs twice Opus per token. In one week of measured sessions they spent about three quarters of all sub-agent usage, while every `omo-*` agent together spent under 5%. Prefer a row above. When no row fits and you must use one of them, pass `model: "sonnet"` on the Agent call, or `model: "haiku"` for read-only search. Use `opus` only with a one-line reason, such as a judgment the cheaper model got wrong in this task. Do not pass `fable` to them; Fable work goes to `omo-oracle`, or to `omo-planner` in the `hyperplan` mode of `omo-plan`. Every brief also carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
 ## Templates
 

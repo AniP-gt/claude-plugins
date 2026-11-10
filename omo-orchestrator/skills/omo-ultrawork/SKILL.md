@@ -47,7 +47,7 @@ Do not write code until you understand what the user actually wants, how the exi
 
 - Delegate exploration when scope warrants it: use parallel `omo-researcher` (codebase) and `omo-librarian` (external libraries, upstream source) agents for unclear, multi-surface, risky, or upstream-dependent work. For trivial, fully understood scope, confirm the context directly.
 - Consult `omo-oracle` for hard problems and after 2 failed fix attempts on the same problem, not on a first attempt. After those 2 failures, also run the debug rescue Codex consult in `skills/omo-orchestrate/references/codex-consult.md` in parallel. After 3 consecutive failures, stop editing, revert to the last working state, document each attempt, consult `omo-oracle` (and Codex again when its first consult did not resolve it), and ask the user if it is still unresolved.
-- When an `omo-oracle` reply ends with `ESCALATE: fable`, re-run it as the `omo-oracle` agent description says.
+- When `omo-oracle` refuses or returns no usable answer, re-run it once with `model: "opus"` as the `omo-oracle` agent description says.
 - When the work is sized `HEAVY` or contains an architecture decision, send the plan to `omo-oracle` before the first implementation wave: the goal, the files and changes per task, and the specific uncertainties. Ask it to check the approach, missed issues, and a simpler path. In parallel, run the plan critique Codex consult in `skills/omo-orchestrate/references/codex-consult.md` on the same plan. Fold both answers' confirmed findings into the plan; do not implement a decision `omo-oracle` was asked to settle before it answers. A Codex consult that reports `codex-consult: NOT_EXECUTED` does not block: continue with the `omo-oracle` answer alone. Skip this for `LIGHT` work.
 - If ambiguity remains after exploration, ask the user. Do not guess.
 - When the user settled a decision in the conversation before `ulw`, restate your reading in the `# Goal` block as `Decided: <A>, not <B>` whenever the wording allows a second reading (keep or remove, all or a filtered subset, this change or a later issue). Keep these lines in the ledger, open each progress or done report with them, and do not re-propose an option the user rejected. Misreading "leave the delete as is for now" as "remove it later" cost five rounds of correction.
@@ -73,7 +73,7 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Review gate | `omo-reviewer` |
 | Research that writes files, long command-driven verification | see `omo-orchestrate` `references/routing.md` |
 
-Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (or `"haiku"` for read-only); they otherwise inherit the main model. Every brief that runs commands carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
+Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (or `"haiku"` for read-only); they otherwise inherit the main model, which costs the most when the session runs on Fable. Every brief that runs commands carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
 Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
 
