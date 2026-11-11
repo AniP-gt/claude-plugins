@@ -22,7 +22,8 @@ const DELEGATE_TOOLS = new Set(["Agent", "Task"]);
 // Sub-agents whose edits never appear in this transcript; one call counts as a change to unknown files.
 const EDITING_AGENT_PATTERN = /implementer|builder/i;
 const REVIEW_SKILL_PATTERN = /review/i;
-const REVIEW_AGENT_PATTERN = /review|oracle|security-check/i;
+// omo-oracle advises and never approves (omo-review review-loop), so consulting it does not count as a review.
+const REVIEW_AGENT_PATTERN = /review|security-check/i;
 // The handoff ledger and notepads are bookkeeping, not product changes. Review skills write their reports
 // under docs/reviews/ after they run; counting those would ask for a review of the review.
 const IGNORED_PATH_PATTERN = /(^|\/)(?:\.claude\/omo|docs\/reviews)\//;

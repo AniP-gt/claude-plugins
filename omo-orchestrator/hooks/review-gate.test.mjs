@@ -44,6 +44,14 @@ test("a background notification after the gate's feedback does not block the sam
   assert.equal(gate([...entries, feedback, reply, notification, reply]), null);
 });
 
+test("an omo-oracle consult after the last edit is not a review", () => {
+  const oracle = {
+    type: "assistant",
+    message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "omo-orchestrator:omo-oracle" } }] },
+  };
+  assert.notEqual(gate([prompt, edit("a.js"), oracle]), null);
+});
+
 test("an edit after the gate's feedback re-arms the gate", () => {
   const entries = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(entries);
