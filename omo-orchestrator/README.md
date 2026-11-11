@@ -13,6 +13,8 @@ This plugin is content-only apart from six small hooks (see [Ulw Keyword Trigger
 
 Restart Claude Code after installation.
 
+Version 6.8.0 has `omo-implement` copy the shape of existing siblings before it adds a file, class, or method. It opens two or more of the same kind and matches their file format, what they make public, and where error handling lives; it does not restate a framework default without a comment saying why, and it moves new branching out of an already long method.
+
 Version 6.7.0 runs `omo-reviewer` on Fable where it decides approval on a high-risk change. When the change is `RISK_LEVEL` critical or high (payment and billing, authn and authz, migrations, personal data, transactions, external APIs, batch jobs, data integrity, query or index changes, per the risk table in `omo-plan` `references/rigorous-review.md`), the final approval gates pass `model: "fable"`: the standalone `omo-review` omo lane, the `review-work` final reviewer, and the `omo-ultrawork` and `mass-ulw` final gates. They re-run once without the override if Fable refuses or fails, and in `review-work` that re-run is the one replacement reviewer, not a second retry. The per-iteration `review-loop` lanes keep their own settings (Sonnet for alignment, quality, and evidence-gate, Opus for security and robustness), and QA design reviews stay on Opus, so the extra cost is one call per final gate. `omo-oracle` is still not a reviewer: it advises and never approves.
 
 Version 6.6.1 stops `hooks/review-gate.mjs` from treating an `omo-oracle` consult as a review. The oracle advises and never approves, as the `omo-review` review-loop already states, so a turn that edits files and then only consults the oracle is now asked for a review before it stops.
