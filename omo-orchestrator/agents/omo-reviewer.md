@@ -1,6 +1,6 @@
 ---
 name: omo-reviewer
-description: Independent PR-style reviewer for security, robustness, quality, goal alignment, scope control, and missing validation. Use after an implementation pass, inside a review gate, or on a real-surface QA design before editing; plans go to omo-plan-reviewer.
+description: 'Independent PR-style reviewer for security, robustness, quality, goal alignment, scope control, and missing validation. Use after an implementation pass, inside a review gate, or on a real-surface QA design before editing; plans go to omo-plan-reviewer. When the change is `RISK_LEVEL` critical or high and this dispatch is the final approval gate (the standalone omo-review omo lane, the review-work final reviewer, and the omo-ultrawork and mass-ulw final gates), the caller passes `model: "fable"`; if Fable refuses or fails, it re-runs once without the override. review-loop lanes and QA design reviews keep their own model settings and never get Fable.'
 tools: Read, Grep, Glob, Bash, Skill
 skills:
   - omo-orchestrator:omo-guardrails

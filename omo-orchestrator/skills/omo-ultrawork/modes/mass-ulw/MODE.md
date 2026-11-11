@@ -86,10 +86,10 @@ Then run the `omo-ultrawork` manual QA table on the real surface and re-read the
 
 In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
 
-Then spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, external review report path, ledger path, and a `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` line chosen per `skills/omo-orchestrate/references/skill-catalog.md`. Outcomes:
+Then spawn `omo-reviewer` with the goal, graph, per-task evidence, diff, external review report path, ledger path, and a `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` line chosen per `skills/omo-orchestrate/references/skill-catalog.md`. When the task's `RISK_LEVEL` (from the plan or ledger, or, with none recorded, the risk table in `omo-plan` `references/rigorous-review.md`) is `critical` or `high`, pass `model: "fable"`; if Fable refuses or fails, re-run once without the override. Outcomes:
 
 - `APPROVE`: the only state that permits reporting done.
-- `REQUEST_CHANGES`: each criterion-cited blocker becomes a new graph task with its own dependencies and success check. Return it to Ralph for the next repair iteration, re-verify affected tasks, and submit the task-wide diff and current evidence to a fresh independent reviewer.
+- `REQUEST_CHANGES`: each criterion-cited blocker becomes a new graph task with its own dependencies and success check. Return it to Ralph for the next repair iteration, re-verify affected tasks, and submit the task-wide diff and current evidence to a fresh independent reviewer, with the same `RISK_LEVEL` model rule as the first gate.
 - `INCONCLUSIVE`: name the missing evidence, add the task that produces it, and block completion until it exists.
 
 Return every repair/re-review pass to the active `omo-ralph-loop` ledger and shared remaining budget. Ralph alone decides cap exhaustion and stuck stops; no separate final-gate retry budget.

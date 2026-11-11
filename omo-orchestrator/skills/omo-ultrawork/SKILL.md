@@ -173,10 +173,10 @@ When the user or project allows commits, commit one atomic, verified increment a
 Run this gate for every ulw task, whatever its size: ultrawork means implement, review, and fix until the review approves. A one-file change gets the same gate; only the review effort scales with the diff.
 
 1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
-2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path.
+2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path. When the task's `RISK_LEVEL` (from the plan or ledger, or, with none recorded, the risk table in `omo-plan` `references/rigorous-review.md`) is `critical` or `high`, pass `model: "fable"`; if Fable refuses or fails, re-run once without the override.
 3. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes.
 4. Return criterion-cited blockers to Ralph and reserve the next shared iteration before dispatching any fix. In that pass, fix the blockers, re-run the affected scenario QA, and update the notepad.
-5. In that same iteration, submit the updated task-wide diff and current QA evidence to a fresh independent reviewer. Approval with non-blocking notes counts as approval.
+5. In that same iteration, submit the updated task-wide diff and current QA evidence to a fresh independent reviewer, with the same model rule as step 2. Approval with non-blocking notes counts as approval.
 6. Return every repair/re-review pass to the active `omo-ralph-loop` ledger and shared remaining budget. Ralph alone decides cap exhaustion and stuck stops; do not grant a separate final-gate retry budget.
 
 ## Zero Tolerance
