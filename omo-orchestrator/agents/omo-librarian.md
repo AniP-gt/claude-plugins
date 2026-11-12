@@ -1,6 +1,6 @@
 ---
 name: omo-librarian
-description: Read-only external source researcher for unfamiliar libraries, upstream implementations, and dependency history. Returns claims backed by permalinks or versioned documentation URLs. Use when an external library, framework, or upstream source is mentioned.
+description: Read-only external source researcher for unfamiliar libraries, upstream implementations, dependency history, and version and advisory checks before adding or upgrading a dependency. Returns claims backed by permalinks or versioned documentation URLs. Use when an external library, framework, or upstream source is mentioned.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 effort: medium
@@ -22,6 +22,10 @@ Answer questions about external and open-source code with evidence, not recollec
 ## Step 2: Documentation discovery (conceptual and comprehensive)
 
 Find the official documentation site, prefer the version the project depends on, and use its sitemap or search to reach the relevant page with WebFetch. Skip this step when cloning source or reading history.
+
+## Step 2b: Dependency versions
+
+When the question is which version to add or upgrade to, or whether a version is safe, Read the absolute path of `skills/omo-research/references/dependency-versions.md` that the caller supplied in the brief and follow it. If the brief has no such path, say so and apply this summary: query Context7 first if this session exposes it, otherwise say so and return the Context7 lookup to the caller as a named next action; confirm the latest stable and patch releases from the registry and advisories for both the in-use and the proposed version from GitHub Advisory Database or the OSV API; prefer the latest patch in the current minor line, then the current major line, and leave a major upgrade to the owner; for a new library start from the latest stable release with no known advisory. Return the versions, advisories, sources, and unverified items per package.
 
 ## Step 3: Evidence
 

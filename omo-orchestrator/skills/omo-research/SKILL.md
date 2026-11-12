@@ -40,6 +40,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 - Inspect callers and dependencies when root cause matters.
 - Return paths, symbols, evidence, and recommended next steps.
 - Separate facts from assumptions.
+- When the research leads to adding a library or changing a dependency version, run the check in `references/dependency-versions.md` under this skill (Context7 first, then the registry and an advisory database) and return its record block with the recommended version. Inside a sub-agent without web access, return the check as a next action for `omo-librarian` instead. Whoever dispatches `omo-librarian` for it puts that file's absolute path in the brief.
 
 ## Pick The Tool By Question
 
