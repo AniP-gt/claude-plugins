@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py\" hook-session-start || true",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts\" hook-session-start || true",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py\" hook-session-end || true",
+            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts\" hook-session-end || true",
             "timeout": 10
           }
         ]

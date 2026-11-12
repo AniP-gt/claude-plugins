@@ -7,7 +7,7 @@ description: Ingest sources (PRs, Issues, meeting notes, URLs, files, conclusion
 
 ## 0. Find the wiki
 
-Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py resolve` to get the `wiki` path.
+Run `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts resolve` to get the `wiki` path.
 If it fails, point the user to `/llm-wiki:setup` and stop. From here on, `<wiki>` is that path.
 
 Write wiki files with the Write / Edit tools. Writing them with Bash `cat >>` or redirects is denied by the sandbox when the wiki is outside the repository, and nothing gets recorded (this happened on 2026-10-14).
@@ -57,7 +57,7 @@ Go to step 3 without asking the user. Only when the user asked to confirm before
 - Prefer updating existing pages. Create a new page only when the topic stands on its own.
 - Touch at most about 10-15 pages in one run.
 - Add a link to the raw/ file to each page's `sources`, and set `updated` to today's date.
-- Attach code evidence to facts learned by reading repository code. Create the reference with `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py claim-ref <path> --lines A-B` (`<path>` is relative to the repository root, and the line range is the lines that back the fact. References cannot be created for files with uncommitted changes, so commit first), and write it right after the fact as (evidence: `repo://<project>/<path>#L<a>-L<b>@<sha>`). Put the date you checked the evidence in the frontmatter as `verified: YYYY-MM-DD`. For facts from raw/ sources, cite them in `sources` as before.
+- Attach code evidence to facts learned by reading repository code. Create the reference with `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts claim-ref <path> --lines A-B` (`<path>` is relative to the repository root, and the line range is the lines that back the fact. References cannot be created for files with uncommitted changes, so commit first), and write it right after the fact as (evidence: `repo://<project>/<path>#L<a>-L<b>@<sha>`). Put the date you checked the evidence in the frontmatter as `verified: YYYY-MM-DD`. For facts from raw/ sources, cite them in `sources` as before.
 - When a new source contradicts an existing statement and you can judge the new source is correct, fix it without asking. Keep the old statement with strikethrough and a date, and report it in step 5. When you cannot judge which is correct, write both and report it as an open question.
 - Connect related pages with `[[links]]`. When a term appears, add it to `wiki/glossary.md`.
 

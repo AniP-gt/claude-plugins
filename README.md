@@ -114,10 +114,10 @@ LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・�
 - `/llm-wiki:ingest`: PR・Issue・議事録・URL・context-mode の検索結果などを取り込む。要点の確認は挟まず、矛盾は判断できる範囲で直す
 - `/llm-wiki:query`: wiki を根拠に答え、良い答えや誤りの訂正は確認なしで wiki に書き戻す
 - `/llm-wiki:lint`: リンク切れ・孤立ページ・index 漏れ・根拠コードの変更を機械的に検出し、矛盾や古い記述を点検する。修正が必要と判断したものは確認なしで直す
-- コードの根拠（Grounded Claims）: コードから得た事実に `repo://<project>/<path>#L<a>-L<b>@<sha>` の参照を付ける。`llm_wiki.py claim-ref` が今の HEAD で参照を作り、`llm_wiki.py check-claims` が参照時点から根拠の行が変わったか（stale / missing / 行ずれ）を JSON で報告する
+- コードの根拠（Grounded Claims）: コードから得た事実に `repo://<project>/<path>#L<a>-L<b>@<sha>` の参照を付ける。`llm_wiki.ts claim-ref` が今の HEAD で参照を作り、`llm_wiki.ts check-claims` が参照時点から根拠の行が変わったか（stale / missing / 行ずれ）を JSON で報告する
 - SessionStart hook: 登録済みリポジトリでは wiki の場所と目次（index.md、長い場合は先頭 6000 字）をセッションに渡し、調査・実装・レビューの前や迷ったときに wiki を読むこと、サブエージェントへ関連ページを渡すこと、wiki とコードの食い違いは確認なしで wiki を直すこと、新しい知見は ingest の手順で記録することを指示する。未登録なら何もしない
-- SessionEnd hook（任意、既定は無効）: 登録済みリポジトリのセッションが終わると、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補（設計判断・障害の原因・ハマりどころ）を `raw/inbox/` に保存する。hook 自体はページを更新しない。次のセッションの開始時に未整理の候補があれば、確認なしで `/llm-wiki:ingest` の手順に沿ってバックグラウンドで整理し、結果を報告する。有効化は `/llm-wiki:setup` か `llm_wiki.py capture-config --enable`。トークンを消費する。ログは `~/.config/llm-wiki/capture.log`
+- SessionEnd hook（任意、既定は無効）: 登録済みリポジトリのセッションが終わると、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補（設計判断・障害の原因・ハマりどころ）を `raw/inbox/` に保存する。hook 自体はページを更新しない。次のセッションの開始時に未整理の候補があれば、確認なしで `/llm-wiki:ingest` の手順に沿ってバックグラウンドで整理し、結果を報告する。有効化は `/llm-wiki:setup` か `llm_wiki.ts capture-config --enable`。トークンを消費する。ログは `~/.config/llm-wiki/capture.log`
 
 パスはプラグインに含めず、各ユーザーのローカル設定 `~/.config/llm-wiki/projects.json`（環境変数 `LLM_WIKI_CONFIG` で変更可）に保存する。ひな形は `llm-wiki/templates/projects.example.json`。git worktree 内でも本体リポジトリの登録に一致する。複数リポジトリで 1 つの wiki を共有できる。
 
-前提条件: Python 3.9 以上（標準ライブラリのみ）。候補の自動抽出を使う場合は `claude` CLI が PATH にあること。
+前提条件: [Bun](https://bun.sh) 1.x が PATH にあること（スクリプトは TypeScript、依存パッケージなし）。候補の自動抽出を使う場合は `claude` CLI が PATH にあること。

@@ -7,12 +7,12 @@ description: Answer questions based on the LLM Wiki. Use when asked about past d
 
 ## 1. Find the wiki
 
-Get `<wiki>` with `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py resolve`. If it fails, point the user to `/llm-wiki:setup`.
+Get `<wiki>` with `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts resolve`. If it fails, point the user to `/llm-wiki:setup`.
 
 ## 2. Answer from the wiki
 
 1. Read `<wiki>/index.md` and pick pages that look relevant. If none are found, Grep inside `<wiki>` (including `raw/`).
-2. Read the chosen pages and their links, then answer. If a page you use for the answer has `repo://` evidence, run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims --page <path relative to the wiki>`. Confirm `stale` or `missing` facts against the code before answering. If something needs fixing, write it back in step 4.
+2. Read the chosen pages and their links, then answer. If a page you use for the answer has `repo://` evidence, run `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts check-claims --page <path relative to the wiki>`. Confirm `stale` or `missing` facts against the code before answering. If something needs fixing, write it back in step 4.
 3. Cite the source pages in the answer as paths relative to `<wiki>`. Mark speculative parts as speculation.
 
 ## 3. When the wiki has no answer

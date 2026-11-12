@@ -7,7 +7,7 @@ description: Check and fix the LLM Wiki. Mechanically detects broken links, orph
 
 ## 1. Mechanical checks
 
-Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py lint` (use `--wiki <path>` for an unregistered wiki). It returns the following JSON.
+Run `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts lint` (use `--wiki <path>` for an unregistered wiki). It returns the following JSON.
 
 | Key | Meaning | Fix |
 |---|---|---|
@@ -18,7 +18,7 @@ Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py lint` (use `--wiki <path>
 | `missing_updated` | No `updated` | Fill in the best date you can determine |
 | `log_md_entries` | Number of dated entries still in `log.md` (old single-file layout) | Move them to the monthly log files following step 4 of the ingest skill |
 
-Next, run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.py check-claims` (same `--wiki` as lint). For each `repo://<project>/<path>#L<a>-L<b>@<sha>` reference in a page, it checks whether those lines changed between the referenced commit and HEAD. References inside code blocks (``` and ~~~) are skipped. The comparison target is the HEAD of the registered main repository. A reference backed by an unmerged commit in a worktree is judged against the main repository's HEAD until it is merged (files that exist only in the worktree may show up as `missing`). The JSON `issues` contain these statuses.
+Next, run `bun ${CLAUDE_PLUGIN_ROOT}/scripts/llm_wiki.ts check-claims` (same `--wiki` as lint). For each `repo://<project>/<path>#L<a>-L<b>@<sha>` reference in a page, it checks whether those lines changed between the referenced commit and HEAD. References inside code blocks (``` and ~~~) are skipped. The comparison target is the HEAD of the registered main repository. A reference backed by an unmerged commit in a worktree is judged against the main repository's HEAD until it is merged (files that exist only in the worktree may show up as `missing`). The JSON `issues` contain these statuses.
 
 | status | Meaning | Fix |
 |---|---|---|

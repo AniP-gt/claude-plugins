@@ -50,7 +50,7 @@ When the user requests a layout migration, update all affected links, including 
 - Put a 1-3 line summary at the top of the body.
 - Link related pages with `[[page name]]`. The target may not exist yet (it becomes a candidate page).
 - Cite a source for every fact (a file in `raw/`, a PR number, an Issue number). Mark guesses with "Speculation:".
-- For facts learned by reading code, put (evidence: `repo://<project>/<path>#L<a>-L<b>@<sha>`) right after the fact. Create the reference with `llm_wiki.py claim-ref`. Check whether the code behind it changed with `llm_wiki.py check-claims`.
+- For facts learned by reading code, put (evidence: `repo://<project>/<path>#L<a>-L<b>@<sha>`) right after the fact. Create the reference with `llm_wiki.ts claim-ref`. Check whether the code behind it changed with `llm_wiki.ts check-claims`.
 - Do not delete outdated statements. Strike them through with `~~strikethrough~~`, add the date, and write the new statement below.
 - Never write secrets (tokens, passwords, personal information).
 
