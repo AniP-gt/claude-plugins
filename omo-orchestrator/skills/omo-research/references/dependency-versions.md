@@ -1,6 +1,8 @@
 # Dependency Version Check
 
-Run this check whenever research or a plan adds a library, upgrades or downgrades one, widens or narrows its version range, or proposes a change that forces one of these (a runtime upgrade that needs a newer package, a transitive dependency the change pins). Do it before a version is recommended, not after.
+Run this check whenever research or a plan adds a library, upgrades or downgrades one, widens or narrows its version range, or proposes a change that forces one of these (a runtime upgrade that needs a newer package, a transitive dependency the change pins). Do it before a version is recommended, not after. It also covers container image tags and middleware or runtime versions (database, cache, language runtime) pinned in compose files, Dockerfiles, and CI configs; for those, the version in use is the pinned tag (there is no lockfile), the registry is the image registry's tag list (the project's release page when the tag list lacks a release), and the advisories are the release notes' security fixes and CVE entries, since package advisory databases rarely list server images.
+
+When the goal is to match another environment (production, a managed service such as a hosted database or cache), match its major and minor line, then take the latest patch in that line rather than copying the environment's displayed patch number: managed services usually apply patches through service updates, so the patch number shown there is not a constraint. Pin the same patch only when the user says the environment pins it. The user's request to match counts as the owner decision for any major step it implies; still report the breaking changes and data migration it needs.
 
 ## 1. Context7 first
 
