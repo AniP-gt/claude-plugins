@@ -110,7 +110,7 @@ Before writing code, define realistic scenarios sized to the change: 1-2 for a s
 | Edge (boundary, empty, malformed, concurrent) | when risky | empty list, max-length input, two writers race |
 | Adjacent-surface regression | when multi-surface | caller X still works, sibling endpoint Y unchanged |
 
-Each scenario states upfront a binary pass condition, the real surface that proves it (CLI stdout, curl status and body, browser assertion, tmux transcript, parsed config, DB diff), and the existing tests that cover it. You are not done until every scenario passes with its artifact captured.
+Each scenario states upfront its concrete input, expected result, exact invocation, binary pass condition, the real surface that proves it (CLI stdout, curl status and body, browser assertion, tmux transcript, parsed config, DB diff), and the existing tests that cover it. You are not done until every scenario passes with its artifact captured.
 
 ## Durable Notepad
 
@@ -158,7 +158,7 @@ Name the exact tool and invocation with concrete inputs for every scenario. "Thi
 ## Test Decision
 
 1. Read the tests covering the area before touching it. A wrong test is a finding to report; never edit a test green. Reproduce a bug before fixing it.
-2. Make the smallest change that meets the scenario and update tests it makes stale. Add a test only when the repository keeps tests for this behavior and a regression would otherwise pass unnoticed.
+2. For behavior changes involving branches, state, parsing, calculations, or a bug fix, write a meaningful regression test first and run it to capture a failure for the expected reason. Then make the smallest change and run it green; never parallelize RED and GREEN for the same scenario. For behavior-preserving refactors, establish a passing characterization test before changing code. Follow the project's test conventions; update tests made stale by the change without weakening them. Pure wording, docs, and configuration without logic do not require new tests.
 3. Exercise the real surface named by the scenario and record the artifact path in the notepad.
 4. Reconcile the full scenario list plus the step-1 tests against the final inputs. Run every missing or affected check; reuse an unchanged row only under `omo-review` mode `review-work` Evidence Reuse, recording its current provenance. Record pass or fail for the complete set with evidence. A full scenario set does not require repeating independently valid rows.
 
