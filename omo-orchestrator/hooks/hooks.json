@@ -1,5 +1,5 @@
 {
-  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist, interactive-command advisory, review and LOAD_SKILLS gates, JSON argument error recovery, and an info/exclude block for .claude/omo/",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist, interactive-command advisory, review, goal, and LOAD_SKILLS gates, JSON argument error recovery, and an info/exclude block for .claude/omo/",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -77,6 +77,11 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/review-gate.mjs\" || true",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/goal-gate.mjs\" || true",
             "timeout": 5
           }
         ]

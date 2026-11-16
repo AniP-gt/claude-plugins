@@ -29,7 +29,7 @@ function records(root) {
 const check = (name, fn) => test(name, { skip: !hasGit }, () => fixture(fn));
 
 test("exports exactly the managed block and both known legacy versions", () => {
-  assert.equal(EXCLUDE_BLOCK, "# >>> omo-orchestrator managed >>>\n**/.claude/omo/handoffs/\n**/.claude/omo/plans/\n**/.claude/omo/drafts/\n**/.claude/omo/reviews/\n**/.claude/omo/briefs/\n**/.claude/omo/codex/\n# <<< omo-orchestrator managed <<<\n");
+  assert.equal(EXCLUDE_BLOCK, "# >>> omo-orchestrator managed >>>\n**/.claude/omo/handoffs/\n**/.claude/omo/plans/\n**/.claude/omo/drafts/\n**/.claude/omo/reviews/\n**/.claude/omo/briefs/\n**/.claude/omo/codex/\n**/.claude/omo/goal/\n# <<< omo-orchestrator managed <<<\n");
   const old = "# Created by the omo-orchestrator plugin: omo working records stay out of Git.\n/.gitignore\n/handoffs/\n/plans/\n/reviews/\n/briefs/\n";
   assert.deepEqual(LEGACY_GITIGNORE_CONTENTS, [old + "/codex/\n", old]);
 });

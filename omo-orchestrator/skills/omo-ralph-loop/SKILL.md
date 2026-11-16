@@ -1,6 +1,6 @@
 ---
 name: omo-ralph-loop
-description: Content-only manual continuation loop for iterative fix, review, validation, and handoff with bounded retries and independent approval. Use when the user wants a goal loop or durable, checkpointed execution.
+description: Manual continuation loop for iterative fix, review, validation, and handoff with bounded retries and independent approval. Use when the user wants a goal loop or durable, checkpointed execution.
 argument-hint: "[goal]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 
 Use this skill when the user wants iterative progress until a concrete completion condition is met, such as tests passing, a blocker resolved, and an independent review gate approving.
 
-This skill installs no hooks and does not continue after the session stops unless the operator records a handoff and resumes it.
+The plugin's goal-gate hook checks the goal file at Stop. This skill installs no other hooks and provides no automatic continuation after the session stops; the operator must record a handoff and resume it.
 
 ## Shared Controller
 
@@ -22,12 +22,12 @@ When `omo-review` mode `review-loop` is the entry, load this controller once and
 
 ## Loop Contract
 
-1. Define the completion promise in one sentence. When a number can decide done, the promise names the metric command, baseline, and target per [measured goals](references/iteration-guards.md#measured-goals).
+1. Define the completion promise in one sentence. Write `.claude/omo/goal/<task-slug>.md` per [goal file](references/goal-file.md), or read and continue the existing file, and print its `/goal` copy line for optional user use. The main context writes the file with Write/Edit; delegated Ralph reuse continues the same goal and creates no new file. When a number can decide done, the promise names the metric command, baseline, and target per [measured goals](references/iteration-guards.md#measured-goals).
 2. Create or continue the visible state record at `.claude/omo/handoffs/<task-slug>.md`: current iteration, goal, blockers, changed files, validation, and next exact action. Initialize it with an append-only first entry only when no record exists.
 3. Before each iteration, confirm there is no unanswered decision or unresolved in-flight work required by or overlapping the next iteration, the owner and scope are clear, the current state was freshly read, and the validation evidence to collect during this iteration is named. From iteration 2 onward, assess material task-state progress as a changed task state, resolved blocker, or new validated evidence. Tool activity alone is not progress. Apply the warning, strategy-change, and stop thresholds in `references/iteration-guards.md` using the same ledger; do not introduce an earlier independent no-progress stop.
 4. Run one iteration: investigate, edit or delegate, validate, review if needed, and update the state record.
 5. Continue only while the next action is clear and safe.
-6. When the completion promise appears satisfied, require final independent review before completion. For a change to code or behavior, the final review includes the external review in `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, else a recorded skip), merged by § 6d. Only `APPROVE` may complete the loop.
+6. When the completion promise appears satisfied, require final independent review before completion. For a change to code or behavior, the final review includes the external review in `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, else a recorded skip), merged by § 6d. Only `APPROVE` may complete the loop. After that final independent `APPROVE`, set the goal file to `Status: done`. When pausing for a user answer or an outside blocker, set `Status: blocked` and record the reason; restore `active` when resumed. If the user stops the task, set `Status: abandoned` and record the reason.
 7. If review returns `REQUEST_CHANGES`, append the result to the handoff ledger and request the next iteration under the same cap for a targeted fix, validation, and re-review.
 8. If review returns `INCONCLUSIVE`, append the result to the handoff ledger and block completion until the required evidence is obtained or the exact blocker is handed off.
 9. Iteration exhaustion, a satisfied promise, passing checks, or lack of new findings is not completion without final independent `APPROVE`.

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { codexRunInFlight, minFiles, run } from "./review-gate.mjs";
+import { run as goalGate } from "./goal-gate.mjs";
 
 const cwd = "/repo";
 const prompt = { type: "user", message: { content: "直して" } };
@@ -229,8 +230,11 @@ test("a user-typed /omo-review command counts as an omo-review call", () => {
   assert.ok(isCodexBlock(gate([command, reply])));
 });
 
-test("the follow-up stop with stop_hook_active always passes", () => {
-  assert.equal(gate([prompt, omoReview, reply], null, true), null);
+test("the follow-up stop with own Codex feedback passes", () => {
+  const entries = [prompt, omoReview, reply];
+  const feedback = gate(entries);
+  assert.ok(isCodexBlock(feedback));
+  assert.equal(gate([...entries, feedback, reply], null, true), null);
 });
 
 test("a background notification after the Codex feedback does not ask again", () => {
@@ -400,3 +404,146 @@ test("an unknown cwd does not fall back to the hook process's own directory", ()
     process.chdir(original);
   }
 });
+
+const goalFeedback = { type: "user", isMeta: true, message: { content: "[OMO GOAL GATE] pending" } };
+
+test("edits after goal feedback still require review on an active stop", () => {
+  assert.notEqual(gate([prompt, goalFeedback, edit("a.js")], null, true), null);
+});
+
+test("own review feedback allows the follow-up active stop after another edit", () => {
+  const entries = [prompt, edit("a.js")];
+  const feedback = gate(entries);
+  assert.notEqual(feedback, null);
+  assert.equal(gate([...entries, feedback, edit("b.js")], null, true), null);
+});
+
+test("goal feedback does not bypass the Codex lane on an active stop", () => {
+  assert.ok(isCodexBlock(gate([prompt, omoReview, reply, goalFeedback], null, true)));
+});
+
+test("missing transcript passes an active stop but ordinary stops still check Git changes", () => {
+  const input = { hook_event_name: "Stop", transcript_path: "missing.jsonl", cwd, stop_hook_active: true };
+  const deps = { env: {}, loadTranscript: () => [], changedFiles: () => [join(cwd, "a.js")], readReport: () => "" };
+  assert.equal(run(input, deps), "");
+  assert.notEqual(run({ ...input, stop_hook_active: false }, deps), "");
+});
+
+test("unrecognized system goal feedback passes an active stop", () => {
+  const feedback = { type: "system", content: "Stop hook feedback:\n[OMO GOAL GATE] pending" };
+  assert.equal(gate([prompt, feedback, edit("a.js")], null, true), null);
+});
+
+test("other plugin feedback passes an active stop", () => {
+  const feedback = { type: "user", isMeta: true, message: { content: "Stop hook feedback:\n[OTHER PLUGIN] x" } };
+  assert.equal(gate([prompt, feedback, edit("a.js")], null, true), null);
+});
+
+test("a goal chain checks once and then passes even after another edit", () => {
+  const entries = [prompt, goalFeedback, edit("a.js")];
+  const feedback = gate(entries, null, true);
+  assert.notEqual(feedback, null);
+  assert.equal(gate([...entries, feedback], null, true), null);
+  assert.equal(gate([...entries, feedback, edit("b.js")], null, true), null);
+});
+
+test("a later goal block rearms the check after earlier own feedback", () => {
+  const entries = [prompt, edit("a.js")];
+  const own = gate(entries);
+  assert.notEqual(own, null);
+  const later = [...entries, own, reply, goalFeedback, edit("b.js")];
+  const feedback = gate(later, null, true);
+  assert.notEqual(feedback, null);
+  assert.equal(gate([...later, feedback], null, true), null);
+});
+
+test("attachment goal feedback triggers the extra check", () => {
+  const attachment = {
+    type: "attachment",
+    attachment: { type: "hook_blocking_error", hookName: "Stop", hookEvent: "Stop",
+      blockingError: { blockingError: "[OMO GOAL GATE] pending", command: "node goal-gate.mjs" } },
+  };
+  assert.notEqual(gate([prompt, attachment, edit("a.js")], null, true), null);
+});
+
+test("combined same-Stop feedback still checks later edits once", () => {
+  const combined = { type: "user", isMeta: true,
+    message: { content: "[OMO GOAL GATE] pending\n[OMO REVIEW GATE] review" } };
+  const entries = [prompt, combined, edit("a.js")];
+  const feedback = gate(entries, null, true);
+  assert.notEqual(feedback, null);
+  assert.equal(gate([...entries, feedback], null, true), null);
+});
+
+function goalFeedbackWithCriterion(marker) {
+  const goalPath = `${cwd}/.claude/omo/goal/marker.md`;
+  const write = { type: "assistant", message: { content: [{ type: "tool_use", id: "goal-write", name: "Write",
+    input: { file_path: goalPath } }] } };
+  const output = goalGate({ hook_event_name: "Stop", transcript_path: "t.jsonl", cwd }, {
+    env: {}, loadTranscript: () => [prompt, write, { type: "user", message: { content: [
+      { type: "tool_result", tool_use_id: "goal-write", content: "Success" },
+    ] } }],
+    readGoal: () => `Status: active\n- [ ] fix ${marker} behavior`, codexInFlight: () => false,
+  });
+  assert.notEqual(output, "");
+  return { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${JSON.parse(output).reason}` } };
+}
+
+test("a review marker echoed from a goal criterion does not satisfy the review gate", () => {
+  const feedback = goalFeedbackWithCriterion("[OMO REVIEW GATE]");
+  const output = run({ hook_event_name: "Stop", transcript_path: "t.jsonl", cwd }, {
+    env: { OMO_REVIEW_GATE_MIN_FILES: "1" },
+    loadTranscript: () => [prompt, edit("a.js"), feedback],
+    changedFiles: () => null, codexInFlight: () => false,
+  });
+  assert.notEqual(output, "");
+  assert.match(JSON.parse(output).reason, /\[OMO REVIEW GATE\]/);
+});
+
+test("a Codex marker echoed from a goal criterion does not clear the Codex lane check", () => {
+  const feedback = goalFeedbackWithCriterion("[OMO CODEX GATE]");
+  assert.ok(isCodexBlock(gate([prompt, omoReview, reply, feedback])));
+});
+
+function pairedGateFeedback(marker, reason = `${marker} pending`) {
+  return [
+    { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${reason}` } },
+    { type: "attachment", attachment: { type: "hook_blocking_error", hookName: "Stop", hookEvent: "Stop",
+      blockingError: { blockingError: reason, command: "node gate.mjs" } } },
+  ];
+}
+
+for (const marker of ["[OMO REVIEW GATE]", "[OMO CODEX GATE]"]) {
+  for (const goalFirst of [false, true]) {
+    test(`same Stop ${goalFirst ? "goal then own" : "own then goal"} feedback passes for ${marker}`, () => {
+      const goal = pairedGateFeedback("[OMO GOAL GATE]");
+      const own = pairedGateFeedback(marker);
+      const records = goalFirst ? [...goal, ...own] : [...own, ...goal];
+      const entries = [prompt, edit("a.js"), ...records, reply];
+      const feedback = gate(entries, null, true);
+      if (marker === "[OMO REVIEW GATE]") assert.equal(feedback, null);
+      if (feedback !== null) {
+        const reason = feedback.message.content.slice("Stop hook feedback:\n".length);
+        const laterPair = pairedGateFeedback("[OMO REVIEW GATE]", reason);
+        assert.equal(gate([...entries, ...laterPair], null, true), null);
+      }
+    });
+  }
+}
+
+for (const marker of ["[OMO REVIEW GATE]", "[OMO CODEX GATE]"]) {
+  for (const goalFirst of [false, true]) {
+    test(`edits after same Stop ${goalFirst ? "goal then own" : "own then goal"} records require review for ${marker}`, () => {
+      const goal = pairedGateFeedback("[OMO GOAL GATE]");
+      const own = pairedGateFeedback(marker);
+      const records = goalFirst ? [...goal, ...own] : [...own, ...goal];
+      const entries = [prompt, edit("a.js"), ...records, reply, edit("b.js")];
+      const feedback = gate(entries, null, true);
+      assert.notEqual(feedback, null);
+      assert.match(feedback.message.content, /\[OMO REVIEW GATE\]/);
+      const reason = feedback.message.content.slice("Stop hook feedback:\n".length);
+      const laterPair = pairedGateFeedback("[OMO REVIEW GATE]", reason);
+      assert.equal(gate([...entries, ...laterPair], null, true), null);
+    });
+  }
+}

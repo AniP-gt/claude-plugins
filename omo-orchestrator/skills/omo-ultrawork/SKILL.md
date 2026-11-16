@@ -38,7 +38,7 @@ When `ulw-execute` and `mass-ulw` are both requested, `ulw-execute` is the proce
 ## Bootstrap
 
 1. The first user-visible line is exactly `ULTRAWORK MODE ENABLED!`.
-2. Open with a binding `# Goal` block, written outcome-first: what will be TRUE when done (an outcome, never an activity), the named deliverable surfaces, the scenario contract as success criteria (binary observables that can fail), explicit scope bounds, and one line `I'll stop right away when <observable state>`. Never invent a budget or deadline the user did not state. When the goal is a quantity ("reduce", "faster", "fewer"), a criterion is a metric with command, baseline, and target, set up per `omo-ralph-loop` `references/iteration-guards.md` § Measured Goals.
+2. Open with a binding `# Goal` block, written outcome-first: what will be TRUE when done (an outcome, never an activity), the named deliverable surfaces, the scenario contract as success criteria (binary observables that can fail), explicit scope bounds, and one line `I'll stop right away when <observable state>`. Never invent a budget or deadline the user did not state. When the goal is a quantity ("reduce", "faster", "fewer"), a criterion is a metric with command, baseline, and target, set up per `omo-ralph-loop` `references/iteration-guards.md` § Measured Goals. Also write these success criteria as the Criteria of the Ralph goal file per `omo-ralph-loop` `references/goal-file.md`.
 3. Survey the skills. Read the description of every skill even loosely relevant, decide which apply, and state the chosen skills and agents with a one-line reason each before acting. A matching skill that goes unused is a defect.
 
 ## Certainty Before Implementation

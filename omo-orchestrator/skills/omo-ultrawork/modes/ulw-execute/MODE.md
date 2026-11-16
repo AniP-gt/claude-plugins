@@ -4,7 +4,7 @@
 
 Claude Code adaptation of oh-my-openagent `packages/shared-skills/skills/ulw-execute`. The `ulw execute` keyword hook in this plugin points here. Every rule below binds until the plan is complete or a stop condition fires.
 
-This is a manual, content-only workflow. It has no Boulder state, no continuation hook, and no automatic resume. Progress lives in TodoWrite, the plan file, and the handoff ledger, and the operator keeps driving until done.
+This is a manual, content-only workflow. It has no Boulder state and no automatic resume; the only continuation hook is goal-gate, which blocks Stop while an active goal file lacks evidence (capped per file). Progress lives in TodoWrite, the plan file, and the handoff ledger, and the operator keeps driving until done.
 
 Load `omo-guardrails` with the Skill tool before the first dispatch or edit; other sections cite its rules by name only.
 
@@ -37,7 +37,7 @@ Run at maximum safe parallelism: every independent unit is dispatched in one mes
 
 Do all of this before the first dispatch.
 
-1. **Goal.** Record a detailed objective: plan path, concrete end state, wave and task counts, delivery mode (local changes only unless the user asked for more), and how completion is verified.
+1. **Goal.** Record a detailed objective: plan path, concrete end state, wave and task counts, delivery mode (local changes only unless the user asked for more), and how completion is verified. Also write the goal file per `omo-ralph-loop` `references/goal-file.md`.
 2. **Todos.** Mirror the plan into TodoWrite: one item per top-level task (column-zero checkbox or task row), plus the final verification wave. Register every item up front. Use the format `path: <action> for <task-id> - verify by <check>`.
 3. **Ledger.** Initialize or reuse `omo-ralph-loop` as the sole iteration controller for this TASK_ID (default total cap 20). Preserve its count, cap, blocker history, and review base across every wave, repair, and final gate. Apply its blocked/legacy resume checks before dispatch. Create or reconcile `.claude/omo/handoffs/<task-slug>.md` per `omo-guardrails` mode `handoff`. Append a kickoff entry with the goal, plan path, waves, owners, dependencies, evidence targets, risks, and first exact action. If the ledger exists, read it fully and resume from its latest next exact action.
 4. **Keep them in sync.** Mark a todo `in_progress` when its work dispatches and `completed` only after verification passes. Never batch-complete. TodoWrite, plan checkboxes, and the latest ledger entry must tell the same story at every boundary (dispatch, verify, review, stop).

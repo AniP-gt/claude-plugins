@@ -3,7 +3,9 @@
 // stop once and ask Claude for a review of hidden impact (risk map, undefined cases, validation).
 // Changed files come from the git snapshot preflight.mjs took at the prompt, so Bash and sub-agent edits
 // count; the transcript's Edit/Write calls are the fallback outside git.
-// The second stop arrives with stop_hook_active=true and always passes, so the hook cannot loop.
+// A stop with stop_hook_active=true checks again after goal-gate feedback, even if both gates blocked the same Stop.
+// Only this hook's feedback from a later Stop (after a main-thread assistant entry) ends that re-check chain.
+// An unreadable transcript or unrecognized feedback passes.
 // A background task notification continues the same turn and triggers a fresh stop without that flag, so
 // the gate also passes when its own feedback already follows the last edit: it asks once per edit.
 // While a Codex implementation run is in flight, the review is not due: its edits are half done and the turn may
@@ -17,6 +19,7 @@ import { filesChangedSince, gitRoot, loadSnapshot } from "./turn-snapshot.mjs";
 import { stripInjected } from "./ulw-keyword.mjs";
 
 const MARKER = "[OMO REVIEW GATE]";
+export const GOAL_MARKER = "[OMO GOAL GATE]";
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const DELEGATE_TOOLS = new Set(["Agent", "Task"]);
 // Sub-agents whose edits never appear in this transcript; one call counts as a change to unknown files.
@@ -73,7 +76,7 @@ function isRealUserPrompt(entry) {
 export const GATE_FEEDBACK = "omo-review-gate-feedback";
 
 // Stop feedback may be stored as a meta user message or as a hook_blocking_error attachment.
-function isGateFeedback(entry, marker = MARKER) {
+export function isGateFeedback(entry, marker = MARKER) {
   if (entry?.isSidechain === true) return false;
   if (entry?.type === "attachment" && entry.attachment?.type === "hook_blocking_error") {
     return JSON.stringify(entry.attachment.blockingError ?? "").includes(marker);
@@ -258,6 +261,48 @@ function backgroundTaskId(text) {
   return null;
 }
 
+// Shared background launch/result/notification tracking; callers decide when a launch counts.
+function backgroundTaskTracker() {
+  const uses = new Map();
+  const running = new Map();
+  return {
+    running,
+    use(block) {
+      if (DELEGATE_TOOLS.has(block.name) || block.input?.run_in_background === true) {
+        uses.set(block.id, DELEGATE_TOOLS.has(block.name));
+      }
+    },
+    result(block, enabled = true) {
+      if (!enabled || !uses.has(block.tool_use_id)) return;
+      const id = backgroundTaskId(textOf(block.content));
+      if (id !== null) running.set(id, uses.get(block.tool_use_id));
+    },
+    notifications(content, onComplete = () => {}) {
+      for (const [, body] of textOf(content).matchAll(TASK_NOTIFICATION_PATTERN)) {
+        const id = /<task-id>\s*([\w-]+)\s*<\/task-id>/.exec(body)?.[1];
+        if (id === undefined || !running.has(id)) continue;
+        onComplete(body, running.get(id));
+        running.delete(id);
+      }
+    },
+  };
+}
+
+export function backgroundPending(entries) {
+  const tasks = backgroundTaskTracker();
+  for (const entry of entries.slice(turnStart(entries))) {
+    if (entry?.isSidechain === true) continue;
+    const content = entry?.message?.content;
+    if (entry?.type === "user") tasks.notifications(content);
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (entry.type === "assistant" && block?.type === "tool_use") tasks.use(block);
+      else if (entry.type === "user" && block?.type === "tool_result") tasks.result(block);
+    }
+  }
+  return tasks.running.size > 0;
+}
+
 // True when this turn invoked omo-review and nothing after the last invocation shows its Codex lane: a Bash
 // call that ran or probed `codex`, or a Codex status line in a sub-agent's result or in the review report file
 // that result names. Only Agent/Task results
@@ -270,8 +315,8 @@ export function codexLaneMissing(entries, readReport = () => "") {
   const start = turnStart(entries);
   let pending = start > 0 && OMO_REVIEW_COMMAND_PATTERN.test(textOf(entries[start - 1]?.message?.content));
   const delegateIds = new Set();
-  const backgroundUseIds = new Set();
-  const running = new Map();
+  const background = backgroundTaskTracker();
+  const running = background.running;
   for (const entry of entries.slice(start)) {
     if (isGateFeedback(entry, CODEX_MARKER)) {
       pending = false;
@@ -280,12 +325,9 @@ export function codexLaneMissing(entries, readReport = () => "") {
     if (entry?.isSidechain === true) continue;
     const content = entry?.message?.content;
     if (entry?.type === "user") {
-      for (const [, body] of textOf(content).matchAll(TASK_NOTIFICATION_PATTERN)) {
-        const taskId = /<task-id>\s*([\w-]+)\s*<\/task-id>/.exec(body)?.[1];
-        if (taskId === undefined || !running.has(taskId)) continue;
-        if (running.get(taskId) && hasCodexStatus(body, readReport)) pending = false;
-        running.delete(taskId);
-      }
+      background.notifications(content, (body, delegated) => {
+        if (delegated && hasCodexStatus(body, readReport)) pending = false;
+      });
     }
     if (!Array.isArray(content)) continue;
     for (const block of content) {
@@ -296,12 +338,11 @@ export function codexLaneMissing(entries, readReport = () => "") {
           running.clear();
         } else if (block.name === "Bash" && isLaneCodexCommand(withoutComments(input.command))) pending = false;
         else if (DELEGATE_TOOLS.has(block.name)) delegateIds.add(block.id);
-        if (input.run_in_background === true || DELEGATE_TOOLS.has(block.name)) backgroundUseIds.add(block.id);
+        background.use(block);
       } else if (entry.type === "user" && block?.type === "tool_result") {
         const text = textOf(block.content);
         if (delegateIds.has(block.tool_use_id) && hasCodexStatus(text, readReport)) pending = false;
-        const taskId = backgroundUseIds.has(block.tool_use_id) ? backgroundTaskId(text) : null;
-        if (pending && taskId !== null) running.set(taskId, delegateIds.has(block.tool_use_id));
+        background.result(block, pending);
       }
     }
   }
@@ -341,6 +382,26 @@ export function readTranscript(path) {
   }
 }
 
+// Goal feedback always arms the check. Own feedback can disarm only after the assistant resumed,
+// so simultaneous blocks cannot hide later edits. Unknown or absent goal feedback remains fail-open.
+function goalChainNeedsCheck(entries) {
+  let pending = false;
+  let assistantSinceGoal = false;
+  for (const entry of entries.slice(turnStart(entries))) {
+    if (entry?.isSidechain === true) continue;
+    if (entry?.type === "assistant" && pending) assistantSinceGoal = true;
+    if (assistantSinceGoal && (isGateFeedback(entry, MARKER) || isGateFeedback(entry, CODEX_MARKER))) {
+      pending = false;
+    }
+    // Separate from the own-marker check: a combined same-Stop record also arms the re-check.
+    if (isGateFeedback(entry, GOAL_MARKER)) {
+      pending = true;
+      assistantSinceGoal = false;
+    }
+  }
+  return pending;
+}
+
 export function run(
   input,
   {
@@ -353,9 +414,9 @@ export function run(
 ) {
   if (typeof input !== "object" || input === null) return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
-  if (input.stop_hook_active === true) return "";
   if (typeof input.transcript_path !== "string") return "";
   const entries = loadTranscript(input.transcript_path);
+  if (input.stop_hook_active === true && !goalChainNeedsCheck(entries)) return "";
   if (!/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) {
     const reason = reviewReason(entries, input, env, changedFiles, codexInFlight);
     if (reason !== null) return block(reason);
