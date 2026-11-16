@@ -13,6 +13,8 @@ This plugin is content-only apart from eight small hooks (see [Ulw Keyword Trigg
 
 Restart Claude Code after installation.
 
+Version 6.17.0 adds two guidance lines. `omo-implement` step 1 (sibling shape): a new tool, script, or sub-project uses the repository's existing package manager and runtime named by its lockfile and version files, not the tool's documented default. `omo-guardrails`: a command handed to the user is run from the directory it names, starts with `cd <absolute path>` when compose or env files depend on the directory, and names values a fresh shell may lack (a default URL or port, a shim needing a rehash).
+
 Version 6.16.0 points the Codex implementer lane at the Codex plugin `claude-code-omo@anip-codex-plugins` (in `AniP-gt/codex-plugin`) instead of the full Codex `omo` plugin. When `codex plugin list` shows it `installed, enabled`, the brief starts with `Follow $claude-code-omo:claude-lane.` and UI work uses `$claude-code-omo:frontend`. That plugin carries the lane contract (scope, no git writes, test-first, exit codes, the result file, questions through `STATUS: QUESTION`, read-only answers) and a Codex Stop hook that blocks once while `result-<round>.md` is missing or lacks its `STATUS:` line. The full `omo` Codex plugin's hooks still run when it is enabled, because `codex exec -c 'plugins."omo@anip-codex-plugins".enabled=false'` did not unload it in Codex 0.169; disable it in `~/.codex/config.toml` when Codex is used only from Claude.
 
 Version 6.15.1 makes goal-gate skip a goal file that is itself a symbolic link, so its target's lines never reach the Stop reason; directory symlinks still work. It also documents the Bash-only-edit limitation of the goal re-check.
