@@ -2,8 +2,8 @@
 // Stop hook: require evidence for active goals written by this session's main thread.
 // Check format only; allow current-turn background waits, repeated stops, and unreadable input.
 // OMO_GOAL_GATE=off|0|false disables it; the per-file block cap defaults to five.
-import { openSync, readSync, closeSync, fstatSync, constants, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { openSync, readSync, closeSync, fstatSync, constants, realpathSync, lstatSync } from "node:fs";
+import { resolve, dirname, basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   readTranscript,
@@ -20,7 +20,7 @@ export function readGoalFile(path) {
   let fd;
   try {
     // Nonblocking open lets fstat reject a FIFO without waiting for a writer.
-    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK);
+    fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
     if (!fstatSync(fd).isFile()) return null;
     const buffer = Buffer.alloc(LIMIT);
     const size = readSync(fd, buffer, 0, LIMIT, 0);
@@ -49,6 +49,12 @@ export function parseGoal(text) {
   return { status, open };
 }
 
+export function normalizeGoalPath(resolvedPath) {
+  // Preserve the leaf so O_NOFOLLOW still rejects a symlink swapped in after lstat.
+  try { return join(realpathSync(dirname(resolvedPath)), basename(resolvedPath)); }
+  catch { return resolvedPath; }
+}
+
 function goalPathsWritten(entries, cwd) {
   const succeeded = new Set();
   for (const entry of entries) {
@@ -67,7 +73,8 @@ function goalPathsWritten(entries, cwd) {
       if (!succeeded.has(block.id) || typeof block.input?.file_path !== "string") continue;
       let path = resolve(cwd, block.input.file_path);
       if (/[\r\n]/.test(path) || !/(^|\/)\.claude\/omo\/goal\/[^/]+\.md$/.test(path)) continue;
-      try { path = realpathSync(path); } catch { /* Missing paths keep their resolved spelling. */ }
+      try { if (lstatSync(path).isSymbolicLink()) continue; } catch { /* Missing paths keep the current behavior. */ }
+      path = normalizeGoalPath(path);
       if (!/[\r\n]/.test(path)) paths.add(path);
     }
   }

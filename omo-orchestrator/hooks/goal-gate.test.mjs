@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { run, parseGoal, readGoalFile } from "./goal-gate.mjs";
+import { run, parseGoal, readGoalFile, normalizeGoalPath } from "./goal-gate.mjs";
 
 const path = "/repo/.claude/omo/goal/task.md";
 const relativePath = ".claude/omo/goal/task.md";
@@ -327,6 +327,71 @@ for (const label of ["no-evidence:", "noevidence:"]) {
     assert.ok(check(undefined, `Status: active\n- [x] done — ${label} option`));
   });
 }
+
+test("normalization preserves a symbolic-link leaf for no-follow reads", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gg-normalize-leaf-"));
+  try {
+    const goalDir = join(dir, ".claude/omo/goal");
+    mkdirSync(goalDir, { recursive: true });
+    const secret = join(dir, "secret.md");
+    const leaf = join(goalDir, "l.md");
+    writeFileSync(secret, "Status: active\n- [ ] SECRET");
+    symlinkSync(secret, leaf);
+    const normalized = normalizeGoalPath(leaf);
+    assert.equal(normalized, join(realpathSync(goalDir), "l.md"));
+    assert.equal(readGoalFile(normalized), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("normalization resolves a symbolic-link parent and reads a regular leaf", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gg-normalize-parent-"));
+  try {
+    const realDir = join(dir, "real", ".claude/omo/goal");
+    const aliasDir = join(dir, "alias");
+    mkdirSync(realDir, { recursive: true });
+    symlinkSync(join(dir, "real"), aliasDir, "dir");
+    const file = join(realDir, "task.md");
+    writeFileSync(file, open);
+    const normalized = normalizeGoalPath(join(aliasDir, ".claude/omo/goal/task.md"));
+    assert.equal(normalized, join(realpathSync(realDir), "task.md"));
+    assert.equal(readGoalFile(normalized), open);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readGoalFile rejects symbolic links and reads regular files", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gg-read-link-"));
+  try {
+    const file = join(dir, "regular.md");
+    const link = join(dir, "link.md");
+    writeFileSync(file, open);
+    symlinkSync(file, link);
+    assert.equal(readGoalFile(file), open);
+    assert.equal(readGoalFile(link), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("goal files that are symbolic links are skipped", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gg-leaf-"));
+  try {
+    mkdirSync(join(dir, ".claude/omo/goal"), { recursive: true });
+    const secret = join(dir, "secret.md");
+    const goal = join(dir, ".claude/omo/goal/l.md");
+    writeFileSync(secret, "Status: active\n- [ ] SECRET");
+    symlinkSync(secret, goal);
+    assert.equal(run({ ...input, cwd: dir }, {
+      env: {}, loadTranscript: () => successfulWrites([use("Write", goal)]),
+      codexInFlight: () => false,
+    }), "");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test("symlinked goal paths use the same real path for display and cap", () => {
   const dir = mkdtempSync(join(tmpdir(), "gg-alias-"));
