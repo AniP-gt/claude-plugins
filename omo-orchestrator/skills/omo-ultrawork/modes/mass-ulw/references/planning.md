@@ -1,28 +1,26 @@
 # `omo-ultrawork` mode `mass-ulw` planning reference
 
-Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw/references/planning.md`. Read in full before defining any graph. Every section exists because its absence was observed failing: unplanned runs collapse into three big tasks with no verification.
+Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw/references/planning.md`. Read in full before defining the first graph. Before dispatch, state the plan in a few lines: the tasks and the file each one writes, a reason for every owner above the cheapest, and the check that will prove the deliverable.
 
-## Decomposition Doctrine
+Sections: Sizing and Decomposition (graph size, splitting, chains, fan-in, review joins) · Owner Routing (category to sub-agent) · Concurrency And Write Scope (handoffs, disjoint writes) · Task Prompt Contract (TASK to STOP WHEN) · Verification (who runs the check, heavier patterns) · Failure Playbook (recovery moves) · Mass Research (angles, leads, verify, reduce).
 
-**Topology lock first.** Before writing any task, list the 1-6 top-level components that can each succeed or fail independently. Every task traces to exactly one component. Do not collapse a multi-component request into one blob task because it looks small, and do not invent components the request does not have.
+## Sizing and Decomposition
 
-**Split first, route second.** The default question is not "which owner does this chunk need" but "how do I turn this chunk into more small tasks". When pieces have disjoint write scopes, self-contained prompts, and can each be verified alone, many small tasks in parallel beat one big task on a stronger model. They finish sooner, fail in isolation, and cost less. Reserve stronger owners for what survives splitting.
+**Scale to the ask.** "Look into X" or "fix these" gets a few tasks and a check the coordinator runs itself. "Thorough", "all of them", an audit, or mass research gets a wider fan-out and one of the heavier verification patterns below. A wave holds as many tasks as there are independent pieces; there is no minimum, and padding the list buys queue time, not coverage.
 
-**Do not split when:**
+**One task per independent piece.** Trace each task to a part of the request that can succeed or fail on its own, and invent no parts the request does not have. Parallel small tasks beat one big task when the work divides into pieces with disjoint write scopes that can each be checked alone. Keep work in one task when:
 
 1. The pieces share a write scope you cannot untangle. Serialize or merge instead of pretending independence.
 2. The work is one coherent judgment that needs the whole problem in view (a design decision, a root-cause diagnosis). Splitting it produces confident partial answers.
 3. A task would take longer to brief than to execute. Fold it into its neighbor.
 
-**Wave sizing.** One task per genuinely independent chunk, whether five or sixty. Fewer than 3 in a wave usually means under-splitting. Never merge independent chunks to make a wave look smaller. Split along the axis that makes pieces independent:
+Split along the axis that makes pieces independent: by component, by disjoint file set, or by stage (collect, expand, verify, synthesize). Put already-known stages inside the same phase graph; a phase ends at its acceptance checkpoint.
 
-- By component: each independently shippable part is its own lane.
-- By file domain: one component spanning disjoint file sets gets one task per set.
-- By stage: collect (investigate in parallel), expand (follow leads), verify (falsify the collections), synthesize (turn verified facts into the deliverable). Put all already-known stages inside the same phase graph; a phase ends at its acceptance checkpoint.
+**Chain per item; hold a wave only for cross-item work.** When item i's next stage needs only item i's result, chain `a-i -> b-i` so each item moves on the moment it verifies and a slow item delays only itself. Make a stage wait for a whole wave only when it needs every result together: dedup or merge across the set, an early exit when nothing was found, a comparison between items.
 
-**Default shape is fan-out, then fan-in.** N parallel lanes with no dependencies, then one synthesis task depending on all of them. Merging verified pieces is mechanical unless the merge itself needs judgment, so the synthesis owner starts cheap too.
+**Fan in through files.** A fan-in or synthesis task reads the bounded report each producer wrote, never N raw outputs, and its owner starts cheap unless the merge itself needs judgment.
 
-**Join adjacent waves through one review task.** When every consumer needs every producer's output, use `producers -> shared review -> consumers`, rather than all-to-all edges. The review verifies the producers against their declared checks and gates the consumers. A consumer needing only A1 gets `A1 -> review-A1 -> consumer` and starts when that branch clears; it does not wait for unrelated producers. Compute readiness from verified dependencies as results return, rather than imposing a whole-wave barrier. Preserve any additional dependency explicitly required by the plan or shared state.
+**Join adjacent waves through one review task.** When every consumer needs every producer's output together, use `producers -> shared review -> consumers`, rather than all-to-all edges. The review verifies the producers against their declared checks and gates the consumers. A consumer needing only A1 gets `A1 -> review-A1 -> consumer` and starts when that branch clears; it does not wait for unrelated producers. Compute readiness from verified dependencies as results return, rather than imposing a whole-wave barrier. Preserve any additional dependency explicitly required by the plan or shared state.
 
 A review finding names the failed producer and criterion. Repair that producer under the shared Ralph iteration budget, rerun its affected verification and any already-run consumers whose evidence it invalidates, and retain verified independent results. A downstream task waiting on the shared review remains pending until all inputs it consumes are supported. Branch and shared reviews may reuse the same current QA evidence under `omo-review` mode `review-work` Evidence Reuse; they are dependency checks, not additional final-gate reviewer panels.
 
@@ -34,7 +32,7 @@ Declare each required dependency review in the graph before dispatch. The coordi
 
 ## Owner Routing
 
-Start every task at the cheapest owner that can do it. Escalate only with a one-line reason you could say out loud ("touches six files across three packages"), and only after the split-first doctrine has been applied.
+Start every task at the cheapest owner that can do it. Escalate only with a one-line reason you could say out loud ("touches six files across three packages"). A chunk that splits into independent small tasks was never an escalation candidate.
 
 | Upstream category | Claude Code owner | Use when |
 |---|---|---|
@@ -83,14 +81,24 @@ Rules that make prompts obeyed:
 - One role per task. A task that investigates does not also fix; a task that writes does not review its own work.
 - When embedding an upstream output, quote or summarize the relevant part. Unbounded pastes drown the prompt.
 
-Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task, as a defect to fix before dispatch.
+Treat any prompt missing TASK or STOP WHEN, or a plan that names no check for the deliverable, as a defect to fix before dispatch.
 
-## Verification Wave
+## Verification
 
-- Every graph that changes code ends with at least one verification task depending on all producers.
-- It runs the real check (test, build, endpoint call) and reports captured output. Its prompt names the exact invocation and the binary observable that decides PASS or FAIL.
+- Task outputs are claims. Before reporting done, prove the deliverable with a real check (test, build, endpoint call, the file itself) and keep the captured output.
+- The coordinator runs the check itself when it is one short command. Give it a verification task depending on the producers it checks only when the check is long, splits into parallel parts, or needs a fresh context; that task's prompt names the exact invocation and the binary observable that decides PASS or FAIL.
 - Paginated deliverables (PDF, DOCX, deck, print HTML) are verified by rendering every page and inspecting each for blank pages, bad breaks, split tables, and clipped text. Sampling is not verification.
-- Task outputs are claims until verified. A downstream task that builds on an upstream result re-checks the specific facts it depends on (file exists, test passes, symbol exported) before trusting them.
+- A downstream task that builds on an upstream result re-checks the specific facts it depends on (file exists, test passes, symbol exported) before trusting them.
+
+Heavier patterns, for when the user asked for thoroughness or a wrong answer is expensive:
+
+- **Adversarial verify**: a few independent skeptics per claim, each told to refute it and to answer "refuted" when unsure. Keep the claim only if most of them fail.
+- **Perspective-diverse verify**: give each verifier a different lens (correctness, security, does it reproduce) instead of identical refuters.
+- **Judge panel**: several independent attempts at a hard design, scored by parallel judges, then synthesized from the winner.
+- **Loop until dry**: for discovery of unknown size, keep adding finders until two consecutive rounds return nothing new, deduplicating against everything seen.
+- **Completeness critic**: one last task that asks what was not covered: a modality not run, a claim unverified, a source unread.
+
+When coverage is bounded (top-N, sampling, no retry), say what was dropped.
 
 ## Failure Playbook
 
@@ -107,8 +115,10 @@ Treat any prompt missing TASK or STOP WHEN, or a graph with no verification task
 
 When the user combines the mass trigger with research ("mass ulw research", "mulw research"), define the known harvest -> expand -> verify chains in one phase graph and follow `omo-research` mode `ultraresearch` for its evidence contract and convergence rules. Slot limits determine dispatch batches within that phase.
 
-- Wave 1 over-collects: enumerate every angle (source territory, sub-question, entity, time window, competing approach) and give each its own task. Coverage is the deliverable.
+- Open with the angles the topic has, then grow until dry: enumerate the distinct angles you can name (source territory, sub-question, entity, time window, competing approach, adjacent field) and give each one harvest task. A broad topic has dozens and a narrow one a handful; padding the list buys queue time, not coverage. A run that stops after its first harvest collected breadth and no depth.
 - Harvest and expand reports tag every claim `OBSERVED:` and every closed lead `PROBED:` as `ultraresearch` Source Lanes defines; a claim the task only remembers goes in as a lead. The verify task re-opens each `OBSERVED:` source and passes only a claim whose observation it reproduces: a source that shows something else fails the claim, an unreachable source leaves it `UNKNOWN`, and a claim with no `OBSERVED:` line goes back to the coordinator as a lead.
 - Route across the owner table in one graph; one owner tier across every task is the routing failure above.
-- Verified leads determine additional chains whose scope was unknown, not permission to postpone already-known stages. Register those chains before dispatch, deduplicate against leads already seen, and stop expanding when new waves repeat known evidence.
-- Synthesis reduces through several parallel slice tasks reading bounded digests, then one final reducer (`omo-oracle` when the merge needs judgment). Never hand dozens of raw outputs to one task.
+- Verified leads determine additional chains whose scope was unknown, not permission to postpone already-known stages. Register those chains before dispatch, deduplicate against every lead already seen (rejected ones included, or they return every round), and stop expanding when a round adds nothing new.
+- A short deliverable (a memo, a one-page answer) bounds the synthesis, not the harvest: the angles still come from the topic.
+- Verify what the deliverable rests on: one verify task per cluster of related angles (for example one per subject compared, plus one for cross-cutting angles) re-checks the `OBSERVED:` sources behind the claims the synthesis will use. Give every angle its own verify task only when the user asked for claim-by-claim rigor.
+- One reducer merges the verified claims and writes the deliverable (a prose-only `omo-implementer`; when the merge needs judgment, `omo-oracle` decides it first and the writer records its verdict, since `omo-oracle` is read-only). When one context cannot hold them, several parallel slice tasks reading bounded digests feed that final reducer. Never hand dozens of raw outputs to one task.

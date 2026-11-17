@@ -4,15 +4,19 @@
 
 Claude Code adaptation of oh-my-openagent `packages/omo-senpi/skills/mass-ulw`. The `mass ulw` / `mulw` / `ulw mass` keywords point here. Every `omo-ultrawork` rule (goal block, certainty before implementation, evidence, manual QA, zero tolerance) still binds; this skill adds how the work is decomposed into a task graph, run wave by wave, and recovered.
 
-Use it when real dependencies exist: task C needs A and B finished first. For fully independent work, plain parallel agent calls under `omo-ultrawork` are simpler. A graph with two tasks and no edge between them is not a graph. A single chain of dependent steps, or work that fits in one context window, is not a graph either: run it in one lane.
+Use it when real dependencies exist: task C needs A and B finished first. For fully independent work, plain parallel agent calls under `omo-ultrawork` are simpler. A graph with two tasks and no edge between them is not a graph. A single chain of dependent steps, or work that fits in one context window, is not a graph either: run it in one lane. When the user says `mass ulw` but the work has no real dependencies, keep this mode's goal, check, and review rules and dispatch the pieces as one parallel wave; invent no edges or stages to make it a graph.
 
 Before implementation, initialize or reuse `omo-ralph-loop` for this task. Reuse its ledger, global iteration (default cap 20), review base, and blocker history. Each initial wave or repair pass reserves one iteration; final QA/review belongs to the current pass. Apply Ralph's resume checks and never reset state on feedback or a gate failure.
 
+## Size the Graph to the Request
+
+The request sets the size of the graph, and small is the default. Scout first (list the files, read the diff, count the items) so the task list comes from what exists. An ordinary ask gets a handful of tasks and a check the coordinator runs itself. Widen the fan-out or add verifier tasks only when the user asks for thoroughness ("all of them", "thorough", an audit, mass research) or when verified results show more work. When unsure, start small: amending the graph later adds tasks without redoing verified ones.
+
 ## Planning First
 
-Before defining any task, read [planning.md](references/planning.md) in full. It holds the decomposition doctrine, owner routing, write-scope rules, the task prompt contract, the verification wave, and the failure playbook. A graph built without it is unplanned work.
+Before defining any task, read [planning.md](references/planning.md) in full. It holds sizing and decomposition, owner routing, write-scope rules, the task prompt contract, verification, and the failure playbook.
 
-Then write the run plan in one pass and execute that plan: components, every stage and dependency chain already known, each task's handoff path, waves, the owner and one-line reason for every non-default owner, and the verification wave. A phase is an acceptance checkpoint, not a harvest or pipeline stage. Define known harvest, expand, verify, and reduce stages in the phase's graph before the first dispatch; dispatch only ready tasks. Extend the graph after reading verified results only when those results determine new tasks or their prompts. When reality forces a change, replan out loud instead of drifting task by task.
+Then write the run plan in one pass and execute that plan: components, every stage and dependency chain already known, each task's handoff path, waves, the owner and one-line reason for every non-default owner, and the check that will prove the deliverable. A phase is an acceptance checkpoint, not a harvest or pipeline stage. Define known harvest, expand, verify, and reduce stages in the phase's graph before the first dispatch; dispatch only ready tasks. Extend the graph after reading verified results only when those results determine new tasks or their prompts. When reality forces a change, replan out loud instead of drifting task by task.
 
 Before dispatching a run or node that depends on an unresolved owner decision (scope expansion, new spend, or an irreversible action), the main session asks through Claude Code's `AskUserQuestion` when available, otherwise in chat. Do not bury that decision in a child prompt or execution script. Use only the tool's supported parameters. A timed-out, dismissed, or unavailable answer is not authorization, even if the tool advises best judgment; leave the dependent work pending and record the decision in the ledger. Independent authorized work may continue. Respect authorization already given for the same scope and action, including an explicit instruction to proceed without interviews; do not ask again. Such authorization does not extend to newly discovered spend or scope expansion.
 
@@ -76,9 +80,9 @@ Apply the **Pending delivery and late results** contract in `skills/omo-orchestr
 
 Each implementation repair/re-review pass reserves the next iteration in the same Ralph ledger before its repair work starts. Its affected verification and re-review share that reservation; they do not each charge another iteration. An ordinary dependency review uses its producer's pass under Running Waves. There is no separate per-task implementation retry cap. Bounded local tool recovery and one missing-output follow-up remain available within the current pass; neither authorizes another work pass or resets the shared budget. Elapsed time alone never justifies abandoning a running task.
 
-## Verification Wave
+## Done Means Checked
 
-Every graph that changes code ends with at least one verification task depending on all producer tasks. It runs the real check (test command, build, endpoint call, rendered surface) and reports captured output against the goal's success criteria. The synthesis task's own claim is not evidence. Paginated deliverables (PDF, deck, print HTML) are verified by inspecting every rendered page, not by file size or grep.
+A task's report is a claim, and so is a finished graph. The work is done when the deliverable passes a real check (test command, build, endpoint call, rendered surface, the file itself) with captured output against the goal's success criteria, never when the last task reports done. The coordinator runs the check itself when it is one short command; planning.md § Verification says when it gets its own task. The synthesis task's own claim is not evidence. Paginated deliverables (PDF, deck, print HTML) are verified by inspecting every rendered page, not by file size or grep.
 
 Then run the `omo-ultrawork` manual QA table on the real surface and re-read the original request against every criterion.
 
@@ -96,7 +100,7 @@ Return every repair/re-review pass to the active `omo-ralph-loop` ledger and sha
 
 ## Report
 
-Final report: graph summary (tasks, waves, owners), per-task status with evidence location, retries and amendments taken, verification output, review decision, changed files, and residual risks.
+Final report: graph summary (tasks, waves, owners), per-task status with evidence location, retries and amendments taken, verification output, review decision, changed files, and residual risks. When coverage was bounded (top-N, sampling, a skipped retry), say what was dropped.
 
 ## Not Ported
 
