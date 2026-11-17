@@ -2,7 +2,7 @@
 
 Sub-agents are stateless. Every prompt carries all six sections (plus section 0 for gated workers), one atomic goal, and the context the worker cannot see. A prompt that leaves scope, verification, or forbidden actions implicit is not ready to send.
 
-Every dispatch to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) also carries a `LOAD_SKILLS` line (section 0). A PreToolUse hook (`hooks/load-skills-gate.mjs`) denies a dispatch without it.
+Every dispatch to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) also carries a `LOAD_SKILLS` line (section 0). A PreToolUse hook (`hooks/load-skills-gate.ts`) denies a dispatch without it.
 
 ```markdown
 ## 0. LOAD_SKILLS

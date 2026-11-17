@@ -15,7 +15,24 @@ const E = "(?![A-Za-z0-9_])";
 const SEP = "[\\s-]?";
 
 const MASS_PATTERN = new RegExp(`${B}(?:mass${SEP}ulw|ulw${SEP}mass|mulw)${E}`, "i");
-const MODE_PATTERNS = [
+
+type ModeName = "ultrawork" | "plan" | "research" | "loop" | "execute" | "mass";
+interface ModeDef {
+  skill: string;
+  mode?: string;
+  label: string;
+}
+export interface Detected {
+  mode: ModeName;
+  mass: boolean;
+}
+export interface UserPromptInput {
+  prompt?: unknown;
+  hook_event_name?: unknown;
+  [key: string]: unknown;
+}
+
+const MODE_PATTERNS: Array<[ModeName, RegExp]> = [
   ["plan", new RegExp(`${B}ulw${SEP}plan${E}`, "i")],
   ["research", new RegExp(`${B}ulw${SEP}research${E}`, "i")],
   ["loop", new RegExp(`${B}ulw${SEP}loop${E}`, "i")],
@@ -23,7 +40,7 @@ const MODE_PATTERNS = [
 ];
 const ULTRAWORK_PATTERN = new RegExp(`${B}(?:ulw|ultrawork)${E}`, "i");
 
-const MODES = {
+const MODES: Record<ModeName, ModeDef> = {
   ultrawork: { skill: "omo-ultrawork", label: "ULTRAWORK" },
   plan: { skill: "omo-plan", label: "ULW PLAN" },
   research: { skill: "omo-research", mode: "ultraresearch", label: "ULW RESEARCH" },
@@ -32,13 +49,13 @@ const MODES = {
   mass: { skill: "omo-ultrawork", mode: "mass-ulw", label: "MASS ULW" },
 };
 
-export function stripCode(prompt) {
+export function stripCode(prompt: string): string {
   return prompt.replace(/```[\s\S]*?(?:```|$)/g, " ").replace(/`[^`\n]*`/g, " ");
 }
 
 // Background task results and system reminders reach UserPromptSubmit as prompt text, but they are
 // not the user's words: a sub-agent report that quotes "ultrawork" must not start the mode.
-export function stripInjected(prompt) {
+export function stripInjected(prompt: string): string {
   return prompt
     .replace(/<task-notification>[\s\S]*?(?:<\/task-notification>|$)/g, " ")
     .replace(/<system-reminder>[\s\S]*?(?:<\/system-reminder>|$)/g, " ")
@@ -55,10 +72,10 @@ export function stripInjected(prompt) {
 // closing tag is searched for at most once after it is known to be missing.
 const PASTE_OPEN = /<pasted_content( id="[^"\n]{1,64}")?>/g;
 
-export function stripPasted(prompt) {
+export function stripPasted(prompt: string): string {
   let out = "";
   let pos = 0;
-  const missing = new Set();
+  const missing = new Set<string>();
   for (;;) {
     PASTE_OPEN.lastIndex = pos;
     const open = PASTE_OPEN.exec(prompt);
@@ -80,11 +97,11 @@ export function stripPasted(prompt) {
 
 // The user's own words: a paste is stripped first because it is the outer container, so an unclosed
 // <system-reminder> quoted inside it cannot swallow the paste's closing tag and the request after it.
-export function userText(prompt) {
+export function userText(prompt: string): string {
   return stripCode(stripInjected(stripPasted(prompt)));
 }
 
-export function detectKeyword(prompt) {
+export function detectKeyword(prompt: string): Detected | null {
   const text = userText(prompt);
   const mass = MASS_PATTERN.test(text);
   for (const [mode, pattern] of MODE_PATTERNS) {
@@ -95,13 +112,13 @@ export function detectKeyword(prompt) {
   return null;
 }
 
-function skillPath({ skill, mode }) {
+function skillPath({ skill, mode }: ModeDef): string {
   return mode === undefined
     ? join(PLUGIN_ROOT, "skills", skill, "SKILL.md")
     : join(PLUGIN_ROOT, "skills", skill, "modes", mode, "MODE.md");
 }
 
-export function buildContext({ mode, mass }) {
+export function buildContext({ mode, mass }: Detected): string {
   const { skill, mode: skillMode, label } = MODES[mode];
   const path = skillPath(MODES[mode]);
   const lines = [
@@ -146,7 +163,7 @@ export function buildContext({ mode, mass }) {
   return lines.join("\n");
 }
 
-export function run(input) {
+export function run(input: UserPromptInput | null | undefined): string {
   if (typeof input !== "object" || input === null || typeof input.prompt !== "string") return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "UserPromptSubmit") return "";
   const detected = detectKeyword(input.prompt);
@@ -160,7 +177,7 @@ export function run(input) {
   return `${JSON.stringify(output)}\n`;
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -169,7 +186,7 @@ async function readStdin() {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const raw = await readStdin();
-  let parsed;
+  let parsed: UserPromptInput | undefined;
   try {
     parsed = JSON.parse(raw);
   } catch {

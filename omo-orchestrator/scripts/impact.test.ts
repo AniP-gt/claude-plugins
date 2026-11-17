@@ -1,4 +1,4 @@
-// Run: node --test omo-orchestrator/scripts/impact.test.mjs
+// Run: node --test omo-orchestrator/scripts/impact.test.ts
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { isTestPath, moduleTerm, parseArgs, run } from "./impact.mjs";
+import { isTestPath, moduleTerm, parseArgs, run } from "./impact.ts";
 
 test("isTestPath recognizes common test layouts and leaves docs alone", () => {
   for (const file of ["a/b.test.ts", "tests/x.py", "test_foo.py", "foo_test.go", "FooTest.java", "spec/a_spec.rb", "app/conftest.py"]) {
@@ -33,8 +33,8 @@ test("parseArgs rejects missing values, unknown flags, and option-like refs", ()
   assert.throws(() => parseArgs(["--limit", "0"]), /positive integer/);
 });
 
-let repo;
-const git = (...args) => execFileSync("git", args, { cwd: repo, stdio: "ignore" });
+let repo: string;
+const git = (...args: string[]) => execFileSync("git", args, { cwd: repo, stdio: "ignore" });
 
 before(() => {
   repo = mkdtempSync(path.join(os.tmpdir(), "impact-test-"));
@@ -76,8 +76,8 @@ test("--file accepts absolute paths under a symlinked directory and deleted file
 });
 
 test("the CLI runs when started through a symlink", () => {
-  const link = path.join(repo, "impact-link.mjs");
-  symlinkSync(fileURLToPath(new URL("./impact.mjs", import.meta.url)), link);
+  const link = path.join(repo, "impact-link.ts");
+  symlinkSync(fileURLToPath(new URL("./impact.ts", import.meta.url)), link);
   try {
     const out = execFileSync(process.execPath, [link, "--symbol", "loadCart"], { cwd: repo, encoding: "utf8" });
     assert.match(out, /symbol loadCart:/);

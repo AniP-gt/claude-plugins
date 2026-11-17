@@ -4,29 +4,31 @@ import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
-import { EXCLUDE_BLOCK, LEGACY_GITIGNORE_CONTENTS, run } from "./omo-dir-ignore.mjs";
+import { EXCLUDE_BLOCK, LEGACY_GITIGNORE_CONTENTS, run } from "./omo-dir-ignore.ts";
+
+type RunOptions = NonNullable<Parameters<typeof run>[1]>;
 
 let hasGit = true;
 try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
-const post = (tool_name = "Bash", extra = {}) => ({ tool_name, ...extra });
-const git = (cwd, ...args) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-const exclude = (root) => resolve(root, git(root, "rev-parse", "--git-path", "info/exclude").trim());
-const omo = (root) => join(root, ".claude/omo");
-const read = (path) => fs.readFileSync(path, "utf8");
-function fixture(fn, init = true) {
+const post = (tool_name = "Bash", extra: Record<string, unknown> = {}) => ({ tool_name, ...extra });
+const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+const exclude = (root: string) => resolve(root, git(root, "rev-parse", "--git-path", "info/exclude").trim());
+const omo = (root: string) => join(root, ".claude/omo");
+const read = (path: string) => fs.readFileSync(path, "utf8");
+function fixture(fn: (root: string) => void, init = true) {
   const root = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "omo-ignore-")));
   try {
     if (init) git(root, "init", "-q");
     fn(root);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
-function records(root) {
+function records(root: string) {
   for (const sub of ["handoffs", "drafts"]) {
     fs.mkdirSync(join(omo(root), sub), { recursive: true });
     fs.writeFileSync(join(omo(root), sub, "t.md"), "record");
   }
 }
-const check = (name, fn) => test(name, { skip: !hasGit }, () => fixture(fn));
+const check = (name: string, fn: (root: string) => void) => test(name, { skip: !hasGit }, () => fixture(fn));
 
 test("exports exactly the managed block and both known legacy versions", () => {
   assert.equal(EXCLUDE_BLOCK, "# >>> omo-orchestrator managed >>>\n**/.claude/omo/handoffs/\n**/.claude/omo/plans/\n**/.claude/omo/drafts/\n**/.claude/omo/reviews/\n**/.claude/omo/briefs/\n**/.claude/omo/codex/\n**/.claude/omo/goal/\n# <<< omo-orchestrator managed <<<\n");
@@ -36,7 +38,7 @@ test("exports exactly the managed block and both known legacy versions", () => {
 check("writes atomically with the prescribed git runner options and avoids idempotent writes", root => {
   records(root);
   let writes = 0, renames = 0;
-  const options = {
+  const options: RunOptions = {
     git(command, args, opts) {
       assert.equal(command, "git");
       assert.deepEqual(args, ["rev-parse", "--git-path", "info/exclude"]);
@@ -46,9 +48,9 @@ check("writes atomically with the prescribed git runner options and avoids idemp
       return execFileSync(command, args, opts);
     },
     fs: { ...fs,
-      writeFileSync(path, ...args) {
+      writeFileSync(...[path, ...args]: Parameters<typeof fs.writeFileSync>) {
         writes++;
-        assert.equal(dirname(path), dirname(exclude(root)));
+        assert.equal(dirname(String(path)), dirname(exclude(root)));
         assert.notEqual(path, exclude(root));
         return fs.writeFileSync(path, ...args);
       },
@@ -224,7 +226,7 @@ check("M1: leaves dangling exclude symlink and missing target untouched", root =
   const entries = fs.readdirSync(dirname(path));
   let writes = 0;
   assert.equal(run(post("Bash", { cwd: root }), {
-    fs: { ...fs, writeFileSync(...args) { writes++; return fs.writeFileSync(...args); } },
+    fs: { ...fs, writeFileSync(...args: Parameters<typeof fs.writeFileSync>) { writes++; return fs.writeFileSync(...args); } },
   }), "");
   assert.ok(fs.lstatSync(path).isSymbolicLink());
   assert.equal(fs.existsSync(target), false);

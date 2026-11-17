@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const GUIDANCE = "[OMO NON-INTERACTIVE COMMAND] This command may wait for an interactive editor, pager, or prompt. Choose an appropriate non-interactive form when possible; preserve the intended Git changes and message. If interaction is necessary, arrange it with the user.";
 
-function isInteractive(command) {
+function isInteractive(command: string): boolean {
   // Do not guess at shell expressions, substitutions, pipelines or redirections.
   if (/[\n;|&<>`$()]/.test(command)) return false;
   const tokens = command.match(/(?:[^\s'\"]+|'[^']*'|\"[^\"]*\")+/g);
@@ -21,7 +21,14 @@ function isInteractive(command) {
   return !args.some((arg) => arg === "--no-edit" || arg === "--message" || arg.startsWith("--message=") || arg === "--file" || arg.startsWith("--file=") || /^-[^-]*[mF]/.test(arg));
 }
 
-export function run(input) {
+interface PreToolUseInput {
+  hook_event_name?: unknown;
+  tool_name?: unknown;
+  tool_input?: { command?: unknown } | null;
+  [key: string]: unknown;
+}
+
+export function run(input: PreToolUseInput | null | undefined): string {
   if (input === null || typeof input !== "object" || input.hook_event_name !== "PreToolUse" || input.tool_name !== "Bash") return "";
   const command = input.tool_input?.command;
   if (typeof command !== "string" || !isInteractive(command)) return "";
@@ -31,7 +38,7 @@ export function run(input) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
-  let input;
+  let input: PreToolUseInput | undefined;
   try { input = JSON.parse(raw); } catch { input = undefined; }
   process.stdout.write(run(input));
 }

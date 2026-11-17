@@ -1,0 +1,16 @@
+{
+  "name": "claude-plugins-dev",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck:omo": "tsc -p tsconfig.json",
+    "test:omo": "node --test omo-orchestrator/hooks/*.test.ts omo-orchestrator/scripts/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "~22.18",
+    "typescript": "^7.0.2"
+  }
+}

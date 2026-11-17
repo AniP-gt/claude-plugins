@@ -11,13 +11,26 @@ import {
   GOAL_MARKER,
   backgroundPending,
   isGateFeedback,
-} from "./review-gate.mjs";
+} from "./review-gate.ts";
+import type { StopInput, TranscriptEntry } from "./review-gate.ts";
+
+export interface ParsedGoal {
+  status: string | undefined;
+  open: string[];
+}
+
+export interface GoalGateDeps {
+  env?: NodeJS.ProcessEnv;
+  loadTranscript?: (path: string) => TranscriptEntry[];
+  readGoal?: (path: string) => string | null;
+  codexInFlight?: (cwd: string | undefined) => boolean;
+}
 
 const MARKER = GOAL_MARKER;
 const LIMIT = 64 * 1024;
 
-export function readGoalFile(path) {
-  let fd;
+export function readGoalFile(path: string): string | null {
+  let fd: number | undefined;
   try {
     // Nonblocking open lets fstat reject a FIFO without waiting for a writer.
     fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
@@ -32,14 +45,14 @@ export function readGoalFile(path) {
   }
 }
 
-function hasEvidence(line) {
+function hasEvidence(line: string): boolean {
   // Ignore labels inside code, but preserve code-formatted values after an outside label.
   const labelsOutsideCode = line.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g,
-    (span) => span.replace(/evidence:/gi, "         "));
+    (span: string) => span.replace(/evidence:/gi, "         "));
   return /(?<![\w-])evidence:\s*\S/i.test(labelsOutsideCode);
 }
 
-export function parseGoal(text) {
+export function parseGoal(text: string): ParsedGoal {
   const status = /^Status:\s*(\S+)/im.exec(text)?.[1].replace(/[*_`]/g, "").toLowerCase();
   const criteria = [...text.matchAll(/^\s*-\s*\[( |x|X)\]\s+(.*)$/gm)];
   const open = criteria
@@ -49,14 +62,14 @@ export function parseGoal(text) {
   return { status, open };
 }
 
-export function normalizeGoalPath(resolvedPath) {
+export function normalizeGoalPath(resolvedPath: string): string {
   // Preserve the leaf so O_NOFOLLOW still rejects a symlink swapped in after lstat.
   try { return join(realpathSync(dirname(resolvedPath)), basename(resolvedPath)); }
   catch { return resolvedPath; }
 }
 
-function goalPathsWritten(entries, cwd) {
-  const succeeded = new Set();
+function goalPathsWritten(entries: TranscriptEntry[], cwd: string): string[] {
+  const succeeded = new Set<string>();
   for (const entry of entries) {
     if (entry?.type !== "user" || entry.isSidechain === true || !Array.isArray(entry.message?.content)) continue;
     for (const block of entry.message.content) {
@@ -65,13 +78,14 @@ function goalPathsWritten(entries, cwd) {
       }
     }
   }
-  const paths = new Set();
+  const paths = new Set<string>();
   for (const entry of entries) {
     if (entry?.type !== "assistant" || entry.isSidechain === true || !Array.isArray(entry.message?.content)) continue;
     for (const block of entry.message.content) {
-      if (block?.type !== "tool_use" || !["Write", "Edit", "MultiEdit"].includes(block.name)) continue;
-      if (!succeeded.has(block.id) || typeof block.input?.file_path !== "string") continue;
-      let path = resolve(cwd, block.input.file_path);
+      if (block?.type !== "tool_use" || typeof block.name !== "string" || !["Write", "Edit", "MultiEdit"].includes(block.name)) continue;
+      const filePath = block.input?.file_path;
+      if (block.id === undefined || !succeeded.has(block.id) || typeof filePath !== "string") continue;
+      let path = resolve(cwd, filePath);
       if (/[\r\n]/.test(path) || !/(^|\/)\.claude\/omo\/goal\/[^/]+\.md$/.test(path)) continue;
       try { if (lstatSync(path).isSymbolicLink()) continue; } catch { /* Missing paths keep the current behavior. */ }
       path = normalizeGoalPath(path);
@@ -81,11 +95,11 @@ function goalPathsWritten(entries, cwd) {
   return [...paths];
 }
 
-function escapeMarkers(text) {
+function escapeMarkers(text: string): string {
   return text.replaceAll("[OMO ", "［OMO ");
 }
 
-function feedbackCount(entries, path) {
+function feedbackCount(entries: TranscriptEntry[], path: string): number {
   let attachments = 0;
   let metas = 0;
   for (const entry of entries) {
@@ -93,7 +107,7 @@ function feedbackCount(entries, path) {
     const error = entry.attachment?.blockingError;
     const text = entry.type === "attachment"
       ? (typeof error === "string" ? error : error?.blockingError)
-      : entry.message.content;
+      : entry.message?.content;
     if (typeof text !== "string" || !text.split(/\r?\n/).includes(escapeMarkers(path))) continue;
     if (entry.type === "attachment") attachments += 1;
     else metas += 1;
@@ -102,7 +116,7 @@ function feedbackCount(entries, path) {
   return Math.max(attachments, metas);
 }
 
-function buildReason(goals) {
+function buildReason(goals: { path: string; open: string[] }[]): string {
   const files = goals.map(({ path, open }) => [
     escapeMarkers(path),
     ...open.slice(0, 10).map((line) => escapeMarkers(line.replace(/[\r\n]/g, "").trim())),
@@ -119,19 +133,25 @@ function buildReason(goals) {
 }
 
 export function run(
-  input,
-  { env = process.env, loadTranscript = readTranscript, readGoal = readGoalFile, codexInFlight = codexRunInFlight } = {},
-) {
+  input: unknown,
+  {
+    env = process.env,
+    loadTranscript = readTranscript,
+    readGoal = readGoalFile,
+    codexInFlight = codexRunInFlight,
+  }: GoalGateDeps = {},
+): string {
   try {
     if (input === null || typeof input !== "object") return "";
-    if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
-    if (input.stop_hook_active === true || typeof input.transcript_path !== "string") return "";
+    const stop: StopInput = input;
+    if (stop.hook_event_name !== undefined && stop.hook_event_name !== "Stop") return "";
+    if (stop.stop_hook_active === true || typeof stop.transcript_path !== "string") return "";
     if (/^(off|0|false)$/i.test(env.OMO_GOAL_GATE ?? "")) return "";
-    const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
-    const entries = loadTranscript(input.transcript_path);
-    const parsedMax = Number.parseInt(env.OMO_GOAL_GATE_MAX_BLOCKS, 10);
+    const cwd = typeof stop.cwd === "string" ? stop.cwd : process.cwd();
+    const entries = loadTranscript(stop.transcript_path);
+    const parsedMax = Number.parseInt(env.OMO_GOAL_GATE_MAX_BLOCKS ?? "", 10);
     const max = Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 5;
-    const goals = [];
+    const goals: { path: string; open: string[] }[] = [];
     for (const path of goalPathsWritten(entries, cwd)) {
       const text = readGoal(path);
       if (typeof text !== "string") continue;

@@ -3,13 +3,15 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { run, parseGoal, readGoalFile, normalizeGoalPath } from "./goal-gate.mjs";
+import { run, parseGoal, readGoalFile, normalizeGoalPath } from "./goal-gate.ts";
+import type { GoalGateDeps } from "./goal-gate.ts";
+import type { TranscriptEntry } from "./review-gate.ts";
 
 const path = "/repo/.claude/omo/goal/task.md";
 const relativePath = ".claude/omo/goal/task.md";
 const open = "Status: active\n- [ ] G1: tests pass — verify: `node --test`";
 let nextToolId = 0;
-const use = (name = "Write", file_path = path, extra = {}, id = `use-${++nextToolId}`) => ({
+const use = (name = "Write", file_path = path, extra: Record<string, unknown> = {}, id = `use-${++nextToolId}`) => ({
   type: "assistant",
   message: { content: [{ type: "tool_use", id, name, input: { file_path, ...extra } }] },
 });
@@ -17,17 +19,22 @@ const feedback = () => ({
   type: "user", isMeta: true, message: { content: `[OMO GOAL GATE]\n${path}` },
 });
 const input = { hook_event_name: "Stop", transcript_path: "/t", cwd: "/repo" };
-const check = (entries = [use()], text = open, extra = {}, options = {}) => run(
+const check = (
+  entries: TranscriptEntry[] = [use()],
+  text: string | null = open,
+  extra: Record<string, unknown> = {},
+  options: GoalGateDeps = {},
+): string => run(
   { ...input, ...extra },
   { env: {}, loadTranscript: () => successfulWrites(entries), readGoal: () => text, codexInFlight: () => false, ...options },
 );
 
 // Most fixtures model completed writes; result-state regressions below call run directly.
-function successfulWrites(entries) {
+function successfulWrites(entries: TranscriptEntry[]): TranscriptEntry[] {
   return entries.flatMap((entry) => {
     if (entry?.type !== "assistant" || !Array.isArray(entry.message?.content)) return [entry];
     const results = entry.message.content
-      .filter((block) => block?.type === "tool_use" && ["Write", "Edit", "MultiEdit"].includes(block.name))
+      .filter((block) => block?.type === "tool_use" && typeof block.name === "string" && ["Write", "Edit", "MultiEdit"].includes(block.name))
       .map((block) => ({ type: "tool_result", tool_use_id: block.id, content: "Success" }));
     return results.length === 0 ? [entry] : [entry, {
       type: "user", isSidechain: entry.isSidechain, message: { content: results },
@@ -35,14 +42,14 @@ function successfulWrites(entries) {
   });
 }
 
-function blockPair(reason) {
+function blockPair(reason: string) {
   return [
     { type: "user", isMeta: true, message: { content: "Stop hook feedback:\n" + reason } },
     {
       type: "attachment",
       attachment: {
         type: "hook_blocking_error", hookName: "Stop", hookEvent: "Stop",
-        blockingError: { blockingError: reason, command: "node goal-gate.mjs" },
+        blockingError: { blockingError: reason, command: "node goal-gate.ts" },
       },
     },
   ];
@@ -133,7 +140,7 @@ test("unreadable goal passes", () => assert.equal(check(undefined, null), ""));
 
 test("only open goal is listed", () => {
   const out = check([use(), use("Edit", "/repo/.claude/omo/goal/done.md")], undefined, {}, {
-    readGoal: (p) => p === path ? open : "Status: done",
+    readGoal: (p: string) => p === path ? open : "Status: done",
   });
   assert.match(out, /task.md/);
   assert.doesNotMatch(out, /done.md/);
@@ -144,9 +151,9 @@ test("non goal path passes", () => {
 });
 
 test("relative paths resolve against cwd", () => {
-  let read;
+  let read: string | undefined;
   check([use("MultiEdit", relativePath)], undefined, {}, {
-    readGoal: (p) => { read = p; return open; },
+    readGoal: (p: string) => { read = p; return open; },
   });
   assert.equal(read, path);
 });
@@ -174,8 +181,8 @@ test("goal reader limits real files to 64 KiB", () => {
     const file = join(dir, ".claude/omo/goal/task.md");
     writeFileSync(file, "Status: active\n" + "a".repeat(65536) + "\n- [x] done evidence: ok");
     const text = readGoalFile(file);
-    assert.ok(Buffer.byteLength(text) <= 65536);
-    assert.doesNotMatch(text, /evidence: ok/);
+    assert.ok(Buffer.byteLength(text!) <= 65536);
+    assert.doesNotMatch(text!, /evidence: ok/);
     assert.ok(check([use("Write", file)], undefined, {}, { readGoal: readGoalFile }));
     assert.equal(readGoalFile(join(dir, "missing.md")), null);
     assert.equal(readGoalFile(dir), null);
@@ -312,7 +319,7 @@ for (const resultState of ["error", "success", "missing"]) {
   test(`goal writes with ${resultState} results ${resultState === "success" ? "block" : "pass"}`, () => {
     const write = use();
     const id = write.message.content[0].id;
-    const entries = [write];
+    const entries: TranscriptEntry[] = [write];
     if (resultState !== "missing") entries.push({ type: "user", message: { content: [{
       type: "tool_result", tool_use_id: id, is_error: resultState === "error", content: "result",
     }] } });

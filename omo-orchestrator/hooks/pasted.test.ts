@@ -1,14 +1,14 @@
-// Run: node --test omo-orchestrator/hooks/pasted.test.mjs
+// Run: node --test omo-orchestrator/hooks/pasted.test.ts
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { buildPlanContext, handsOverIssue, handsOverReviewComments, recordTurnStart, run, wantsChange, wantsPlan, wantsReview } from "./preflight.mjs";
-import { loadSnapshot } from "./turn-snapshot.mjs";
-import { detectKeyword, stripPasted } from "./ulw-keyword.mjs";
+import { buildPlanContext, handsOverIssue, handsOverReviewComments, recordTurnStart, run, wantsChange, wantsPlan, wantsReview } from "./preflight.ts";
+import { loadSnapshot } from "./turn-snapshot.ts";
+import { detectKeyword, stripPasted } from "./ulw-keyword.ts";
 
-const paste = (body) => `<pasted_content id="ae31">\n${body}\n</pasted_content id="ae31">`;
+const paste = (body: string) => `<pasted_content id="ae31">\n${body}\n</pasted_content id="ae31">`;
 const noRecord = { env: {}, record: () => {} };
 
 test("pasted text does not route a prompt to review, change, or ulw", () => {
@@ -117,7 +117,7 @@ test("an issue link inside pasted text or a PR link does not route to the issue 
 });
 
 test("route order: review thread beats an issue link, and an issue link beats a change verb", () => {
-  const route = (prompt) => run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
+  const route = (prompt: string) => run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord);
   assert.match(route("https://github.com/o/r/issues/42 を修正して"), /omo-work-with-pr` with args `github-triage/);
   assert.doesNotMatch(route("`https://github.com/o/r/issues/42` とは別件、ログイン処理を修正して"), /github-triage/);
   assert.match(route("`https://github.com/o/r/issues/42` とは別件、ログイン処理を修正して"), /omo-plan/);

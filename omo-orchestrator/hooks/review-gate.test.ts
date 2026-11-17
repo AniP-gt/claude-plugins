@@ -1,16 +1,17 @@
-// Run: node --test omo-orchestrator/hooks/review-gate.test.mjs
+// Run: node --test omo-orchestrator/hooks/review-gate.test.ts
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { codexRunInFlight, minFiles, run } from "./review-gate.mjs";
-import { run as goalGate } from "./goal-gate.mjs";
+import { codexRunInFlight, minFiles, run } from "./review-gate.ts";
+import type { TranscriptEntry } from "./review-gate.ts";
+import { run as goalGate } from "./goal-gate.ts";
 
 const cwd = "/repo";
 const prompt = { type: "user", message: { content: "直して" } };
-const edit = (file) => ({
+const edit = (file: string) => ({
   type: "assistant",
   message: { content: [{ type: "tool_use", name: "Edit", input: { file_path: `${cwd}/${file}` } }] },
 });
@@ -22,7 +23,19 @@ const review = {
 const notification = { type: "user", origin: { kind: "task-notification" }, message: { content: "<task-notification>\n<status>completed</status>\n</task-notification>" } };
 const reply = { type: "assistant", message: { content: [{ type: "text", text: "ok" }] } };
 
-function gate(entries, changed = null, stopHookActive = false, reports = {}) {
+// The meta user message Claude Code records for a Stop hook's block.
+interface Feedback {
+  type: string;
+  isMeta: boolean;
+  message: { content: string };
+}
+
+function gate(
+  entries: TranscriptEntry[],
+  changed: string[] | null = null,
+  stopHookActive = false,
+  reports: Record<string, string> = {},
+): Feedback | null {
   const feedback = run(
     { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd, stop_hook_active: stopHookActive },
     { env: {}, loadTranscript: () => entries, changedFiles: () => changed, readReport: (path) => reports[path] ?? "" },
@@ -42,7 +55,7 @@ test("a background notification after the gate's feedback does not block the sam
   const entries = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(entries);
   assert.notEqual(feedback, null);
-  assert.equal(gate([...entries, feedback, reply, notification, reply]), null);
+  assert.equal(gate([...entries, feedback!, reply, notification, reply]), null);
 });
 
 test("an omo-oracle consult after the last edit is not a review", () => {
@@ -56,13 +69,13 @@ test("an omo-oracle consult after the last edit is not a review", () => {
 test("an edit after the gate's feedback re-arms the gate", () => {
   const entries = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(entries);
-  assert.notEqual(gate([...entries, feedback, reply, edit("c.js")]), null);
+  assert.notEqual(gate([...entries, feedback!, reply, edit("c.js")]), null);
 });
 
 test("feedback from an earlier turn does not cover a new turn", () => {
   const earlier = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(earlier);
-  assert.notEqual(gate([...earlier, feedback, reply, prompt, edit("c.js"), edit("d.js")]), null);
+  assert.notEqual(gate([...earlier, feedback!, reply, prompt, edit("c.js"), edit("d.js")]), null);
 });
 
 test("a `!` shell command after the gate's feedback does not start a new turn", () => {
@@ -73,28 +86,28 @@ test("a `!` shell command after the gate's feedback does not start a new turn", 
   assert.notEqual(feedback, null);
   const bashInput = { type: "user", message: { content: "<bash-input>git push</bash-input>" } };
   const bashOutput = { type: "user", message: { content: "<bash-stdout>main -> main</bash-stdout><bash-stderr></bash-stderr>" } };
-  assert.equal(gate([...entries, feedback, reply, bashInput, bashOutput, reply], fromGit), null);
+  assert.equal(gate([...entries, feedback!, reply, bashInput, bashOutput, reply], fromGit), null);
 });
 
 test("a prompt that mixes the user's words with a shell block still starts a new turn", () => {
   const entries = [prompt, edit("a.js"), edit("b.js")];
   const feedback = gate(entries);
   const mixed = { type: "user", message: { content: "これも直して <bash-input>ls</bash-input>" } };
-  assert.notEqual(gate([...entries, feedback, reply, mixed, edit("c.js"), edit("d.js")]), null);
+  assert.notEqual(gate([...entries, feedback!, reply, mixed, edit("c.js"), edit("d.js")]), null);
 });
 
-const tool = (name, input, id = `${name}-1`) => ({ type: "assistant", message: { content: [{ type: "tool_use", id, name, input }] } });
-const result = (id, text) => ({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text }] }] } });
+const tool = (name: string, input: Record<string, unknown>, id = `${name}-1`) => ({ type: "assistant", message: { content: [{ type: "tool_use", id, name, input }] } });
+const result = (id: string, text: string) => ({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text }] }] } });
 const omoReview = tool("Skill", { skill: "omo-orchestrator:omo-review" });
-const isCodexBlock = (feedback) => feedback !== null && feedback.message.content.includes("[OMO CODEX GATE]");
+const isCodexBlock = (feedback: Feedback | null) => feedback !== null && feedback.message.content.includes("[OMO CODEX GATE]");
 
 test("blocks when omo-review ran with no Codex lane afterwards", () => {
   assert.ok(isCodexBlock(gate([prompt, omoReview, reply])));
 });
 
-const asyncLaunch = (id, agentId) =>
+const asyncLaunch = (id: string, agentId: string) =>
   result(id, `Async agent launched successfully.\nagentId: ${agentId} (internal ID)\nThe agent is working in the background.`);
-const taskDone = (taskId, text) => ({
+const taskDone = (taskId: string, text: string) => ({
   type: "user",
   message: { content: `<task-notification>\n<task-id>${taskId}</task-id>\n<status>completed</status>\n<result>${text}</result>\n</task-notification>` },
 });
@@ -234,14 +247,14 @@ test("the follow-up stop with own Codex feedback passes", () => {
   const entries = [prompt, omoReview, reply];
   const feedback = gate(entries);
   assert.ok(isCodexBlock(feedback));
-  assert.equal(gate([...entries, feedback, reply], null, true), null);
+  assert.equal(gate([...entries, feedback!, reply], null, true), null);
 });
 
 test("a background notification after the Codex feedback does not ask again", () => {
   const entries = [prompt, omoReview, reply];
   const feedback = gate(entries);
   assert.ok(isCodexBlock(feedback));
-  assert.equal(gate([...entries, feedback, reply, notification, reply]), null);
+  assert.equal(gate([...entries, feedback!, reply, notification, reply]), null);
 });
 
 test("Codex feedback stored as a hook_blocking_error attachment also counts", () => {
@@ -255,7 +268,7 @@ test("Codex feedback stored as a hook_blocking_error attachment also counts", ()
 test("an omo-review call after the Codex feedback re-arms the check", () => {
   const entries = [prompt, omoReview, reply];
   const feedback = gate(entries);
-  assert.ok(isCodexBlock(gate([...entries, feedback, reply, tool("Skill", { skill: "omo-orchestrator:omo-review" }, "Skill-2"), reply])));
+  assert.ok(isCodexBlock(gate([...entries, feedback!, reply, tool("Skill", { skill: "omo-orchestrator:omo-review" }, "Skill-2"), reply])));
 });
 
 test("OMO_CODEX_GATE=off disables the Codex check", () => {
@@ -284,11 +297,11 @@ test("a review report written after a review skill does not re-arm the gate", ()
 
 test("the gate's reason does not offer a docs-only exit", () => {
   const feedback = gate([prompt, edit("README.md")]);
-  assert.doesNotMatch(feedback.message.content, /文言・ドキュメント・設定値だけ/);
-  assert.match(feedback.message.content, /ドキュメントやコメントの説明は挙動の主張/);
+  assert.doesNotMatch(feedback!.message.content, /文言・ドキュメント・設定値だけ/);
+  assert.match(feedback!.message.content, /ドキュメントやコメントの説明は挙動の主張/);
 });
 
-function gateAt(dir, entries, changed) {
+function gateAt(dir: string, entries: TranscriptEntry[], changed: string[] | null): string {
   return run(
     { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd: dir },
     { env: {}, loadTranscript: () => entries, changedFiles: () => changed },
@@ -318,12 +331,12 @@ test("a repository that lives under a docs/reviews directory still gates its own
 
 // A Claude controller writes <git root>/.claude/omo/codex/IN_FLIGHT while a Codex run is in flight in another tab.
 const HOUR_MS = 60 * 60 * 1000;
-const repos = [];
+const repos: string[] = [];
 after(() => {
   for (const dir of repos) rmSync(dir, { recursive: true, force: true });
 });
 
-function repoWithMarker(ageHours) {
+function repoWithMarker(ageHours: number | null): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "review-gate-")));
   repos.push(dir);
   execFileSync("git", ["init", "-q"], { cwd: dir });
@@ -337,7 +350,7 @@ function repoWithMarker(ageHours) {
   return dir;
 }
 
-function gateInRepo(dir, entries) {
+function gateInRepo(dir: string, entries: TranscriptEntry[]): string {
   const edited = { type: "assistant", message: { content: [{ type: "tool_use", name: "Edit", input: { file_path: `${dir}/a.js` } }] } };
   return run(
     { hook_event_name: "Stop", transcript_path: "t.jsonl", cwd: dir },
@@ -415,7 +428,7 @@ test("own review feedback allows the follow-up active stop after another edit", 
   const entries = [prompt, edit("a.js")];
   const feedback = gate(entries);
   assert.notEqual(feedback, null);
-  assert.equal(gate([...entries, feedback, edit("b.js")], null, true), null);
+  assert.equal(gate([...entries, feedback!, edit("b.js")], null, true), null);
 });
 
 test("goal feedback does not bypass the Codex lane on an active stop", () => {
@@ -443,25 +456,25 @@ test("a goal chain checks once and then passes even after another edit", () => {
   const entries = [prompt, goalFeedback, edit("a.js")];
   const feedback = gate(entries, null, true);
   assert.notEqual(feedback, null);
-  assert.equal(gate([...entries, feedback], null, true), null);
-  assert.equal(gate([...entries, feedback, edit("b.js")], null, true), null);
+  assert.equal(gate([...entries, feedback!], null, true), null);
+  assert.equal(gate([...entries, feedback!, edit("b.js")], null, true), null);
 });
 
 test("a later goal block rearms the check after earlier own feedback", () => {
   const entries = [prompt, edit("a.js")];
   const own = gate(entries);
   assert.notEqual(own, null);
-  const later = [...entries, own, reply, goalFeedback, edit("b.js")];
+  const later = [...entries, own!, reply, goalFeedback, edit("b.js")];
   const feedback = gate(later, null, true);
   assert.notEqual(feedback, null);
-  assert.equal(gate([...later, feedback], null, true), null);
+  assert.equal(gate([...later, feedback!], null, true), null);
 });
 
 test("attachment goal feedback triggers the extra check", () => {
   const attachment = {
     type: "attachment",
     attachment: { type: "hook_blocking_error", hookName: "Stop", hookEvent: "Stop",
-      blockingError: { blockingError: "[OMO GOAL GATE] pending", command: "node goal-gate.mjs" } },
+      blockingError: { blockingError: "[OMO GOAL GATE] pending", command: "node goal-gate.ts" } },
   };
   assert.notEqual(gate([prompt, attachment, edit("a.js")], null, true), null);
 });
@@ -472,10 +485,10 @@ test("combined same-Stop feedback still checks later edits once", () => {
   const entries = [prompt, combined, edit("a.js")];
   const feedback = gate(entries, null, true);
   assert.notEqual(feedback, null);
-  assert.equal(gate([...entries, feedback], null, true), null);
+  assert.equal(gate([...entries, feedback!], null, true), null);
 });
 
-function goalFeedbackWithCriterion(marker) {
+function goalFeedbackWithCriterion(marker: string) {
   const goalPath = `${cwd}/.claude/omo/goal/marker.md`;
   const write = { type: "assistant", message: { content: [{ type: "tool_use", id: "goal-write", name: "Write",
     input: { file_path: goalPath } }] } };
@@ -505,11 +518,11 @@ test("a Codex marker echoed from a goal criterion does not clear the Codex lane 
   assert.ok(isCodexBlock(gate([prompt, omoReview, reply, feedback])));
 });
 
-function pairedGateFeedback(marker, reason = `${marker} pending`) {
+function pairedGateFeedback(marker: string, reason: string = `${marker} pending`) {
   return [
     { type: "user", isMeta: true, message: { content: `Stop hook feedback:\n${reason}` } },
     { type: "attachment", attachment: { type: "hook_blocking_error", hookName: "Stop", hookEvent: "Stop",
-      blockingError: { blockingError: reason, command: "node gate.mjs" } } },
+      blockingError: { blockingError: reason, command: "node gate.ts" } } },
   ];
 }
 
@@ -540,8 +553,8 @@ for (const marker of ["[OMO REVIEW GATE]", "[OMO CODEX GATE]"]) {
       const entries = [prompt, edit("a.js"), ...records, reply, edit("b.js")];
       const feedback = gate(entries, null, true);
       assert.notEqual(feedback, null);
-      assert.match(feedback.message.content, /\[OMO REVIEW GATE\]/);
-      const reason = feedback.message.content.slice("Stop hook feedback:\n".length);
+      assert.match(feedback!.message.content, /\[OMO REVIEW GATE\]/);
+      const reason = feedback!.message.content.slice("Stop hook feedback:\n".length);
       const laterPair = pairedGateFeedback("[OMO REVIEW GATE]", reason);
       assert.equal(gate([...entries, ...laterPair], null, true), null);
     });

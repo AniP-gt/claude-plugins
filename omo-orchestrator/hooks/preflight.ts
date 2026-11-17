@@ -6,14 +6,36 @@
 // on an existing PR, ask for the follow-up steps (review, reply drafts, PR body) that a fix there skips.
 // Change requests and GitHub issue links are sent to omo-plan before the first edit. A prompt that asks for
 // a plan or a design is sent to omo-plan with the consultant and planner agents, which a model skips on its own.
-// ulw prompts are left to ulw-keyword.mjs, which loads a fuller workflow.
-// Every prompt also records a git snapshot that review-gate.mjs compares against when Claude stops.
+// ulw prompts are left to ulw-keyword.ts, which loads a fuller workflow.
+// Every prompt also records a git snapshot that review-gate.ts compares against when Claude stops.
 import { fileURLToPath } from "node:url";
-import { saveSnapshot, takeSnapshot } from "./turn-snapshot.mjs";
-import { detectKeyword, stripInjected, userText } from "./ulw-keyword.mjs";
+import { saveSnapshot, takeSnapshot } from "./turn-snapshot.ts";
+import { detectKeyword, stripInjected, userText } from "./ulw-keyword.ts";
+
+type Env = NodeJS.ProcessEnv;
+
+export interface TurnStartInput {
+  prompt: string;
+  session_id?: unknown;
+  cwd?: unknown;
+  [key: string]: unknown;
+}
+
+export interface PreflightInput {
+  prompt?: unknown;
+  hook_event_name?: unknown;
+  session_id?: unknown;
+  cwd?: unknown;
+  [key: string]: unknown;
+}
+
+interface RunOptions {
+  env?: Env;
+  record?: (input: TurnStartInput, env: Env) => void;
+}
 
 const MARKER = "<omo-preflight>";
-const IMPACT_SCRIPT = fileURLToPath(new URL("../scripts/impact.mjs", import.meta.url));
+const IMPACT_SCRIPT = fileURLToPath(new URL("../scripts/impact.ts", import.meta.url));
 const B = "(?<![A-Za-z0-9_])";
 const E = "(?![A-Za-z0-9_])";
 const CHANGE_PATTERNS = [
@@ -50,11 +72,11 @@ const NAMED_REVIEWER_PATTERN = /review-pr|code-review|self-review|omo-review|sec
 // pasted text too: review tools hand over the comments to address as a paste.
 const REVIEW_THREAD_PATTERN = /\/pull\/\d+#(?:discussion_r|pullrequestreview-)\d+|(?<![A-Za-z0-9_])PRRT_[A-Za-z0-9_-]+/;
 
-export function handsOverReviewComments(prompt) {
+export function handsOverReviewComments(prompt: string): boolean {
   return REVIEW_THREAD_PATTERN.test(stripInjected(prompt));
 }
 
-export function wantsReview(prompt) {
+export function wantsReview(prompt: string): boolean {
   const text = userText(prompt);
   if (text.trimStart().startsWith("/") || NAMED_REVIEWER_PATTERN.test(text)) return false;
   return REVIEW_PATTERNS.some((pattern) => pattern.test(text));
@@ -64,23 +86,23 @@ export function wantsReview(prompt) {
 // document that mentions an issue is not a request to work on it.
 const ISSUE_URL_PATTERN = /github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+/;
 
-export function handsOverIssue(prompt) {
+export function handsOverIssue(prompt: string): boolean {
   return ISSUE_URL_PATTERN.test(userText(prompt));
 }
 
-export function wantsPlan(prompt) {
+export function wantsPlan(prompt: string): boolean {
   const text = userText(prompt);
   if (text.trimStart().startsWith("/")) return false;
   return PLAN_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-export function asksForPlan(prompt) {
+export function asksForPlan(prompt: string): boolean {
   const text = userText(prompt);
   if (text.trimStart().startsWith("/")) return false;
   return PLAN_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-export function wantsChange(prompt) {
+export function wantsChange(prompt: string): boolean {
   const text = userText(prompt);
   return CHANGE_PATTERNS.some((pattern) => pattern.test(text));
 }
@@ -97,7 +119,7 @@ const CHANGE_CHECKLIST = [
   "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
 ];
 
-export function buildContext({ withPlanAgents = false } = {}) {
+export function buildContext({ withPlanAgents = false } = {}): string {
   return [
     MARKER,
     "This prompt may ask for a code change. If it does not, ignore this block.",
@@ -127,7 +149,7 @@ const PLAN_AGENTS = [
   "`omo-planner`, then `omo-plan-reviewer`.",
 ];
 
-export function buildPlanContext({ withChecklist = false } = {}) {
+export function buildPlanContext({ withChecklist = false } = {}): string {
   return [
     MARKER,
     "This prompt asks for a plan or a design. If it only asks about an existing one, ignore this block.",
@@ -144,7 +166,7 @@ export function buildPlanContext({ withChecklist = false } = {}) {
   ].join("\n");
 }
 
-export function buildIssueContext() {
+export function buildIssueContext(): string {
   return [
     MARKER,
     "This prompt hands over a GitHub issue to work on. If it does not, ignore this block.",
@@ -155,7 +177,7 @@ export function buildIssueContext() {
   ].join("\n");
 }
 
-export function buildReviewContext() {
+export function buildReviewContext(): string {
   return [
     MARKER,
     "This prompt asks for a review. If it does not, ignore this block.",
@@ -168,7 +190,7 @@ export function buildReviewContext() {
   ].join("\n");
 }
 
-export function buildFollowUpContext() {
+export function buildFollowUpContext(): string {
   return [
     MARKER,
     "This prompt hands over review comments on an existing PR. If it does not, ignore this block.",
@@ -180,7 +202,7 @@ export function buildFollowUpContext() {
   ].join("\n");
 }
 
-export function recordTurnStart(input, env = process.env) {
+export function recordTurnStart(input: TurnStartInput, env: Env = process.env): void {
   if (typeof input.session_id !== "string" || typeof input.cwd !== "string") return;
   // A task notification continues the current turn; resnapshotting would hide the turn's earlier edits.
   if (stripInjected(input.prompt).trim().length === 0) return;
@@ -188,14 +210,15 @@ export function recordTurnStart(input, env = process.env) {
   saveSnapshot(input.session_id, takeSnapshot(input.cwd), env);
 }
 
-export function run(input, { env = process.env, record = recordTurnStart } = {}) {
+export function run(input: PreflightInput | null | undefined, { env = process.env, record = recordTurnStart }: RunOptions = {}): string {
   if (typeof input !== "object" || input === null || typeof input.prompt !== "string") return "";
   if (input.hook_event_name !== undefined && input.hook_event_name !== "UserPromptSubmit") return "";
-  record(input, env);
+  // The guard above established that prompt is a string; TS does not narrow the containing object.
+  record(input as TurnStartInput, env);
   if (/^(off|0|false)$/i.test(env.OMO_PREFLIGHT ?? "")) return "";
   if (detectKeyword(input.prompt) !== null) return "";
   // A review request often says "do not fix" (修正はせず), so it is checked before the change verbs.
-  let context;
+  let context: string;
   if (handsOverReviewComments(input.prompt)) context = buildFollowUpContext();
   else if (wantsReview(input.prompt)) context = buildReviewContext();
   else if (handsOverIssue(input.prompt)) context = buildIssueContext();
@@ -209,7 +232,7 @@ export function run(input, { env = process.env, record = recordTurnStart } = {})
   return `${JSON.stringify(output)}\n`;
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -217,7 +240,7 @@ async function readStdin() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  let parsed;
+  let parsed: PreflightInput | undefined;
   try {
     parsed = JSON.parse(await readStdin());
   } catch {

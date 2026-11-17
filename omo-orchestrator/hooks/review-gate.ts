@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Stop hook: when this turn changed files (one or more by default) and nothing reviewed them after the last edit, block the
 // stop once and ask Claude for a review of hidden impact (risk map, undefined cases, validation).
-// Changed files come from the git snapshot preflight.mjs took at the prompt, so Bash and sub-agent edits
+// Changed files come from the git snapshot preflight.ts took at the prompt, so Bash and sub-agent edits
 // count; the transcript's Edit/Write calls are the fallback outside git.
 // A stop with stop_hook_active=true checks again after goal-gate feedback, even if both gates blocked the same Stop.
 // Only this hook's feedback from a later Stop (after a main-thread assistant entry) ends that re-check chain.
@@ -15,13 +15,54 @@
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { filesChangedSince, gitRoot, loadSnapshot } from "./turn-snapshot.mjs";
-import { stripInjected } from "./ulw-keyword.mjs";
+import { filesChangedSince, gitRoot, loadSnapshot } from "./turn-snapshot.ts";
+import { stripInjected } from "./ulw-keyword.ts";
+
+type Env = NodeJS.ProcessEnv;
+
+// One content block of a transcript message; tool_use, tool_result, and text blocks share this loose shape.
+export interface ContentBlock {
+  type?: string;
+  text?: string;
+  name?: string;
+  id?: string;
+  input?: Record<string, unknown>;
+  tool_use_id?: string;
+  is_error?: boolean;
+  content?: unknown;
+}
+
+// One parsed transcript line. Only the fields the gates read are listed.
+export interface TranscriptEntry {
+  type?: string;
+  isMeta?: boolean;
+  isSidechain?: boolean;
+  message?: { content?: string | ContentBlock[] };
+  attachment?: { type?: string; blockingError?: string | { blockingError?: unknown } };
+}
+
+// A tool_use block, or the { name: GATE_FEEDBACK } marker entry.
+export type ToolUse = ContentBlock;
+
+export interface TurnSummary {
+  files: string[];
+  delegatedEdit: boolean;
+  reviewed: boolean;
+}
+
+// The Stop hook payload fields the gates read; the payload is untrusted JSON.
+export interface StopInput {
+  hook_event_name?: unknown;
+  transcript_path?: unknown;
+  stop_hook_active?: unknown;
+  cwd?: unknown;
+  session_id?: unknown;
+}
 
 const MARKER = "[OMO REVIEW GATE]";
 export const GOAL_MARKER = "[OMO GOAL GATE]";
-const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
-const DELEGATE_TOOLS = new Set(["Agent", "Task"]);
+const EDIT_TOOLS = new Set<string | undefined>(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+const DELEGATE_TOOLS = new Set<string | undefined>(["Agent", "Task"]);
 // Sub-agents whose edits never appear in this transcript; one call counts as a change to unknown files.
 const EDITING_AGENT_PATTERN = /implementer|builder/i;
 const REVIEW_SKILL_PATTERN = /review/i;
@@ -36,7 +77,7 @@ const CODEX_IN_FLIGHT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 // True when a Codex run's marker file exists under the git root of cwd, with an mtime within the last 24 hours
 // (a future mtime is not trusted).
-export function codexRunInFlight(cwd, now = Date.now()) {
+export function codexRunInFlight(cwd: string | undefined, now: number = Date.now()): boolean {
   if (cwd === undefined) return false;
   const root = gitRoot(cwd);
   if (root === null) return false;
@@ -49,7 +90,7 @@ export function codexRunInFlight(cwd, now = Date.now()) {
   }
 }
 
-export function minFiles(env = process.env) {
+export function minFiles(env: Env = process.env): number {
   const value = Number.parseInt(env.OMO_REVIEW_GATE_MIN_FILES ?? "", 10);
   return Number.isInteger(value) && value > 0 ? value : 1;
 }
@@ -61,10 +102,10 @@ const BASH_MODE_PATTERN = /<(bash-input|bash-stdout|bash-stderr)>[\s\S]*?<\/\1>/
 
 // Task notifications, system reminders, and `!` shell commands arrive as user messages but continue the
 // same turn.
-function isRealUserPrompt(entry) {
+function isRealUserPrompt(entry: TranscriptEntry | null | undefined): boolean {
   if (entry?.type !== "user" || entry.isMeta === true || entry.isSidechain === true) return false;
   const content = entry.message?.content;
-  let text;
+  let text: string;
   if (typeof content === "string") text = content;
   else if (Array.isArray(content) && !content.some((block) => block?.type === "tool_result")) {
     text = content.map((block) => (block?.type === "text" ? block.text : "")).join("\n");
@@ -76,7 +117,7 @@ function isRealUserPrompt(entry) {
 export const GATE_FEEDBACK = "omo-review-gate-feedback";
 
 // Stop feedback may be stored as a meta user message or as a hook_blocking_error attachment.
-export function isGateFeedback(entry, marker = MARKER) {
+export function isGateFeedback(entry: TranscriptEntry | null | undefined, marker: string = MARKER): boolean {
   if (entry?.isSidechain === true) return false;
   if (entry?.type === "attachment" && entry.attachment?.type === "hook_blocking_error") {
     return JSON.stringify(entry.attachment.blockingError ?? "").includes(marker);
@@ -87,16 +128,16 @@ export function isGateFeedback(entry, marker = MARKER) {
 }
 
 // Index of the first entry after the last real user prompt.
-function turnStart(entries) {
+function turnStart(entries: TranscriptEntry[]): number {
   for (let i = entries.length - 1; i >= 0; i -= 1) if (isRealUserPrompt(entries[i])) return i + 1;
   return 0;
 }
 
 // Returns the tool_use blocks the main thread issued since the last real user prompt, with a
 // { name: GATE_FEEDBACK } entry wherever the gate already blocked a stop.
-export function currentTurnToolUses(entries) {
+export function currentTurnToolUses(entries: TranscriptEntry[]): ToolUse[] {
   const start = turnStart(entries);
-  const uses = [];
+  const uses: ToolUse[] = [];
   for (const entry of entries.slice(start)) {
     if (isGateFeedback(entry)) {
       uses.push({ name: GATE_FEEDBACK });
@@ -112,8 +153,8 @@ export function currentTurnToolUses(entries) {
 
 // Edits seen in the transcript, whether a sub-agent may have edited, and whether a review ran after the
 // last edit. A review that an edit follows no longer covers the final state.
-export function summarizeTurn(uses, cwd) {
-  const files = new Set();
+export function summarizeTurn(uses: ToolUse[], cwd: string | undefined): TurnSummary {
+  const files = new Set<string>();
   let delegatedEdit = false;
   let reviewed = false;
   for (const use of uses) {
@@ -142,7 +183,7 @@ export function summarizeTurn(uses, cwd) {
 }
 
 // Scratch files outside the working tree and the omo ledger are not part of the change under review.
-function isReviewable(absolute, cwd) {
+function isReviewable(absolute: string, cwd: string | undefined): boolean {
   const shown = inside(absolute, cwd);
   if (shown === null) return false;
   // A session started in docs/ shows reports as reviews/self/x.md, so the last two cwd segments are
@@ -153,7 +194,7 @@ function isReviewable(absolute, cwd) {
 
 // Path relative to cwd, or null when it lies outside. Git reports symlink-resolved paths (/private/tmp
 // for /tmp on macOS), so the resolved cwd is tried as well.
-function inside(absolute, cwd) {
+function inside(absolute: string, cwd: string | undefined): string | null {
   if (!cwd) return absolute;
   for (const base of [cwd, resolvedCwd(cwd)]) {
     const shown = relative(base, absolute);
@@ -162,7 +203,7 @@ function inside(absolute, cwd) {
   return null;
 }
 
-function resolvedCwd(cwd) {
+function resolvedCwd(cwd: string): string {
   try {
     return realpathSync(cwd);
   } catch {
@@ -170,13 +211,13 @@ function resolvedCwd(cwd) {
   }
 }
 
-function display(absolute, cwd) {
+function display(absolute: string, cwd: string | undefined): string {
   return (inside(absolute, cwd) ?? absolute).replace(/[\r\n]+/g, " ");
 }
 
 const MAX_LISTED_FILES = 5;
 
-export function buildReason({ files, delegatedEdit }) {
+export function buildReason({ files, delegatedEdit }: { files: string[]; delegatedEdit: boolean }): string {
   const what = files.length > 0 ? `${files.length} ファイルを変更し` : "サブエージェントがファイルを変更し";
   const lines = [`${MARKER} ${what}、最後の編集のあとにレビューしていません。`];
   for (const file of files.slice(0, MAX_LISTED_FILES)) lines.push(`- ${file}`);
@@ -212,7 +253,7 @@ const CODEX_STATUS_PATTERN =
 const REPORT_PATH_PATTERN = /[^\s`'"()<>]*review[^\s`'"()<>]*\.md\b/gi;
 const MAX_REPORTS_READ = 3;
 
-export function readReportFile(path, cwd) {
+export function readReportFile(path: string, cwd: string | undefined): string {
   try {
     return readFileSync(isAbsolute(path) || !cwd ? path : resolve(cwd, path), "utf8");
   } catch {
@@ -221,26 +262,26 @@ export function readReportFile(path, cwd) {
 }
 
 // True when the sub-agent's result carries a Codex status line, or names a review report file that does.
-function hasCodexStatus(text, readReport) {
+function hasCodexStatus(text: string, readReport: (path: string) => string): boolean {
   if (CODEX_STATUS_PATTERN.test(text)) return true;
   const paths = [...new Set(text.match(REPORT_PATH_PATTERN) ?? [])].slice(0, MAX_REPORTS_READ);
   return paths.some((path) => CODEX_STATUS_PATTERN.test(readReport(path)));
 }
 
 // Comment lines mention commands without running them.
-function withoutComments(command) {
+function withoutComments(command: unknown): string {
   return String(command ?? "")
     .split("\n")
     .filter((line) => !line.trimStart().startsWith("#"))
     .join("\n");
 }
 
-function isLaneCodexCommand(command) {
+function isLaneCodexCommand(command: string): boolean {
   if (!CODEX_COMMAND_PATTERN.test(command)) return false;
   return !(CODEX_EXEC_PATTERN.test(command) && NON_LANE_EXEC_PATTERN.test(command));
 }
 
-function textOf(content) {
+function textOf(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content.map((block) => (typeof block?.text === "string" ? block.text : "")).join("\n");
@@ -253,7 +294,7 @@ const BACKGROUND_LAUNCH_PATTERNS = [
 ];
 const TASK_NOTIFICATION_PATTERN = /<task-notification>([\s\S]*?)<\/task-notification>/g;
 
-function backgroundTaskId(text) {
+function backgroundTaskId(text: string): string | null {
   for (const pattern of BACKGROUND_LAUNCH_PATTERNS) {
     const match = pattern.exec(text);
     if (match) return match[1];
@@ -263,32 +304,32 @@ function backgroundTaskId(text) {
 
 // Shared background launch/result/notification tracking; callers decide when a launch counts.
 function backgroundTaskTracker() {
-  const uses = new Map();
-  const running = new Map();
+  const uses = new Map<string | undefined, boolean>();
+  const running = new Map<string, boolean>();
   return {
     running,
-    use(block) {
+    use(block: ContentBlock): void {
       if (DELEGATE_TOOLS.has(block.name) || block.input?.run_in_background === true) {
         uses.set(block.id, DELEGATE_TOOLS.has(block.name));
       }
     },
-    result(block, enabled = true) {
+    result(block: ContentBlock, enabled = true): void {
       if (!enabled || !uses.has(block.tool_use_id)) return;
       const id = backgroundTaskId(textOf(block.content));
-      if (id !== null) running.set(id, uses.get(block.tool_use_id));
+      if (id !== null) running.set(id, uses.get(block.tool_use_id) as boolean);
     },
-    notifications(content, onComplete = () => {}) {
+    notifications(content: unknown, onComplete: (body: string, delegated: boolean) => void = () => {}): void {
       for (const [, body] of textOf(content).matchAll(TASK_NOTIFICATION_PATTERN)) {
         const id = /<task-id>\s*([\w-]+)\s*<\/task-id>/.exec(body)?.[1];
         if (id === undefined || !running.has(id)) continue;
-        onComplete(body, running.get(id));
+        onComplete(body, running.get(id) as boolean);
         running.delete(id);
       }
     },
   };
 }
 
-export function backgroundPending(entries) {
+export function backgroundPending(entries: TranscriptEntry[]): boolean {
   const tasks = backgroundTaskTracker();
   for (const entry of entries.slice(turnStart(entries))) {
     if (entry?.isSidechain === true) continue;
@@ -311,10 +352,10 @@ export function backgroundPending(entries) {
 // While background work launched after the invocation (a sub-agent running the review, or a background Bash
 // command) has not reported back, the turn ends only to wait: its notification continues the turn and triggers
 // a fresh stop. Launches are recognized only at the start of a tool result, so a report quoting them is not one.
-export function codexLaneMissing(entries, readReport = () => "") {
+export function codexLaneMissing(entries: TranscriptEntry[], readReport: (path: string) => string = () => ""): boolean {
   const start = turnStart(entries);
   let pending = start > 0 && OMO_REVIEW_COMMAND_PATTERN.test(textOf(entries[start - 1]?.message?.content));
-  const delegateIds = new Set();
+  const delegateIds = new Set<string | undefined>();
   const background = backgroundTaskTracker();
   const running = background.running;
   for (const entry of entries.slice(start)) {
@@ -349,7 +390,7 @@ export function codexLaneMissing(entries, readReport = () => "") {
   return pending && running.size === 0;
 }
 
-export function buildCodexReason() {
+export function buildCodexReason(): string {
   return [
     `${CODEX_MARKER} このターンで omo-review を実行しましたが、Codex レーンの実行が見当たりません。`,
     "",
@@ -360,23 +401,23 @@ export function buildCodexReason() {
   ].join("\n");
 }
 
-function block(reason) {
+function block(reason: string): string {
   return `${JSON.stringify({ decision: "block", reason })}\n`;
 }
 
-export function readTranscript(path) {
+export function readTranscript(path: string): TranscriptEntry[] {
   try {
     return readFileSync(path, "utf8")
       .split("\n")
       .filter((line) => line.trim().length > 0)
       .map((line) => {
         try {
-          return JSON.parse(line);
+          return JSON.parse(line) as TranscriptEntry | null;
         } catch {
           return null;
         }
       })
-      .filter((entry) => entry !== null);
+      .filter((entry): entry is TranscriptEntry => entry !== null);
   } catch {
     return [];
   }
@@ -384,7 +425,7 @@ export function readTranscript(path) {
 
 // Goal feedback always arms the check. Own feedback can disarm only after the assistant resumed,
 // so simultaneous blocks cannot hide later edits. Unknown or absent goal feedback remains fail-open.
-function goalChainNeedsCheck(entries) {
+function goalChainNeedsCheck(entries: TranscriptEntry[]): boolean {
   let pending = false;
   let assistantSinceGoal = false;
   for (const entry of entries.slice(turnStart(entries))) {
@@ -402,33 +443,48 @@ function goalChainNeedsCheck(entries) {
   return pending;
 }
 
+export interface RunDeps {
+  env?: Env;
+  loadTranscript?: (path: string) => TranscriptEntry[];
+  changedFiles?: (sessionId: unknown, env: Env, cwd: string | undefined) => string[] | null;
+  codexInFlight?: (cwd: string | undefined) => boolean;
+  readReport?: (path: string, cwd: string | undefined) => string;
+}
+
 export function run(
-  input,
+  input: unknown,
   {
     env = process.env,
     loadTranscript = readTranscript,
     changedFiles = gitChangedFiles,
     codexInFlight = codexRunInFlight,
     readReport = readReportFile,
-  } = {},
-) {
+  }: RunDeps = {},
+): string {
   if (typeof input !== "object" || input === null) return "";
-  if (input.hook_event_name !== undefined && input.hook_event_name !== "Stop") return "";
-  if (typeof input.transcript_path !== "string") return "";
-  const entries = loadTranscript(input.transcript_path);
-  if (input.stop_hook_active === true && !goalChainNeedsCheck(entries)) return "";
+  const stop: StopInput = input;
+  if (stop.hook_event_name !== undefined && stop.hook_event_name !== "Stop") return "";
+  if (typeof stop.transcript_path !== "string") return "";
+  const entries = loadTranscript(stop.transcript_path);
+  if (stop.stop_hook_active === true && !goalChainNeedsCheck(entries)) return "";
   if (!/^(off|0|false)$/i.test(env.OMO_REVIEW_GATE ?? "")) {
-    const reason = reviewReason(entries, input, env, changedFiles, codexInFlight);
+    const reason = reviewReason(entries, stop, env, changedFiles, codexInFlight);
     if (reason !== null) return block(reason);
   }
   if (!/^(off|0|false)$/i.test(env.OMO_CODEX_GATE ?? "")) {
-    const cwd = typeof input.cwd === "string" ? input.cwd : undefined;
+    const cwd = typeof stop.cwd === "string" ? stop.cwd : undefined;
     if (codexLaneMissing(entries, (path) => readReport(path, cwd))) return block(buildCodexReason());
   }
   return "";
 }
 
-function reviewReason(entries, input, env, changedFiles, codexInFlight) {
+function reviewReason(
+  entries: TranscriptEntry[],
+  input: StopInput,
+  env: Env,
+  changedFiles: NonNullable<RunDeps["changedFiles"]>,
+  codexInFlight: NonNullable<RunDeps["codexInFlight"]>,
+): string | null {
   const cwd = typeof input.cwd === "string" ? input.cwd : undefined;
   const turn = summarizeTurn(currentTurnToolUses(entries), cwd);
   if (turn.reviewed) return null;
@@ -444,14 +500,18 @@ function reviewReason(entries, input, env, changedFiles, codexInFlight) {
 }
 
 // Absolute paths the turn changed according to the git snapshot, or null when there is no snapshot.
-export function gitChangedFiles(sessionId, env = process.env, cwd = undefined) {
+export function gitChangedFiles(
+  sessionId: unknown,
+  env: Env = process.env,
+  cwd: string | undefined = undefined,
+): string[] | null {
   const snapshot = loadSnapshot(sessionId, env, cwd);
   if (snapshot === null) return null;
   const changed = filesChangedSince(snapshot);
   return changed === null ? null : changed.map((path) => join(snapshot.root, path));
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -459,7 +519,7 @@ async function readStdin() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(await readStdin());
   } catch {

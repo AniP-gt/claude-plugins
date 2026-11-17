@@ -1,9 +1,9 @@
-// Run: node --test omo-orchestrator/hooks/non-interactive-env.test.mjs
+// Run: node --test omo-orchestrator/hooks/non-interactive-env.test.ts
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { run } from "./non-interactive-env.mjs";
+import { run } from "./non-interactive-env.ts";
 
-const input = (command) => ({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
+const input = (command: unknown) => ({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
 
 test("direct interactive commands receive non-blocking guidance", () => {
   for (const command of ["vim file.txt", "less README.md", "git add -p", "git rebase -i HEAD~2", "git commit", "git --no-pager commit", "git rebase --continue"]) {

@@ -2,7 +2,7 @@
 name: omo-research
 description: "Read-only OMO-style research for codebase structure, existing patterns, library references, bug hypotheses, and evaluation integrity. Use before deciding or changing anything. Modes: ast-grep (syntax-shape search, codemods, YAML lint rules; rewrites under omo-implementer only), ultraresearch (exhaustive or saturation research, `ulw research`), tech-debt-audit (tech debt, code health), security-research (security review, exploitability, threat model), get-unpublished-changes (changes since last release, changelog), eval-integrity (trustworthiness of benchmarks, metrics, A/B tests, holdouts, LLM judges, user studies)."
 argument-hint: "[ast-grep|ultraresearch|tech-debt-audit|security-research|get-unpublished-changes|eval-integrity] [question]"
-allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" *), TodoWrite, Task
+allowed-tools: Read, Grep, Glob, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.ts" *), TodoWrite, Task
 user-invocable: true
 ---
 
@@ -44,7 +44,7 @@ When neither the Agent nor the Task tool is available, you are running inside a 
 
 ## Pick The Tool By Question
 
-- Relationship questions (who calls this, what breaks if it changes, which tests to run): start with `node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.mjs" --symbol <name>` or `--file <path>`. With no arguments it covers every changed file. It returns callers and tests in a few lines instead of a chain of Grep and Read results. Follow up with LSP references, `omo-research` mode `ast-grep`, or a semantic code search tool when names are overloaded or reached indirectly.
+- Relationship questions (who calls this, what breaks if it changes, which tests to run): start with `node "${CLAUDE_PLUGIN_ROOT}/scripts/impact.ts" --symbol <name>` or `--file <path>`. With no arguments it covers every changed file. It returns callers and tests in a few lines instead of a chain of Grep and Read results. Follow up with LSP references, `omo-research` mode `ast-grep`, or a semantic code search tool when names are overloaded or reached indirectly.
 - Literal questions (where a message, key, or config value appears): Grep. Index and graph tools match symbols, not arbitrary text, and miss these.
 - Everything a search returns stays in the conversation for the rest of the session. Run broad or verbose searches inside a sub-agent and bring back `path:line` and the conclusion, not the matched source.
 

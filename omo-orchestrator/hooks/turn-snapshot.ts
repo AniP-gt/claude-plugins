@@ -1,5 +1,5 @@
-// Git working-tree snapshot shared by preflight.mjs (taken when the user sends a prompt) and
-// review-gate.mjs (compared when Claude stops). Comparing the two finds every file the turn changed,
+// Git working-tree snapshot shared by preflight.ts (taken when the user sends a prompt) and
+// review-gate.ts (compared when Claude stops). Comparing the two finds every file the turn changed,
 // including edits made through Bash or by sub-agents, which never show up as Edit/Write calls.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -10,7 +10,15 @@ const GIT_TIMEOUT_MS = 2000;
 const DELETED = "deleted";
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/;
 
-function git(cwd, args, input) {
+export interface Snapshot {
+  root: string;
+  head: string;
+  hashes?: Record<string, string>;
+}
+
+type Env = NodeJS.ProcessEnv;
+
+function git(cwd: string | undefined, args: string[], input?: string): string {
   return execFileSync("git", args, {
     cwd,
     input,
@@ -21,14 +29,14 @@ function git(cwd, args, input) {
   });
 }
 
-function splitZ(output) {
-  return output.split("\0").filter((entry) => entry.length > 0);
+function splitZ(output: string): string[] {
+  return output.split("\0").filter((entry: string) => entry.length > 0);
 }
 
 // Blob hash of each path's current content in one git call; a path that no longer exists maps to DELETED.
-function hashPaths(cwd, paths) {
-  const hashes = {};
-  const present = [];
+function hashPaths(cwd: string, paths: string[]): Record<string, string> {
+  const hashes: Record<string, string> = {};
+  const present: string[] = [];
   for (const path of paths) {
     let isFile = false;
     try {
@@ -51,21 +59,21 @@ function hashPaths(cwd, paths) {
 }
 
 // Paths that differ from `base` (tracked changes, committed or not) plus untracked files.
-function changedSince(cwd, base) {
+function changedSince(cwd: string, base: string): string[] {
   const tracked = splitZ(git(cwd, ["diff", "--name-only", "-z", base, "--"]));
   const untracked = splitZ(git(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]));
   return [...new Set([...tracked, ...untracked])];
 }
 
-export function snapshotDir(env = process.env) {
+export function snapshotDir(env: Env = process.env): string {
   return join(env.OMO_SNAPSHOT_DIR ?? join(tmpdir(), "omo-orchestrator"), "turns");
 }
 
-function snapshotFile(sessionId, env) {
+function snapshotFile(sessionId: unknown, env: Env): string {
   return join(snapshotDir(env), `${String(sessionId).replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
 }
 
-export function gitRoot(cwd) {
+export function gitRoot(cwd: string | undefined): string | null {
   try {
     return git(cwd, ["rev-parse", "--show-toplevel"]).trim();
   } catch {
@@ -74,7 +82,7 @@ export function gitRoot(cwd) {
 }
 
 // Returns null outside a git work tree or when git fails; callers then fall back to the transcript.
-export function takeSnapshot(cwd) {
+export function takeSnapshot(cwd: string | undefined): Snapshot | null {
   try {
     const root = gitRoot(cwd);
     if (root === null) return null;
@@ -86,7 +94,7 @@ export function takeSnapshot(cwd) {
   }
 }
 
-export function saveSnapshot(sessionId, snapshot, env = process.env) {
+export function saveSnapshot(sessionId: unknown, snapshot: Snapshot | null, env: Env = process.env): void {
   if (!sessionId || snapshot === null) return;
   try {
     mkdirSync(snapshotDir(env), { recursive: true, mode: 0o700 });
@@ -99,7 +107,7 @@ export function saveSnapshot(sessionId, snapshot, env = process.env) {
 
 // On Linux tmpdir() is the shared /tmp, so another user could pre-create the directory and plant a
 // snapshot whose root or head steers git. Only a directory we own and nobody else can write is trusted.
-function ownedPrivateDir(dir) {
+function ownedPrivateDir(dir: string): boolean {
   try {
     const stat = statSync(dir);
     const uid = typeof process.getuid === "function" ? process.getuid() : stat.uid;
@@ -110,21 +118,21 @@ function ownedPrivateDir(dir) {
 }
 
 // The snapshot is used only for the repository the hook is running in now, at a commit-shaped HEAD.
-export function loadSnapshot(sessionId, env = process.env, cwd = undefined) {
+export function loadSnapshot(sessionId: unknown, env: Env = process.env, cwd: string | undefined = undefined): Snapshot | null {
   if (!sessionId || !ownedPrivateDir(snapshotDir(env))) return null;
   try {
-    const parsed = JSON.parse(readFileSync(snapshotFile(sessionId, env), "utf8"));
+    const parsed: Partial<Snapshot> | null = JSON.parse(readFileSync(snapshotFile(sessionId, env), "utf8"));
     if (typeof parsed?.root !== "string" || typeof parsed?.head !== "string") return null;
     if (!SHA_PATTERN.test(parsed.head)) return null;
     if (cwd !== undefined && gitRoot(cwd) !== parsed.root) return null;
-    return parsed;
+    return parsed as Snapshot;
   } catch {
     return null;
   }
 }
 
 // Files whose content differs from what they had when the snapshot was taken, relative to the repo root.
-export function filesChangedSince(snapshot) {
+export function filesChangedSince(snapshot: Snapshot): string[] | null {
   try {
     const before = snapshot.hashes ?? {};
     const candidates = new Set([...changedSince(snapshot.root, snapshot.head), ...Object.keys(before)]);

@@ -1,9 +1,9 @@
-// Run: node --test omo-orchestrator/hooks/load-skills-gate.test.mjs
+// Run: node --test omo-orchestrator/hooks/load-skills-gate.test.ts
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { implementerOnlySkills, mainOnlySkills, run } from "./load-skills-gate.mjs";
+import { implementerOnlySkills, mainOnlySkills, run } from "./load-skills-gate.ts";
 
 const CATALOG = [
   "| Skill | Who | When |",
@@ -18,13 +18,13 @@ const CATALOG = [
   "| `omo-frontend` | both | omo-implementer only: pages and components |",
 ].join("\n");
 
-const dispatch = (prompt, subagentType = "omo-orchestrator:omo-implementer", tool = "Agent") => ({
+const dispatch = (prompt: string, subagentType = "omo-orchestrator:omo-implementer", tool = "Agent") => ({
   hook_event_name: "PreToolUse",
   tool_name: tool,
   tool_input: { subagent_type: subagentType, prompt },
 });
-const gate = (input, env = {}) => run(input, { env, catalogText: CATALOG });
-const decision = (output) => JSON.parse(output).hookSpecificOutput;
+const gate = (input: unknown, env: NodeJS.ProcessEnv = {}) => run(input, { env, catalogText: CATALOG });
+const decision = (output: string) => JSON.parse(output).hookSpecificOutput;
 
 test("a gated worker dispatch without LOAD_SKILLS is denied with the catalog instructions", () => {
   const output = gate(dispatch("do x"));
@@ -75,7 +75,7 @@ test("a heading without a value, or with a non-list value, is denied", () => {
   assert.equal(decision(gate(dispatch("LOAD_SKILLS: omo-ast-grep"))).permissionDecision, "deny");
 });
 
-const readTemplate = (relativePath) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
+const readTemplate = (relativePath: string) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 
 test("LOAD_SKILLS lines as controllers write them pass: template note, list marker, number, emphasis, backticks, period", () => {
   for (const prompt of [
@@ -374,7 +374,7 @@ test("the main-only skills of the real catalog are exactly the eight workflows t
 
 // The real catalog permits research modes for read-only workers; restricted visual-QA/visualize parents require absolute-path Read instead of MODES.
 const realCatalog = readTemplate("../skills/omo-orchestrate/references/skill-catalog.md");
-const realGate = (input) => run(input, { env: {}, catalogText: realCatalog });
+const realGate = (input: unknown) => run(input, { env: {}, catalogText: realCatalog });
 
 test("a researcher may load omo-research and omo-remove-ai-slop, and name a research mode", () => {
   assert.equal(realGate(dispatch("LOAD_SKILLS: none\nMODES: omo-research/security-research", "omo-researcher")), "");
@@ -383,12 +383,13 @@ test("a researcher may load omo-research and omo-remove-ai-slop, and name a rese
 });
 
 test("a skill:mode or skill/mode in LOAD_SKILLS is checked by its parent skill", () => {
-  for (const [name, reason] of [
+  const cases: [string, RegExp][] = [
     ["omo-programming:debugging", /omo-implementer only/],
     ["omo-programming/debugging", /omo-implementer only/],
     ["omo-orchestrator:omo-programming:debugging", /omo-implementer only/],
     ["omo-review/review-work", /main-only skill/],
-  ]) {
+  ];
+  for (const [name, reason] of cases) {
     const hook = decision(gate(dispatch(`LOAD_SKILLS: [${name}]`, "omo-reviewer")));
     assert.equal(hook.permissionDecision, "deny", name);
     assert.match(hook.permissionDecisionReason, reason, name);
@@ -453,7 +454,7 @@ test("a MODES line is ignored when the gate is off or the agent is not gated", (
   assert.equal(run(dispatch(prompt), { env: {}, catalogText: undefined }), "");
 });
 
-const assertCatalogSkillsExist = (text) => {
+const assertCatalogSkillsExist = (text: string) => {
   const names = [...text.matchAll(/^\|\s*`(omo-[^`\s|]+)`\s*\|/gm)].map((match) => match[1]);
   assert.ok(names.length > 0, "no catalog skill rows parsed");
   for (const name of names) {

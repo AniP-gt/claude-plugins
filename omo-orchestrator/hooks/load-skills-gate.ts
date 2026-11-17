@@ -36,14 +36,22 @@ const MODES_LABEL_PATTERN = /^MODES(?![A-Za-z0-9_])/i;
 const MODES_COLON_PATTERN = /^[*_`]*\s*:[*_`\s]*/;
 const MODES_HEADING_PATTERN = /^MODES[*_`\s]*$/;
 
-const withoutPrefix = (name) => (name.startsWith(PLUGIN_PREFIX) ? name.slice(PLUGIN_PREFIX.length) : name);
-// A listed name matches the catalog case-insensitively, without a leading slash or the plugin prefix.
-const bareName = (name) => withoutPrefix(name.toLowerCase().replace(/^\/+/, ""));
-// A skill name ends at the first `/` or `:`; what follows is a mode (`skill/mode`, `skill:mode`), not part of the skill.
-const normalizeName = (name) => bareName(name).split(/[/:]/, 1)[0];
+// A LOAD_SKILLS label found in a prompt; value is undefined when the text after the label is not a readable value.
+type LoadSkillsFound = { line: string; value: string | undefined };
+type ModeEntry = { entry: string; parent: string };
+type RunOptions = { env?: NodeJS.ProcessEnv; catalogText?: string };
+// PreToolUse hook input as read from stdin; every field is checked at runtime before use.
+type HookInput = { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };
+type ToolInput = { subagent_type?: unknown; prompt?: unknown };
 
-export function mainOnlySkills(catalogText) {
-  const names = new Set();
+const withoutPrefix = (name: string): string => (name.startsWith(PLUGIN_PREFIX) ? name.slice(PLUGIN_PREFIX.length) : name);
+// A listed name matches the catalog case-insensitively, without a leading slash or the plugin prefix.
+const bareName = (name: string): string => withoutPrefix(name.toLowerCase().replace(/^\/+/, ""));
+// A skill name ends at the first `/` or `:`; what follows is a mode (`skill/mode`, `skill:mode`), not part of the skill.
+const normalizeName = (name: string): string => bareName(name).split(/[/:]/, 1)[0];
+
+export function mainOnlySkills(catalogText: string): Set<string> {
+  const names = new Set<string>();
   for (const line of catalogText.split("\n")) {
     const match = MAIN_ONLY_ROW.exec(line.trim());
     if (match) names.add(normalizeName(match[1]));
@@ -51,8 +59,8 @@ export function mainOnlySkills(catalogText) {
   return names;
 }
 
-export function implementerOnlySkills(catalogText) {
-  const names = new Set();
+export function implementerOnlySkills(catalogText: string): Set<string> {
+  const names = new Set<string>();
   for (const line of catalogText.split("\n")) {
     const match = SKILL_ROW.exec(line.trim());
     if (match && match[2].includes(IMPLEMENTER_ONLY_MARKER)) names.add(normalizeName(match[1]));
@@ -64,11 +72,11 @@ export function implementerOnlySkills(catalogText) {
 // `## 0. LOAD_SKILLS` heading whose value is on the next non-empty line (a label line read that way is not listed again).
 // Each entry is { line, value } where value is undefined when the text after the label is neither `none` nor `[..]`,
 // or is `none` followed by more skill names. Lines are matched one at a time with single-pass patterns.
-export function findAllLoadSkills(prompt) {
+export function findAllLoadSkills(prompt: string): LoadSkillsFound[] {
   const lines = prompt.split("\n").map((line) => line.trim());
-  const found = [];
+  const found: LoadSkillsFound[] = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const lead = LEAD_PATTERN.exec(lines[i])[0];
+    const lead = LEAD_PATTERN.exec(lines[i])![0];
     const rest = lines[i].slice(lead.length);
     if (!LABEL_PATTERN.test(rest)) continue;
     const labelLine = lines[i];
@@ -77,7 +85,7 @@ export function findAllLoadSkills(prompt) {
       let next = i + 1;
       while (next < lines.length && lines[next] === "") next += 1;
       const nextLine = lines[next] ?? "";
-      const nextRest = nextLine.slice(LEAD_PATTERN.exec(nextLine)[0].length);
+      const nextRest = nextLine.slice(LEAD_PATTERN.exec(nextLine)![0].length);
       // The next line may itself be the label line (`LOAD_SKILLS: [..]`); then its value follows its own label.
       if (LABEL_PATTERN.test(nextRest)) {
         valueText = nextRest.slice("LOAD_SKILLS".length).replace(AFTER_LABEL_PATTERN, "");
@@ -95,19 +103,19 @@ export function findAllLoadSkills(prompt) {
 }
 
 // The first LOAD_SKILLS label decides the answer; undefined when the prompt has none.
-export function findLoadSkills(prompt) {
+export function findLoadSkills(prompt: string): LoadSkillsFound | undefined {
   return findAllLoadSkills(prompt)[0];
 }
 
 // The accepted LOAD_SKILLS value of the prompt as a list of zero or one entries.
-export function loadSkillsValues(prompt) {
+export function loadSkillsValues(prompt: string): string[] {
   const found = findLoadSkills(prompt);
   return found?.value === undefined ? [] : [found.value];
 }
 
 // Names are split on commas, semicolons, and whitespace, so a list the controller writes without commas is still checked.
 // Markdown emphasis and quote characters around an item are stripped, so `**omo-plan**` is still read as omo-plan.
-function listItems(text) {
+function listItems(text: string): string[] {
   return text
     .split(/[\s,;]+/)
     .map((item) => bareName(item.trim().replace(/^[*_`'"]+/, "").replace(/[*_`'"]+$/, "")))
@@ -115,7 +123,7 @@ function listItems(text) {
 }
 
 // The skill of each LOAD_SKILLS item; a mode written after it (`omo-programming/debugging`) is cut off.
-function skillNames(value) {
+function skillNames(value: string): string[] {
   if (!value.startsWith("[")) return [];
   return listItems(value.slice(1, -1))
     .map(normalizeName)
@@ -125,15 +133,15 @@ function skillNames(value) {
 // Every `MODES:` entry in the prompt as { entry, parent }: `MODES: a/b, c/d` on one line (label case-insensitive, colon
 // required, same lead-in tolerance as LOAD_SKILLS), or a `## MODES` heading whose value is on the next non-empty line.
 // A MODES line asks a worker to load a mode of a skill, so its parent skill is held to the same Who rules as LOAD_SKILLS.
-export function findModes(prompt) {
+export function findModes(prompt: string): ModeEntry[] {
   const lines = prompt.split("\n").map((line) => line.trim());
-  const found = [];
+  const found: ModeEntry[] = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const lead = LEAD_PATTERN.exec(lines[i])[0];
+    const lead = LEAD_PATTERN.exec(lines[i])![0];
     const rest = lines[i].slice(lead.length);
     if (!MODES_LABEL_PATTERN.test(rest)) continue;
     const afterLabel = rest.slice("MODES".length);
-    let valueText;
+    let valueText: string;
     if (MODES_COLON_PATTERN.test(afterLabel)) {
       valueText = afterLabel.replace(MODES_COLON_PATTERN, "");
     } else if (lead.includes("#") && MODES_HEADING_PATTERN.test(rest)) {
@@ -141,7 +149,7 @@ export function findModes(prompt) {
       while (next < lines.length && lines[next] === "") next += 1;
       const nextLine = lines[next] ?? "";
       // A following heading or label line is not the value; a label line is read in its own turn of the loop.
-      if (nextLine.startsWith("#") || MODES_LABEL_PATTERN.test(nextLine.slice(LEAD_PATTERN.exec(nextLine)[0].length))) continue;
+      if (nextLine.startsWith("#") || MODES_LABEL_PATTERN.test(nextLine.slice(LEAD_PATTERN.exec(nextLine)![0].length))) continue;
       valueText = nextLine;
       i = next;
     } else {
@@ -155,7 +163,7 @@ export function findModes(prompt) {
   return found;
 }
 
-function deny(reason) {
+function deny(reason: string): string {
   const output = {
     hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason },
   };
@@ -169,7 +177,7 @@ const MISSING_REASON = [
   "Never name a main-only skill. Set OMO_LOAD_SKILLS_GATE=off to disable this gate.",
 ].join("\n");
 
-function malformedReason(line) {
+function malformedReason(line: string): string {
   const quoted = line.length > LINE_QUOTE_LIMIT ? `${line.slice(0, LINE_QUOTE_LIMIT)}...` : line;
   return [
     `This dispatch to an omo worker has a LOAD_SKILLS line whose value is not readable: ${quoted}`,
@@ -180,18 +188,20 @@ function malformedReason(line) {
 }
 
 // One reason line per source that has offenders: `LOAD_SKILLS names <what>: a, b.` and `MODES names <what>: c/d.`
-const namedLines = (what, fromList, fromModes) =>
-  [["LOAD_SKILLS", fromList], ["MODES", fromModes]]
+const namedLines = (what: string, fromList: string[], fromModes: string[]): string[] =>
+  ([["LOAD_SKILLS", fromList], ["MODES", fromModes]] as [string, string[]][])
     .filter(([, names]) => names.length > 0)
     .map(([label, names]) => `${label} names ${what}: ${names.join(", ")}.`);
 
-export function run(input, { env = process.env, catalogText } = {}) {
+export function run(input: unknown, { env = process.env, catalogText }: RunOptions = {}): string {
   if (typeof input !== "object" || input === null) return "";
-  if (input.hook_event_name !== undefined && input.hook_event_name !== "PreToolUse") return "";
-  if (input.tool_name !== "Agent" && input.tool_name !== "Task") return "";
+  const hookInput = input as HookInput;
+  if (hookInput.hook_event_name !== undefined && hookInput.hook_event_name !== "PreToolUse") return "";
+  if (hookInput.tool_name !== "Agent" && hookInput.tool_name !== "Task") return "";
   if (/^(off|0|false)$/i.test(env.OMO_LOAD_SKILLS_GATE ?? "")) return "";
-  const toolInput = input.tool_input;
-  if (typeof toolInput !== "object" || toolInput === null) return "";
+  const rawToolInput = hookInput.tool_input;
+  if (typeof rawToolInput !== "object" || rawToolInput === null) return "";
+  const toolInput = rawToolInput as ToolInput;
   if (typeof toolInput.subagent_type !== "string" || typeof toolInput.prompt !== "string") return "";
   if (!GATED_WORKERS.has(withoutPrefix(toolInput.subagent_type))) return "";
   if (typeof catalogText !== "string") return "";
@@ -231,7 +241,7 @@ export function run(input, { env = process.env, catalogText } = {}) {
   );
 }
 
-function readCatalog() {
+function readCatalog(): string | undefined {
   try {
     return readFileSync(CATALOG_PATH, "utf8");
   } catch {
@@ -239,7 +249,7 @@ function readCatalog() {
   }
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -247,7 +257,7 @@ async function readStdin() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(await readStdin());
   } catch {

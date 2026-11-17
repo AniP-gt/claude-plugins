@@ -6,7 +6,7 @@
 // OMO_DIR_IGNORE=off|0|false disables this hook; every failure is silent and stdout stays empty.
 // Candidates come from file_path and walking cwd upward to a Git root (including worktrees).
 import * as nodeFs from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,10 +27,17 @@ export const LEGACY_GITIGNORE_CONTENTS = [
   [...legacy, ""].join("\n"),
 ];
 
+type Fs = typeof nodeFs;
+// The one execFileSync call shape this hook uses, so a test double only has to match it.
+type Git = (command: string, args: string[], options: ExecFileSyncOptionsWithStringEncoding) => string;
+// PostToolUse hook input as read from stdin; every field is checked at runtime before use.
+type HookInput = { tool_name?: unknown; tool_input?: { file_path?: unknown } | null; cwd?: unknown };
+type RunOptions = { fs?: Fs; env?: NodeJS.ProcessEnv; git?: Git };
+
 const TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit", "Bash"]);
 const OMO_SEGMENT = "/.claude/omo/";
 
-function gitRoot(cwd, fs) {
+function gitRoot(cwd: string, fs: Fs): string | null {
   let dir = cwd;
   for (;;) {
     if (fs.existsSync(join(dir, ".git"))) return dir;
@@ -40,8 +47,8 @@ function gitRoot(cwd, fs) {
   }
 }
 
-function candidates(input, fs) {
-  const found = [];
+function candidates(input: HookInput, fs: Fs): string[] {
+  const found: string[] = [];
   const filePath = input.tool_input?.file_path;
   if (typeof filePath === "string") {
     const at = filePath.indexOf(OMO_SEGMENT);
@@ -54,13 +61,13 @@ function candidates(input, fs) {
   return [...new Set(found)];
 }
 
-function protect(dir, fs, git, env) {
-  let temporary;
+function protect(dir: string, fs: Fs, git: Git, env: NodeJS.ProcessEnv): void {
+  let temporary: string | undefined;
   try {
     if (!fs.statSync(dir).isDirectory()) return;
     const gitEnv = { ...env };
     for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"]) delete gitEnv[key];
-    const gitOptions = { cwd: dir, encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"], env: gitEnv };
+    const gitOptions: ExecFileSyncOptionsWithStringEncoding = { cwd: dir, encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "ignore"], env: gitEnv };
     const output = git("git", ["rev-parse", "--git-path", "info/exclude"], gitOptions).trim();
     if (!output) return;
     const resolved = resolve(dir, output);
@@ -69,7 +76,7 @@ function protect(dir, fs, git, env) {
       fs.lstatSync(resolved);
       exists = true;
     } catch (error) {
-      if (error.code !== "ENOENT") throw error;
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
     // A dangling link exists: let realpath fail silently rather than replace the link.
     const path = exists ? fs.realpathSync(resolved) : resolved;
@@ -102,7 +109,7 @@ function protect(dir, fs, git, env) {
         git("git", ["ls-files", "--error-unmatch", "--", ".gitignore"], gitOptions);
       } catch (error) {
         // Only Git's normal unmatched-path result authorizes deletion, never a timeout/spawn error.
-        if (error.status === 1) fs.unlinkSync(legacy);
+        if ((error as { status?: unknown }).status === 1) fs.unlinkSync(legacy);
       }
     }
   } catch {
@@ -114,18 +121,20 @@ function protect(dir, fs, git, env) {
   }
 }
 
-export function run(input, { fs = nodeFs, env = process.env, git = execFileSync } = {}) {
+export function run(input: unknown, { fs = nodeFs, env = process.env, git = execFileSync }: RunOptions = {}): string {
   try {
     if (/^(off|0|false)$/i.test(env.OMO_DIR_IGNORE ?? "")) return "";
-    if (typeof input !== "object" || input === null || !TOOLS.has(input.tool_name)) return "";
-    for (const dir of candidates(input, fs)) protect(dir, fs, git, env);
+    if (typeof input !== "object" || input === null) return "";
+    const hookInput = input as HookInput;
+    if (typeof hookInput.tool_name !== "string" || !TOOLS.has(hookInput.tool_name)) return "";
+    for (const dir of candidates(hookInput, fs)) protect(dir, fs, git, env);
   } catch {
     // A hook must never disturb the tool call.
   }
   return "";
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -133,7 +142,7 @@ async function readStdin() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(await readStdin());
   } catch {

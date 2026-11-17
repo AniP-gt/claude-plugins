@@ -9,6 +9,14 @@ const ERROR_PATTERN =
   /json parse error|failed to parse json|invalid json|malformed json|unexpected end of json input|SyntaxError:.*(?:unexpected token|in JSON)|InputValidationError/i;
 const MAX_SCAN_CHARS = 20_000;
 
+interface ToolFailureInput {
+  hook_event_name?: unknown;
+  tool_name?: unknown;
+  tool_response?: unknown;
+  error?: unknown;
+  [key: string]: unknown;
+}
+
 const GUIDANCE = `${MARKER}
 
 The tool call failed because its arguments were not valid JSON or did not match the tool schema.
@@ -19,7 +27,7 @@ The tool call failed because its arguments were not valid JSON or did not match 
 
 Do not repeat the exact same call.`;
 
-function responseText(toolResponse) {
+function responseText(toolResponse: unknown): string {
   if (typeof toolResponse === "string") return toolResponse;
   if (toolResponse === null || toolResponse === undefined) return "";
   try {
@@ -32,13 +40,14 @@ function responseText(toolResponse) {
 // A successful call's response often echoes file contents, prompts, or transcripts that merely quote these
 // error strings (an Edit of this README, a sub-agent launch). On PostToolUse, scan only responses shaped
 // like an error; PostToolUseFailure is always a failure.
-function isErrorShaped(toolResponse) {
+function isErrorShaped(toolResponse: unknown): boolean {
   if (typeof toolResponse === "string") return true;
   if (typeof toolResponse !== "object" || toolResponse === null) return false;
-  return toolResponse.is_error === true || toolResponse.isError === true || typeof toolResponse.error === "string";
+  const response = toolResponse as { is_error?: unknown; isError?: unknown; error?: unknown };
+  return response.is_error === true || response.isError === true || typeof response.error === "string";
 }
 
-export function run(input) {
+export function run(input: ToolFailureInput | null | undefined): string {
   if (typeof input !== "object" || input === null) return "";
   const event = input.hook_event_name ?? "PostToolUse";
   if (event !== "PostToolUse" && event !== "PostToolUseFailure") return "";
@@ -53,7 +62,7 @@ export function run(input) {
   return `${JSON.stringify(output)}\n`;
 }
 
-async function readStdin() {
+async function readStdin(): Promise<string> {
   let data = "";
   process.stdin.setEncoding("utf8");
   for await (const chunk of process.stdin) data += chunk;
@@ -61,7 +70,7 @@ async function readStdin() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  let parsed;
+  let parsed: ToolFailureInput | undefined;
   try {
     parsed = JSON.parse(await readStdin());
   } catch {

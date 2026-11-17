@@ -6,12 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ulw-keyword.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ulw-keyword.ts\" || true",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight.ts\" || true",
             "timeout": 5
           }
         ]
@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/non-interactive-env.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/non-interactive-env.ts\" || true",
             "timeout": 5
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/load-skills-gate.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/load-skills-gate.ts\" || true",
             "timeout": 5
           }
         ]
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.ts\" || true",
             "timeout": 5
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/omo-dir-ignore.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/omo-dir-ignore.ts\" || true",
             "timeout": 5
           }
         ]
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/json-error-recovery.ts\" || true",
             "timeout": 5
           }
         ]
@@ -76,12 +76,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/review-gate.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/review-gate.ts\" || true",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/goal-gate.mjs\" || true",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/goal-gate.ts\" || true",
             "timeout": 5
           }
         ]
