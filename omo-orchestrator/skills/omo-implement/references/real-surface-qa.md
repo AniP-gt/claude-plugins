@@ -52,5 +52,6 @@ Implementation, tests, and QA are one continuous flow: after the edit, run diagn
 | TUI | A real session in tmux (or an Orca terminal inside Orca); record the transcript. |
 | Library | A small driver that imports the public API and calls it as a caller would. |
 | Job | A real worker process with its real queue and lock store (`SKILL.md` step 7). |
+| Agent configuration (a hook, rule, skill, or agent setting) | A fresh agent session started from the target worktree root so its project settings load (headless: `cd <worktree> && claude -p "<prompt>" --output-format stream-json --verbose --include-hook-events --allowedTools "<tools the scenario needs>"`, never `--bare`, which skips hooks; or an agent in an Orca terminal), given a prompt that makes it do what the change reacts to (run the command the hook watches, read a file the rule's paths match). Record the prompt and the transcript lines that show the hook output or loaded rule and what the agent did next. Unit tests of a hook script and a listing of loaded files do not show this path. |
 
 For a browser UI change, also run `omo-implement` mode `visual-qa` with the same tool. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`).
