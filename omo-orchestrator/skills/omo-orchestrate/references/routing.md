@@ -66,6 +66,7 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | Implement plus review loop | `omo-review` mode `review-loop` |
 | Change review | `omo-reviewer` |
 | Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle`; for the debugging case and `HEAVY` plan review, also the Codex consult in `references/codex-consult.md` |
+| Hard root cause or design investigation (main agent judgment; never for lookups) | `omo-deep-researcher` plus the Codex `deep-research` consult in parallel, merged per `references/deep-research.md` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |
 | Long command-driven verification (local real runs, Docker scenarios) | `omo-implementer` with a verification-only scope and the work budget from `omo-guardrails` |
 
@@ -73,7 +74,7 @@ Implementation lane: when `references/codex-implementer.md` applies (inside Orca
 
 ## Model for agents outside this matrix
 
-`general-purpose` and skill-runner agents have no model of their own and inherit the main session's model, Opus or Fable. The built-in `Explore` agent does too in current Claude Code (it no longer always runs on Haiku): use `omo-researcher` instead, and when `Explore` is the only fit, pass `model: "haiku"`. Fable costs twice Opus per token. In one week of measured sessions they spent about three quarters of all sub-agent usage, while every `omo-*` agent together spent under 5%. Prefer a row above. When no row fits and you must use one of them, pass `model: "sonnet"` on the Agent call, or `model: "haiku"` for read-only search. Use `opus` only with a one-line reason, such as a judgment the cheaper model got wrong in this task. Do not pass `fable` to them; Fable work goes to `omo-oracle`, or to `omo-planner` in the `hyperplan` mode of `omo-plan`. Every brief also carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
+`general-purpose` and skill-runner agents have no model of their own and inherit the main session's model, Opus or Fable. The built-in `Explore` agent does too in current Claude Code (it no longer always runs on Haiku): use `omo-researcher` instead, and when `Explore` is the only fit, pass `model: "haiku"`. Fable costs twice Opus per token. In one week of measured sessions they spent about three quarters of all sub-agent usage, while every `omo-*` agent together spent under 5%. Prefer a row above. When no row fits and you must use one of them, pass `model: "sonnet"` on the Agent call, or `model: "haiku"` for read-only search. Use `opus` only with a one-line reason, such as a judgment the cheaper model got wrong in this task. Do not pass `fable` to them; Fable work goes to `omo-oracle`, to `omo-planner` in the `hyperplan` mode of `omo-plan`, or to `omo-deep-researcher` (`references/deep-research.md`). Every brief also carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
 ## Templates
 

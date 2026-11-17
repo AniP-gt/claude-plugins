@@ -67,7 +67,8 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Codebase exploration | `omo-researcher`, in parallel |
 | Documentation or upstream lookup | `omo-librarian`, in parallel |
 | Planning | `omo-planner` |
-| Hard problem, architecture, 2+ failed fix attempts | `omo-oracle` |
+| Hard root cause or design investigation, before or without a failed fix | `omo-deep-researcher` plus the Codex deep-research consult, in parallel, per `skills/omo-orchestrate/references/deep-research.md` |
+| Judgment or tradeoff decision, architecture, 2+ failed fix attempts | `omo-oracle` |
 | Implementation | the Codex lane in `skills/omo-orchestrate/references/codex-implementer.md` when it applies, else `omo-implementer`; one owner per independent file set |
 | PDFs, images, diagrams | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` |
 | Review gate | `omo-reviewer` |

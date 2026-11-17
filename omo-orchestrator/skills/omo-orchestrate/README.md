@@ -6,7 +6,7 @@ The files under `references/` stay here because other skills and hooks read them
 
 - `skill-catalog.md`: the `LOAD_SKILLS` catalog (read by `hooks/load-skills-gate.ts` and every controller).
 - `delegation-prompt.md`: the delegation prompt template and the pending delivery and late results contract.
-- `codex-implementer.md`, `codex-consult.md`: the Codex implementation lane and the read-only Codex consults.
+- `codex-implementer.md`, `codex-consult.md`: the Codex implementation lane and the read-only Codex consults. `deep-research.md`: the opt-in `omo-deep-researcher` plus Codex deep-research tier.
 - `routing.md`: intent routing map and codebase assessment.
 - `handoff-template.md`: the ledger template used by `omo-guardrails` mode `handoff`.
 - `project-rules.md`: other agents' rule files and how to pass them into delegation prompts.
