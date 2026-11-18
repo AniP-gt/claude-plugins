@@ -13,6 +13,8 @@ This plugin is content-only apart from eight small hooks (see [Ulw Keyword Trigg
 
 Restart Claude Code after installation.
 
+Version 6.24.0 extends review gate 11 for agent instruction files (rules, skills, prompts, reviewer config): every API name a rule cites must exist in the installed library version, a reason given for a list must hold for each listed item (including overrides by other installed libraries), the path scope must reach the files that implement what the rule protects, and names one file cites in another must match. A miss is a Warning when an agent following the text would rewrite correct code, however small the wording fix, and the Nits pass escalates such items.
+
 Version 6.23.0 makes `omo-plan` and `omo-planner` put two tasks in the same wave unless one reads what the other produces or both write the same file or shared state, give every dependency edge its reason, add a Writes column to the dependency matrix, make shared setup one task, test time and failure through a fake clock or an injected fault, and require an evidenced cause and scope for any planned retry, timeout, lock, skip, or cap (an unknown cause becomes a blocking diagnosis task).
 
 Version 6.22.0 makes `omo-work-with-pr` give, for each review finding in the first answer, whether the PR introduced it or it predates the PR (pre-existing defects go to a separate issue), what happens if it is left, the fix size, and a recommendation; makes a decline answer only what the reviewer proposed; updates the PR title with the body; and re-checks coverage when a follow-up rewrites an existing test's expectation. `omo-implement` real-surface QA adds an agent-configuration row: hooks, rules, and skills are checked in a fresh agent session, not only by unit tests.
