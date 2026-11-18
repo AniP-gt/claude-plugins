@@ -13,6 +13,8 @@ This plugin is content-only apart from eight small hooks (see [Ulw Keyword Trigg
 
 Restart Claude Code after installation.
 
+Version 6.26.0 makes `omo-plan` options concrete: an option that keeps data names its store (table and columns, or cache key and TTL), who deletes it and when, and whether that lifetime fits the requirement; each option also states what it protects against or fixes and its size, and a workaround (monkey patch, stub, config override) is labeled as one next to what the root fix would change.
+
 Version 6.25.0 makes `omo-external-reviewer` return every `nit` and `imo` finding from `self-review` at every priority, `low` included, with the action taken (fixed, escalated, or the reason left), in a new `NITS AND IMO` field; before, it returned only `must`, `should`, and `ask`. `omo-review` reads each one and fixes it or lists why it was left, never dropping one for its low priority.
 
 Version 6.24.0 extends review gate 11 for agent instruction files (rules, skills, prompts, reviewer config): every API name a rule cites must exist in the installed library version, a reason given for a list must hold for each listed item (including overrides by other installed libraries), the path scope must reach the files that implement what the rule protects, and names one file cites in another must match. A miss is a Warning when an agent following the text would rewrite correct code, however small the wording fix, and the Nits pass escalates such items.
