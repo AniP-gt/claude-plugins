@@ -37,6 +37,7 @@ Return only:
 - `SKILL`, `MODE`: the skill that ran and the mode, or `SKIPPED (<reason>)`.
 - `VERDICT`: in review-only mode, the report's `## 判定:` value. In fix mode, the `Final verdict (re-review)` from the report's `## 修正結果（self-review）` section, followed by the pre-fix `## 判定:` value in parentheses. When fix mode wrote no `修正結果` section, return the `## 判定:` value with `(no fix log)`; when the skill stopped before writing a report (for example, no changes to review), return `SKIPPED (<the skill's reason>)`.
 - `FINDINGS`: in review-only mode, every `must`, `should`, and `ask` finding verbatim with file and line. In fix mode, only those the fix log does not mark `fixed` or `withdrawn`. Write `none` when empty.
+- `NITS AND IMO`: every `nit` and `imo` finding at every priority, `low` included, with file, line, and content; in fix mode also the action the fix log gives it (fixed, escalated to a `should` or `must` with that ID, or the reason left). Write `none` when empty. Low priority is not a reason to leave one out: small findings are often on point.
 - `FIX LOG` (fix mode): the rows of `対応一覧` (ID, action, changed files).
 - `NEEDS DECISION` (fix mode): the items under `ユーザー判断が必要な事項`, or `none`.
 - `VALIDATION` (fix mode): the rows of `検証`.
