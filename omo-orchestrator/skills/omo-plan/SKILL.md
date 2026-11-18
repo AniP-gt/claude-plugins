@@ -84,10 +84,10 @@ Path rule: read the mode procedure from `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.m
 
 ## Dependency-Aware Waves
 
-1. Group only genuinely independent tasks into parallel waves and state why they are independent.
-2. Serialize same-file writes, shared contracts, mutable state, and named predecessors.
+1. Two tasks share a wave unless one reads what the other produces or both write the same file, generated artifact, schema, port, branch, or other shared state. Every dependency edge names its reason; a task with no reasoned edge goes in the earliest wave.
+2. Shared setup (install, codegen, fixture, test server) is one task that the tasks needing it depend on, not a step repeated inside each task.
 3. Treat a task that changes a contract as a predecessor of every consumer, test, document, migration, or validation task that depends on that contract.
-4. Include a dependency matrix with each task, its predecessors, its blocked successors, and its wave.
+4. Include a dependency matrix with the columns Task | Writes (files, shared state) | Depends on (task: reason) | Blocks | Wave.
 5. Mark which results are required before the next wave and which independent results can merge later through one bounded follow-up.
 
 ## Per-Task QA Contract
@@ -104,6 +104,8 @@ Every task must include executable QA. Each task row must state:
 - One happy-path assertion.
 - One failure-path or edge-case assertion when applicable.
 - Evidence location.
+
+A scenario about time or failure (a timeout, an expiry, a schedule, a retry, an outage) controls it through a fake clock or an injected fault, never a real wait or a real outage. A task that adds a retry, timeout, lock, skip, or cap names the evidenced cause it handles and the one scope it covers; when the cause is unknown, the plan adds a diagnosis task that blocks the fix, even when the user asked for the retry or a longer timeout. A diagnosis task names its reproduction or diagnostic and the evidence it records, not a failing test.
 
 Sequence by test necessity: a task that needs tests (see Intent And Decision Routing step 7) names the failing test to write first and the passing result to record afterward; a task that does not names the diagnostic instead. Every task also names at least one real-surface check (an artifact check only for docs- or comments-only tasks), sized to the change. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
 

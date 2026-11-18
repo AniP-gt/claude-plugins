@@ -13,6 +13,8 @@ This plugin is content-only apart from eight small hooks (see [Ulw Keyword Trigg
 
 Restart Claude Code after installation.
 
+Version 6.23.0 makes `omo-plan` and `omo-planner` put two tasks in the same wave unless one reads what the other produces or both write the same file or shared state, give every dependency edge its reason, add a Writes column to the dependency matrix, make shared setup one task, test time and failure through a fake clock or an injected fault, and require an evidenced cause and scope for any planned retry, timeout, lock, skip, or cap (an unknown cause becomes a blocking diagnosis task).
+
 Version 6.22.0 makes `omo-work-with-pr` give, for each review finding in the first answer, whether the PR introduced it or it predates the PR (pre-existing defects go to a separate issue), what happens if it is left, the fix size, and a recommendation; makes a decline answer only what the reviewer proposed; updates the PR title with the body; and re-checks coverage when a follow-up rewrites an existing test's expectation. `omo-implement` real-surface QA adds an agent-configuration row: hooks, rules, and skills are checked in a fresh agent session, not only by unit tests.
 
 Version 6.21.0 adds two review checks to `omo-reviewer`: confirm-then-save integrity (a dialog skipped by an unrelated edit, a post-lock re-check that compares a proxy instead of the confirmed value, an error shape the UI handler ignores) and test precision and reach (presence-only error assertions, non-ASCII free-text cases, a rewritten test that was the only path to a branch).
