@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-plugin-version.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-plugin-version.sh"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/clean-tmp.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/clean-tmp.sh"
           }
         ]
       }

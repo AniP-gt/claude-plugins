@@ -16,6 +16,9 @@ if ! echo "$COMMAND" | grep -qE "git commit"; then
   exit 0
 fi
 
+# git diff の出力はリポジトリルート基準のパスなので、ルートに移動してから判定する
+cd "$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+
 # ステージ済みファイルを取得
 STAGED=$(git diff --cached --name-only 2>/dev/null)
 if [ -z "$STAGED" ]; then
