@@ -209,3 +209,16 @@ test("plan detection stays linear on long runs of newlines", () => {
   run({ hook_event_name: "UserPromptSubmit", prompt: `${"\n".repeat(100000)}x` }, noRecord);
   assert.ok(Date.now() - started < 500, `took ${Date.now() - started}ms`);
 });
+
+test("a tuning request routes to the change checklist with the measurement item", () => {
+  for (const prompt of ["このSQLを速くして", "このクエリをチューニングして", "トークン消費を減らして", "findDuplicates を高速化して", "レスポンスを改善して", "バンドルを小さくして", "speed up the import job", "optimize this query", "make it faster", "reduce token usage", "ベンチマークを改善したい", "メモリ使用量を削減して", "make the query faster", "make it run faster", "make the endpoint cheaper"]) {
+    assert.equal(wantsChange(prompt), true, prompt);
+    assert.match(run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord), /If the goal or claim of the change is a quantity/, prompt);
+  }
+});
+
+test("a question about speed is not a change request", () => {
+  for (const prompt of ["なぜ遅いか調べて", "このクエリはなぜ速い？", "改善案を教えて", "what makes this slow?", "What does Array.reduce do?", "How does reduce work in Redux?", "fine-tune とは？", "Is it faster to use a Map?", "why does it make sure things are cheaper?"]) {
+    assert.equal(run({ hook_event_name: "UserPromptSubmit", prompt }, noRecord), "", prompt);
+  }
+});

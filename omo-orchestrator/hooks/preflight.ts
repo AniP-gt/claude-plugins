@@ -45,6 +45,8 @@ const CHANGE_PATTERNS = [
     `${B}(?:implement|add|fix|refactor|change|update|modify|rewrite|migrate|remove|delete|build|create|rename|support)${E}`,
     "i",
   ),
+  /速くし(?:て|たい)|高速化(?:して|したい|する)|(?:チューニング|最適化|削減|短縮|改善)し(?:て|たい)|軽くし(?:て|たい)|減らし(?:て|たい)|小さくし(?:て|たい)/,
+  new RegExp(`${B}(?:optimi[sz]e|speed up|shrink)${E}|${B}reduce (?:the |its |our )?(?:token|memory|latency|cost|size|time|query|queries|load|cpu)|${B}make (?:\\w+ ){0,2}(?:faster|cheaper|smaller)${E}`, "i"),
 ];
 
 // "plan" and "design" also appear in names such as omo-plan or plan.md, so a hyphen, slash, or a dot that starts an
