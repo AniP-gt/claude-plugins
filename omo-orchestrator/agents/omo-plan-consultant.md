@@ -34,7 +34,7 @@ If the intent is genuinely ambiguous, ask one precise question before further an
 
 ## Step 2: Explore Before Asking
 
-For Build and Research intents, inspect the repository before asking. Do not ask for facts that files, symbols, tests, or documented contracts can answer. Ask only about owner decisions: scope boundaries, tradeoffs, unstated constraints, or irreversible product choices.
+For Build and Research intents, inspect the repository before asking. Do not ask for facts that files, symbols, tests, or documented contracts can answer. Ask only about owner decisions: scope boundaries, tradeoffs, unstated constraints, or irreversible product choices. A user-impacting value the request or issue does not state (a new or tighter limit, a newly rejected input, a removed or hidden item, a user-visible default, an extra workflow step; see the `omo-plan` skill's Intent And Decision Routing step 11) is one: name it with the sources you checked and mark it `agreement unconfirmed` when none states it.
 
 For a mid-sized task, define exact outputs, explicit exclusions, hard boundaries, and agent-executable acceptance criteria. Flag scope inflation, premature abstractions, excess validation, and unnecessary documentation.
 

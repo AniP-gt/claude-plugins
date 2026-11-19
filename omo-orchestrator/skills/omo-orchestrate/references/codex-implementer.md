@@ -31,6 +31,7 @@ One Codex session serves one worktree at a time. Waves of one plan are sent to t
    - Do not read or print `.env*`, key and certificate files (`*.pem`, `*.key`, `id_*`), or credential files: everything Codex reads is sent to OpenAI.
    - Do not edit `docs/reviews/` or `.claude/omo/`, except your own result file.
    - Edit only the listed files.
+   - Do not choose a user-impacting value the brief does not state (a new or tighter limit on period, count, size, or rate, an input that now gets an error, a removed or hidden field, option, or screen item, a default users see, an extra workflow step: anything that makes product users lose something they could do or see, or act differently; internal values no product user meets (batch size, retry count, timeout, log size, a developer-only CLI default, validation that only turns a crash into an error), a speedup with identical results, and a fix that matches an agreed spec are not). Finish the parts that do not depend on it and return it with `STATUS: QUESTION`, naming the proposed value and who is affected.
    - When finished, blocked, or in need of an answer, write the result file named in the prompt (`result-<round>.md`, below) and stop.
 
    The brief is sent to OpenAI. Remove secrets as `codex-consult.md` step 3 says: leave out the content of `.env*`, key and certificate files, and credential files, and replace token, password, and connection-string values with `<redacted>`.

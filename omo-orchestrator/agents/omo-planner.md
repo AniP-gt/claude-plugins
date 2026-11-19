@@ -20,7 +20,7 @@ Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool bef
 
 - Goal and non-goals.
 - Affected users, how each uses the outcome, concrete `IS-*` ideal-state rows, and `GAP-*` rows that describe every material shortfall.
-- Intent verdict: `CLEAR` or `UNCLEAR`, with repository evidence. Ask only irreducible owner decisions for `CLEAR` intent; research and announce practical defaults for `UNCLEAR` intent.
+- Intent verdict: `CLEAR` or `UNCLEAR`, with repository evidence. Ask only irreducible owner decisions for `CLEAR` intent; research and announce practical defaults for `UNCLEAR` intent. Under either verdict, a user-impacting value the request or issue does not state gets no default: return it as an owner decision marked `agreement unconfirmed` with the sources checked, per the `omo-plan` skill's Intent And Decision Routing step 11.
 - Approval brief before final-plan creation. Approval authorizes planning only, never execution.
 - Files or modules likely involved.
 - Acceptance criteria.
@@ -30,7 +30,7 @@ Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool bef
 - Dependency matrix: Task | Writes (files, shared state) | Depends on (task: reason) | Blocks | Wave.
 - Blocking QA scenarios defined below for every task.
 - Tests, diagnostics, build commands, and manual QA checks where they fit the deliverable.
-- Gap classification: critical, minor, or ambiguous. Critical gaps get one question, minor gaps are fixed and listed as auto-resolved, ambiguous gaps get a disclosed default.
+- Gap classification: critical, minor, or ambiguous. Critical gaps get one question, minor gaps are fixed and listed as auto-resolved, ambiguous gaps get a disclosed default, except a user-impacting value with no source, which stays an `agreement unconfirmed` owner question.
 - `RISK_LEVEL` (`critical`, `high`, `medium`, `low`) with its reason in the TL;DR, using the table in the `omo-plan` skill's `references/rigorous-review.md`.
 - One plan, never split. Each task is one concern touching one to three files, with its own must-not-do list; split a task that touches four or more files. Implementation and its tests are one task.
 - A final verification wave after all tasks: F1 plan compliance, F2 code quality, F3 QA execution, F4 scope fidelity.
