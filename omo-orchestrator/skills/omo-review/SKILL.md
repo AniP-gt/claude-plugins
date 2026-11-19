@@ -139,6 +139,8 @@ Do not escalate a finding to blocking unless the evidence shows a real contract 
 
 Severity mapping with `omo-reviewer`: Critical is blocking; Major is blocking only when it meets the line above, otherwise a warning; Minor is a warning. Label each finding with the reviewer scale; the blocking/warning split follows from it.
 
+In the reply to the user, keep each finding's label (reviewer severity, and blocking or warning), one sentence on what goes wrong in which situation, and where the fix lands (shared code, config, docs, or a single test case). Do not regroup findings under an unlabeled heading such as "fix before extending"; the user should not have to ask whether an item is required or what happens if it is left as is.
+
 Do not convert every checklist item into a finding. A finding must be actionable, applicable, and proportional to the risk.
 
 ## Final Outcome Rules
