@@ -107,6 +107,8 @@ Every task must include executable QA. Each task row must state:
 
 A scenario about time or failure (a timeout, an expiry, a schedule, a retry, an outage) controls it through a fake clock or an injected fault, never a real wait or a real outage. A task that adds a retry, timeout, lock, skip, or cap names the evidenced cause it handles and the one scope it covers; when the cause is unknown, the plan adds a diagnosis task that blocks the fix, even when the user asked for the retry or a longer timeout. A diagnosis task names its reproduction or diagnostic and the evidence it records, not a failing test.
 
+A task whose purpose or claim is a quantity (faster, cheaper, fewer tokens, smaller), or that touches a guard item of `omo-implement` `references/measured-verification.md` (and that file's Guard applies), also names the metric command, a baseline step ordered before the task's first edit, and the direction or target the after value is compared with. Pick the metric from that file's table when the request names none. A measurement that spends money states its call count and estimated cost in the approval brief.
+
 Sequence by test necessity: a task that needs tests (see Intent And Decision Routing step 7) names the failing test to write first and the passing result to record afterward; a task that does not names the diagnostic instead. Every task also names at least one real-surface check (an artifact check only for docs- or comments-only tasks), sized to the change. Missing, abstract, or unexecutable QA is a blocking plan-quality finding. Reject phrases such as `verify it works`, `check the page`, or unspecified manual testing.
 
 ## Bounded Plan Review

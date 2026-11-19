@@ -40,6 +40,7 @@ Write the file only after approval. Create the directory when missing and state 
 ## Tasks
 
 ### 1. {Concern, e.g. "SQL query fix"}
+- [ ] 1-0. Baseline, only when the concern's purpose is a quantity or it touches a guard item of `omo-implement` `references/measured-verification.md` (and that file's Guard applies): run `{metric command}` and record the value
 - [ ] 1-1. {exact action} (`path`, symbol or line)
 - [ ] 1-2. Test: {behavior asserted} (`test path`)
 - [ ] 1-3. Run `{test command}` and confirm it passes
@@ -60,6 +61,7 @@ Write the file only after approval. Create the directory when missing and state 
 - One item is one action whose completion can be judged on its own.
 - Each item names the target path and, where useful, the symbol or line.
 - Pair every change item with its test item under the same concern, then a run item.
+- A concern whose purpose is a quantity (faster, cheaper, smaller), or that touches a guard item of `omo-implement` `references/measured-verification.md` (and that file's Guard applies), starts with a baseline item and ends with an item that runs the same command and records the after value; other concerns have neither.
 - Order items top to bottom by dependency so they run sequentially.
 - Reject vague items such as `Fix the SQL` or `Write tests`. Good: `Change master_products.packing_unit_unit to master_drugs.unit_after_conversion at line 37 of master_codes.sql`.
 

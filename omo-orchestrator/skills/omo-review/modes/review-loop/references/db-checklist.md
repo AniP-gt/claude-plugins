@@ -5,7 +5,7 @@ Paste into the robustness and alignment lane prompts whenever the diff touches D
 ## Index utilization
 - Does each WHERE column have an index?
 - Is the composite-index prefix rule satisfied (leftmost column first)?
-- Will production data scale cause a full scan? Require EXPLAIN evidence.
+- Will production data scale cause a full scan? Require EXPLAIN evidence from before and after the change, with the row count of the dataset it ran on.
 - Is the `WHERE col IN (...)` column the leading index column?
 
 ## Lock risks

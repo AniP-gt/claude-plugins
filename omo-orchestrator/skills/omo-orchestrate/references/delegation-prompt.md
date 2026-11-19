@@ -16,6 +16,7 @@ LOAD_SKILLS: [omo-test-design, omo-research]
 - Files created or modified: <exact paths>
 - Behavior: <exact observable result>
 - Verification: `<command>` passes
+- Measure, only when the QA design has a Measure row: `<metric command>`, baseline <value, or "taken by the implementer before the first edit">, pass when <comparison>
 
 ## 3. REQUIRED TOOLS
 - <tool>: <what to search, read, or run>

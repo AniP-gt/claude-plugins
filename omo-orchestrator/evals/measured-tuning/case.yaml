@@ -1,0 +1,14 @@
+# Limits: the graders accept a baseline measured after the edit on the pre-change code (git, a stash, or a copy),
+# so they do not check that the baseline was taken before the first edit; read the trace for that. The scaffold
+# ships no benchmark on purpose, so the case also measures whether the agent builds its own measurement.
+schema_version: "1.1"
+name: measured-tuning
+tags: [measured, implementation]
+execution:
+  prompt: |
+    src/duplicates.js の findDuplicates が夜間取り込み（約5万件）で遅い。速くして。確認や計画の承認は不要なので、実装と検証まで終えて結果を報告して。
+  max_turns: 40
+  timeout_seconds: 900
+  allowed_tools: [Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, Task]
+context:
+  scaffold_script: scaffold.sh

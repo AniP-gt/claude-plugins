@@ -34,7 +34,7 @@ One Codex session serves one worktree at a time. Waves of one plan are sent to t
    - When finished, blocked, or in need of an answer, write the result file named in the prompt (`result-<round>.md`, below) and stop.
 
    The brief is sent to OpenAI. Remove secrets as `codex-consult.md` step 3 says: leave out the content of `.env*`, key and certificate files, and credential files, and replace token, password, and connection-string values with `<redacted>`.
-4. Before-state. Take the snapshot below with `<name>` = `before`, from the repository root.
+4. Before-state. Take the snapshot below with `<name>` = `before`, from the repository root. When the QA design has a Measure row (`omo-implement` `references/measured-verification.md`), Claude takes its baseline before this snapshot and writes it under `.claude/omo/`, which the snapshot excludes. Claude measures again after DONE; a number in Codex's result file is a claim.
 5. Launch (round 1; `rm -f .claude/omo/codex/<slug>/result-1.md` first):
 
    ```bash

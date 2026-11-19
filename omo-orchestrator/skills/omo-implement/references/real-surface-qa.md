@@ -14,6 +14,7 @@ The controller writes the QA design before any edit, from the plan, the risk map
 - Setup: how the target starts (server command, seed data, env vars) and how it is stopped.
 - Steps: the exact commands or browser actions.
 - Pass: a binary observable (status code and body field, visible text, exit code, DB row, log line).
+- Measure: required when `references/measured-verification.md` applies (the purpose or claim of the change is a quantity, or the diff touches its guard list). One row per metric with the fields in its section 2; its Pass is a comparison with the baseline, so it stays binary.
 - Evidence: where the output, screenshot, or transcript is saved.
 
 Cover each changed behavior with at least one scenario, add a regression scenario for unchanged neighboring behavior that has business impact, and add the failure path the change touches (invalid input, permission, timeout). Keep the count proportional: a one-line fix may need two scenarios, a new endpoint more. When the user agreed on a list of targets (fields to mask, cases to handle), every item on the list is a changed behavior: cover each one, out-of-scope items included as regression rows, or name it as uncovered. When you give the user commands to check it themselves, end with which agreed items those commands cover and which they do not, with commands for the rest.
@@ -28,6 +29,7 @@ Dispatch `omo-orchestrator:omo-reviewer` (`LOAD_SKILLS: none`) as a QA design re
 - The surface matches what a user or caller actually touches; a test that calls the code inline is not a real surface.
 - The tool exists here, the target is local, and setup and cleanup are concrete.
 - Each pass condition is binary and each scenario names its evidence path.
+- A change that `references/measured-verification.md` applies to has a Measure row whose command exists here, whose target is local, and whose Pass compares with a baseline; a change it does not apply to has none.
 
 On `REQUEST_CHANGES` or `INCONCLUSIVE`, redesign only the flagged rows and review again. After 3 rounds without `APPROVE`, stop and ask the user with the open rows. Do not run QA on a design that has not received `APPROVE`. Attach the approved design to the Codex brief (`omo-orchestrate` `references/codex-implementer.md`) or to the `omo-implementer` brief, whichever runs the pass; the design review does not use a Ralph iteration.
 
@@ -35,6 +37,7 @@ On `REQUEST_CHANGES` or `INCONCLUSIVE`, redesign only the flagged rows and revie
 
 Implementation, tests, and QA are one continuous flow: after the edit, run diagnostics and tests, then the approved scenarios, without returning to the user or controller in between. Stop early only for a blocker (`SKILL.md` step 8).
 
+- For each Measure row, take the baseline with the approved command before the first edit and record it with its revision (`references/measured-verification.md`, Baseline). After the edit, run the same command under the same conditions and record the after value next to it; a value inside the spread of the baseline runs is reported as no measurable change.
 - Run P0 scenarios first; record the actual result next to the pass condition.
 - On a failing scenario, fix the code and re-run the tests and the affected scenarios.
 - When the final diff touches a surface or behavior the design does not cover, run what the design covers, then return the uncovered rows to the controller for step 2 instead of running unreviewed scenarios.

@@ -39,6 +39,7 @@ batch-failure handling, or data invariants.
 - Loading everything with `.to_a` instead of `find_each`
 - WHERE/JOIN columns without an index; SELECT * fetching unneeded columns
 - `count` where `exists?` suffices
+- A stated improvement (faster, fewer queries, less memory) with no baseline and after value from the same command on one machine: ask for both numbers and the command. Do not raise this when the change makes no such claim.
 
 ### 2. Transaction scope
 - Multiple record changes outside a transaction

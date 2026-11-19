@@ -36,6 +36,7 @@ interface RunOptions {
 
 const MARKER = "<omo-preflight>";
 const IMPACT_SCRIPT = fileURLToPath(new URL("../scripts/impact.ts", import.meta.url));
+const MEASURE_REFERENCE = fileURLToPath(new URL("../skills/omo-implement/references/measured-verification.md", import.meta.url));
 const B = "(?<![A-Za-z0-9_])";
 const E = "(?![A-Za-z0-9_])";
 const CHANGE_PATTERNS = [
@@ -117,6 +118,9 @@ const CHANGE_CHECKLIST = [
   "3. Search the callers of every existing function, config key, or command you will modify.",
   `   \`node "${IMPACT_SCRIPT}" --symbol <name>\` lists callers and related tests in a few lines;`,
   "   use Grep for literal strings such as messages, keys built at runtime, or config values.",
+  "4. If the goal or claim of the change is a quantity (faster, cheaper, fewer tokens, smaller, less memory),",
+  "   run the measuring command on the unchanged code before the first edit, then report before and after with",
+  `   the exact command or script path you ran, input size, and number of runs. \`${MEASURE_REFERENCE}\` lists what to measure.`,
 ];
 
 export function buildContext({ withPlanAgents = false } = {}): string {

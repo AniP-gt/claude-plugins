@@ -35,7 +35,7 @@ Replaces: follow the MODE.md as the procedure for that flow. This file applies o
 5. Run targeted validation, then wider checks when the change warrants it.
 6. Run PR-style review for goal alignment, security, robustness, quality, tests, and scope control.
 7. Feed confirmed blockers into a fix pass and re-run affected checks.
-8. Prepare the PR summary or reviewer response with what changed, why, validation, residual risks, and any unavailable check evidence.
+8. Prepare the PR summary or reviewer response with what changed, why, validation, residual risks, and any unavailable check evidence. When the change has a Measure row (`omo-implement` `references/measured-verification.md`), the summary carries its report table, or its `Not measured: <reason>` line.
 
 ## Follow-Up Changes on an Existing PR
 
@@ -46,6 +46,7 @@ Review responses, conflict resolution, and refactors added after the PR was open
    - A changed file or behavior is not explained. When files outside the component named in the title changed, say why they had to change.
    - A statement became stale after the follow-up (method names, notification destinations, conditions, limits).
    - An out-of-scope item or known limitation is listed without saying whether the user-visible behavior the PR protects (an alert, a report, an API response) still works. Write it so a reader cannot conclude the PR silently drops that behavior.
+   - The body states a measured number (a time, a count, a size, a cost) that the follow-up commits can change. Measure it again with the same command, or remove it.
 3. Re-check docs that describe the changed behavior.
 4. Add a real-surface check (a local run of the job, endpoint, or flow) when the follow-up changed runtime behavior; tests alone do not cover it. The same applies when a reviewer raises a runtime cost or contention concern (a lock wait, duration, timeout, memory) and the reply would otherwise say "not measured": reproduce it locally first (hold the lock from a second process, generate data at production-like counts), put the numbers in the reply, and tell the user in plain terms what the reviewer is worried about. Leave it unmeasured only when no local reproduction is possible, and say why. When the follow-up changes an existing test's expected result, the path that test used to cover may now have no test: when the project gates coverage, run its coverage check on the code that test exercises, not only on the files you edited (a rewritten 400 test to 409 dropped a branch's only test and failed the coverage gate).
 5. When the follow-up merged or rebased the base branch (a conflict fix or an update to latest), do not stop once the markers are gone. Diff what came in from the base (`git diff <pre-merge HEAD>...<merged base commit>`) and check two things against the branch's own changes:
