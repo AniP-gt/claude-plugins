@@ -65,7 +65,13 @@ batch-failure handling, or data invariants.
 - Missing optimistic locking; find-then-save check-then-act races
 - Advisory or DB lock misuse
 - Async: shared state modified without mutual exclusion; order-dependent work in
-  `Promise.all`; timing-dependent (flaky) tests
+  `Promise.all`; timing-dependent (flaky) tests: a fixed sleep instead of the event the
+  test depends on, a test retry (any added retry, file-wide or per test), or a raised
+  test timeout that no measured duration or stated reason justifies (fix: move slow
+  shared setup into a once-per-file hook). Fake timers and a bounded wait on the event
+  or a stated condition (`Event.wait(timeout)`, a `waitFor` with a limit) are fine.
+  Category: flaky_test, BLOCKING: the result then depends on timing, or a real failure
+  is hidden; an unjustified raised timeout alone is a Warning
 - Node/TS: missing `await`, unhandled rejections, blocking I/O or heavy compute on the
   event loop, uncleared `setInterval`/`setTimeout`, next step running before the
   previous promise settles, sync I/O in async context, mixed callbacks and async/await
@@ -168,7 +174,7 @@ Verify each signal with evidence; the diff's own comments are not proof.
 1. [SEVERITY] File:Line - Description
    Evidence: {predicate, writer, caller, or measurement}
    Fix: specific fix
-   Category: n_plus_one | transaction | error_handling | idempotency | race_condition | event_loop | sync_misuse | nil_safe | eval_order | memory | unbounded_scale | library_behavior | precondition_state | liveness_signal
+   Category: n_plus_one | transaction | error_handling | idempotency | race_condition | event_loop | sync_misuse | nil_safe | eval_order | memory | unbounded_scale | library_behavior | precondition_state | liveness_signal | flaky_test
 
 ### Warnings (SHOULD FIX)
 1. File:Line - Description

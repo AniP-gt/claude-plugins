@@ -46,7 +46,7 @@ Keep `path:line` on every kept claim, and label its source `(fable)`, `(opus)`, 
 ## Failure
 
 - `omo-deep-researcher` refuses or returns no usable answer: re-run it once with `model: "opus"` without asking, and label the answer `(opus)`.
-- Codex `NOT_EXECUTED` (not on PATH, not logged in, timeout, or the model `gpt-6-astra` rejected): record `codex-consult: NOT_EXECUTED - <reason>`, never re-run on another model, and use the `omo-deep-researcher` answer alone (Fable, or Opus after the fallback), keeping its label and marking it single-source.
+- Codex `NOT_EXECUTED` (not on PATH, not logged in, timeout, or the model `gpt-6.2-astra` rejected): record `codex-consult: NOT_EXECUTED - <reason>`, never re-run on another model, and use the `omo-deep-researcher` answer alone (Fable, or Opus after the fallback), keeping its label and marking it single-source.
 - Codex `NOT_EXECUTED - working tree changed`: this is not an ordinary Codex failure. Stop, use neither answer, and hand the changed paths to the user (as `omo-review` `references/codex-lane.md` does). `omo-deep-researcher` has Bash, so the change may come from either side.
 - Only Codex answered: use it alone, labeled single-source `(codex)`, and read the cited code for what changes the decision.
 - Both fail: report both reasons and fall back to `omo-researcher` with `model: "sonnet"`.

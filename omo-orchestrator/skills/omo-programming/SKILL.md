@@ -1,6 +1,6 @@
 ---
 name: omo-programming
-description: "Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files. Modes: debugging (crash, silent failure, hang, wrong response, memory leak, async misbehavior), refactor (refactor, simplify, extract, restructure, modernize). Dead-code removal (dead, unused, unreachable code) is covered in the body."
+description: "Implementation policy for type-safe, minimal, evidence-backed code changes with real diagnostics, tests, and no fake validation. Use for work on .py, .rs, .ts, or .go files. Modes: debugging (crash, silent failure, hang, wrong response, memory leak, async misbehavior, flaky test), refactor (refactor, simplify, extract, restructure, modernize). Dead-code removal (dead, unused, unreachable code) is covered in the body."
 argument-hint: "[task]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
@@ -16,7 +16,7 @@ This skill has two modes. Each mode's procedure lives in `modes/<mode>/MODE.md`.
 
 | Mode | Alias | Precedence | Use when |
 |---|---|---|---|
-| `debugging` | - | adds to | crash, silent failure, hang, wrong response, memory leak, async misbehavior |
+| `debugging` | - | adds to | crash, silent failure, hang, wrong response, memory leak, async misbehavior, flaky test |
 | `refactor` | - | adds to | refactor, simplify, extract, restructure, modernize |
 
 - "adds to" means this file's policy stays in force and the MODE.md adds its procedure.
@@ -50,6 +50,7 @@ This skill has two modes. Each mode's procedure lives in `modes/<mode>/MODE.md`.
 - Do not use `as any`, `@ts-ignore`, or `@ts-expect-error` to silence errors.
 - Do not claim validation passed unless you ran it in the current session.
 - Do not invent test results, diagnostics, or build results.
+- A test waits on the signal its behavior produces: the awaited operation, an event, or a promise its handler resolves; to move time, use fake timers and advance them. Do not add a fixed sleep, a test retry, or a raised test timeout to make a test pass. A test that passes only on rerun is a flake: find the event it races, and report the failure if you cannot fix it.
 - Do not widen scope with cleanup or refactors unless they are required for the requested change.
 - Do not edit unrelated dirty files.
 - Do not add fallback logic unless an existing contract requires it.

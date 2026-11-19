@@ -206,8 +206,8 @@ test("a consult run (omo-consult scratch dir) is not the review lane", () => {
   assert.ok(isCodexBlock(gate([prompt, omoReview, consult, reply])));
 });
 
-test("a deep research consult (-m gpt-6-astra, medium effort, omo-consult scratch dir) is not the review lane", () => {
-  const command = (dir: string) => `codex --dangerously-bypass-hook-trust exec --sandbox read-only --skip-git-repo-check --ephemeral -m gpt-6-astra -c model_reasoning_effort=medium -o "/tmp/${dir}/codex/1.out.md" "question" < "/tmp/${dir}/codex/1.brief.md"`;
+test("a deep research consult (-m gpt-6.2-astra, medium effort, omo-consult scratch dir) is not the review lane", () => {
+  const command = (dir: string) => `codex --dangerously-bypass-hook-trust exec --sandbox read-only --skip-git-repo-check --ephemeral -m gpt-6.2-astra -c model_reasoning_effort=medium -o "/tmp/${dir}/codex/1.out.md" "question" < "/tmp/${dir}/codex/1.brief.md"`;
   assert.ok(isCodexBlock(gate([prompt, omoReview, tool("Bash", { command: command("omo-consult") }), reply])));
   assert.equal(gate([prompt, omoReview, tool("Bash", { command: command("omo-review") }), reply]), null);
 });

@@ -13,6 +13,8 @@ This plugin is content-only apart from eight small hooks (see [Ulw Keyword Trigg
 
 Restart Claude Code after installation.
 
+Version 6.27.0 takes two changes from upstream oh-my-openagent. `omo-programming` now forbids fixing a test with a fixed sleep, a test retry, or a raised timeout: a test waits on the operation, event, or promise its behavior produces, or uses fake timers, and a test that passes only on rerun is reported as a flake. The robustness review lane flags those patterns and leaves fake timers and bounded condition polling alone. The Codex `deep-research` consult moves from `gpt-6-astra` to `gpt-6.2-astra`, the model upstream now uses for its deep lanes; a rejected model is still `codex-consult: NOT_EXECUTED` with no fallback.
+
 Version 6.26.0 makes `omo-plan` options concrete: an option that keeps data names its store (table and columns, or cache key and TTL), who deletes it and when, and whether that lifetime fits the requirement; each option also states what it protects against or fixes and its size, and a workaround (monkey patch, stub, config override) is labeled as one next to what the root fix would change.
 
 Version 6.25.0 makes `omo-external-reviewer` return every `nit` and `imo` finding from `self-review` at every priority, `low` included, with the action taken (fixed, escalated, or the reason left), in a new `NITS AND IMO` field; before, it returned only `must`, `should`, and `ask`. `omo-review` reads each one and fixes it or lists why it was left, never dropping one for its low priority.
