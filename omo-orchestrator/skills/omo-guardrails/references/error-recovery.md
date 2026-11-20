@@ -34,7 +34,7 @@ Before retrying a dispatch, distinguish host refusal (including permission denia
 
 Discover the current environment's status tool and documented fields rather than inventing an API. Record the concurrency scope (for example whether the parent or other owners count) with its source; if that scope or the live inventory is unknown, available capacity is unknown too.
 
-- Host refusal: fix the reported access or argument cause within existing authorization. A denial never authorizes permission bypass or a blind redispatch.
+- Host refusal: fix a reported argument cause within existing authorization. A permission denial is final for that action (see the refusal rule in `SKILL.md`): never a bypass or a blind redispatch.
 - Request timeout or lost transport: continue the original child when verified live and owned by this task; replace only after verified absence or termination. Record any unavailable status tool as an evidence gap.
 - Resume: re-check ownership and status. A child held by another live owner stays with that owner; a capacity waiter remains pending until a verified slot opens. A resumed parent does not imply automatic child revival.
 - Count only verified live children against the environment's actual concurrency limit; completed, failed, and cancelled children release capacity only when their terminal state is confirmed. Do not import an upstream runtime's fixed cap. Preserve verified results and recover only affected tasks, keeping dependents pending until their required output verifies.

@@ -123,7 +123,7 @@ Interactive rebase cannot be driven by hand here, so automate the todo list: `GI
 
 ### Step 3: Resolve conflicts deliberately
 
-Identify the conflicting files, read both sides, resolve by editing, remove every conflict marker, then stage and continue. Verify no markers survive before continuing. When the resolution is unclear, `git rebase --abort` is the safe exit; do not guess at semantics you cannot verify.
+Identify the conflicting files, read both sides, resolve by editing, remove every conflict marker, then stage and continue. Verify no markers survive before continuing. Do not hand-merge a generated file (a lockfile, a bundle, codegen or schema output, a snapshot the tooling writes): take the base's version (`git checkout --ours` during a rebase or cherry-pick, `--theirs` when merging the base into the branch), resolve the source files it is generated from first, then run the project's generator or install command once for this conflicted step, check that its diff from the base keeps the branch's intended changes (a snapshot must still show them), and stage what it writes. A database migration is not such a file even when a tool wrote it: it carries intent and order, so resolve it like source. When the resolution is unclear, `git rebase --abort` is the safe exit; do not guess at semantics you cannot verify.
 
 Recovery: `--abort` returns to the pre-rebase state mid-rebase; `git reflog` finds the original commits afterward; `git fsck --lost-found` is the last resort.
 
