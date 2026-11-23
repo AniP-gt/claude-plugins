@@ -1,6 +1,6 @@
 # OMO Handoff
 
-Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
+Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-security-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
 
 Use this skill when work must survive a context change, an operator change, or a pause between phases. Keep one ledger per task at `.claude/omo/handoffs/<task-slug>.md`.
 

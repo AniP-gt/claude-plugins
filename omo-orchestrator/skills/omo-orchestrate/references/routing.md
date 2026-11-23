@@ -64,7 +64,7 @@ Stop exploring when there is enough context to proceed, the same facts repeat ac
 | Implementation and fixes | Implementation lane: Codex through `references/codex-implementer.md` when it applies, else `omo-implementer` |
 | Standalone visual explanation, chart, table, or diagram | `omo-frontend` mode `visualize`, implementation through the implementation lane (row above), then `omo-implement` mode `visual-qa`. The controller puts the absolute MODE.md path for each requested mode in the worker brief (resolve `<plugin-root>` per `skills/omo-orchestrate/references/skill-catalog.md`). |
 | Implement plus review loop | `omo-review` mode `review-loop` |
-| Change review | `omo-reviewer` |
+| Change review | `omo-reviewer`; at every final gate, `omo-security-reviewer` in parallel in the same message |
 | Architecture tradeoffs, debugging after 2+ failed fix attempts | `omo-oracle`; for the debugging case and `HEAVY` plan review, also the Codex consult in `references/codex-consult.md` |
 | Hard root cause or design investigation (main agent judgment; never for lookups) | `omo-deep-researcher` plus the Codex `deep-research` consult in parallel, merged per `references/deep-research.md` |
 | Research that also writes files (wiki or docs lanes) | `omo-researcher` lanes read and return facts; one `omo-implementer` with a prose-only scope writes |

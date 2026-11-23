@@ -72,12 +72,12 @@ The main context orchestrates. It does not implement unless the change is trivia
 | Judgment or tradeoff decision, architecture, 2+ failed fix attempts | `omo-oracle` |
 | Implementation | the Codex lane in `skills/omo-orchestrate/references/codex-implementer.md` when it applies, else `omo-implementer`; one owner per independent file set |
 | PDFs, images, diagrams | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` |
-| Review gate | `omo-reviewer` |
+| Review gate | `omo-reviewer` plus `omo-security-reviewer`, in parallel |
 | Research that writes files, long command-driven verification | see `omo-orchestrate` `references/routing.md` |
 
 Do not dispatch `general-purpose` or a skill runner without `model: "sonnet"` (or `"haiku"` for read-only); they otherwise inherit the main model, which costs the most when the session runs on Fable. Every brief that runs commands carries the work budget from `omo-guardrails` `references/context-and-handoff.md`.
 
-Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
+Every brief to a gated worker (`omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-security-reviewer`, `omo-planner`) carries a `LOAD_SKILLS` line chosen from `omo-orchestrate` `references/skill-catalog.md`; a PreToolUse hook denies the dispatch otherwise.
 
 Every `omo-implementer` brief is self-contained: goal, files to modify, implementation approach with the existing pattern to copy (file:line), a binary `Done when`, and the real-surface QA design approved by `omo-implement` `references/real-surface-qa.md` (Design and Review) before dispatch. Without `Done when` the executor has no exit. A Codex lane brief carries the same fields.
 
@@ -175,10 +175,10 @@ When the user or project allows commits, commit one atomic, verified increment a
 Run this gate for every ulw task, whatever its size: ultrawork means implement, review, and fix until the review approves. A one-file change gets the same gate; only the review effort scales with the diff.
 
 1. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
-2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path. When the task's `RISK_LEVEL` (from the plan or ledger, or, with none recorded, the risk table in `omo-plan` `references/rigorous-review.md`) is `critical` or `high`, pass `model: "fable"`; if Fable refuses or fails, re-run once without the override.
-3. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes.
+2. Spawn `omo-reviewer` with the goal, scenarios, evidence, diff, and notepad path. When the task's `RISK_LEVEL` (from the plan or ledger, or, with none recorded, the risk table in `omo-plan` `references/rigorous-review.md`) is `critical` or `high`, pass `model: "fable"`; if Fable refuses or fails, re-run once without the override. In the same message (two parallel `Agent` calls; both read-only), spawn `omo-security-reviewer` with the same inputs: it runs at every risk level, takes no Fable override, and tries the attacks itself. `omo-reviewer` judges every AC/DoD item of the plan task in a table; one unmet item is `REQUEST_CHANGES`. The gate outcome is `REQUEST_CHANGES` when either requests changes, `INCONCLUSIVE` when neither does but either is inconclusive or returns no decision, and `APPROVE` only when both approve.
+3. Verify each concern yourself. A concern blocks only when it names a success criterion the evidence fails; others are notes. A security finding blocks when its reproduction ran, or its source-to-sink proof is complete, even without a named criterion.
 4. Return criterion-cited blockers to Ralph and reserve the next shared iteration before dispatching any fix. In that pass, fix the blockers, re-run the affected scenario QA, and update the notepad.
-5. In that same iteration, submit the updated task-wide diff and current QA evidence to a fresh independent reviewer, with the same model rule as step 2. Approval with non-blocking notes counts as approval.
+5. In that same iteration, submit the updated task-wide diff and current QA evidence to fresh independent reviewers (a new `omo-reviewer` and a new `omo-security-reviewer`, dispatched in one message), with the same model rule as step 2; the security reviewer reruns the earlier reproductions on the fixed tree. A previous approval from either does not cover the fix, and the gate clears only when both approve. Approval with non-blocking notes counts as approval.
 6. Return every repair/re-review pass to the active `omo-ralph-loop` ledger and shared remaining budget. Ralph alone decides cap exhaustion and stuck stops; do not grant a separate final-gate retry budget.
 
 ## Zero Tolerance

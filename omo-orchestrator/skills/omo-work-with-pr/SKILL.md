@@ -58,6 +58,14 @@ Review responses, conflict resolution, and refactors added after the PR was open
 7. Right after committing the follow-up (a merge into a dirty tree can abort), fetch the PR branch itself. When the remote has commits HEAD lacks (a host "Update branch" merge, a teammate's push), merge them with `git merge --no-edit origin/<branch>` (never rebase) and apply item 5 with `origin/<branch>` as the merged commit, so the user's next push is a fast-forward. On a merge conflict, run `git merge --abort` and report the conflicted files. Pushes in three PRs were rejected in one day because the host had merged the base into the branch.
 8. Open the done report with one or two plain sentences on what the person relying on the changed thing (the operator running it, the screen or API user) can now count on, and what went wrong before, with no method, constant, or file names. Lists of changed files and identifiers come after that. A report that opened with method names got the follow-up question "what did you actually fix?".
 
+## Evidence for AC / DoD Items
+
+When the PR or its issue has AC, DoR, or DoD checkboxes, keep an evidence table in the PR or issue comment: one row per item with the item, the result, and the evidence as a `file:line` link or a link to the log or report. Do the same in the PR summary of step 8 when the work has no GitHub issue.
+
+- An item with no row is never checked. Check the box only after its row exists and the evidence shows the item holds.
+- Every verification run leaves a report, pass or fail. A failed run keeps its row with the failure and the report link; do not overwrite it with the later pass.
+- The `merge-close-gate` hook (`hooks/merge-close-gate.ts`) denies `gh issue close` and `gh pr merge` while an AC / DoR / DoD item in the PR, or in an issue it closes, is unchecked. It fails closed: when `gh` cannot be read, the command is denied too. Finish the items, record the evidence, check the boxes, and retry; `OMO_MERGE_GATE=off` is the user's bypass, not yours to set.
+
 ## Hard Rules
 
 - Do not mix unrelated fixes into a PR lifecycle task.

@@ -81,7 +81,7 @@ Each dispatch is self-contained and includes:
 6. The adversarial classes that apply (below) and how each is probed.
 7. Required durable artifact path and cleanup receipt. Read `omo-ultrawork` Task Resources before dispatch: each worker registers resource-cleanup TODOs at creation, uses its own scratch root and runtime-cache environment, and reports read-back teardown receipts. Preserve cleanup TODOs when reconciling the plan and ledger; retain evidence outside disposable roots.
 8. The expected return: a done claim in the shape defined in Phase 4.
-9. For a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner`, a `LOAD_SKILLS: [...]` or `LOAD_SKILLS: none` line chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
+9. For a dispatch to `omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-security-reviewer`, or `omo-planner`, a `LOAD_SKILLS: [...]` or `LOAD_SKILLS: none` line chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
 
 ### Adversarial Classes
 
@@ -153,9 +153,9 @@ When every task and the final verification wave are done:
 
 1. Dispatch a worker to run the plan's final verification commands and the full scenario list against the final tree.
 2. In parallel with this gate, run the external review on the task-wide diff from the Ralph review base, following `omo-review` `modes/review-loop/references/outer-gate.md` § 6b (`self-review` review-only, unless the plan sets `REVIEW_SKILL: none`; a missing skill is a recorded skip) and its section for other entry skills. Read its report by § 6c and merge it with this gate's outcome by § 6d. Approval needs both to clear.
-3. Call `omo-review` with args `review-work …` on the full diff with the goal, plan, QA matrix, and ledger. It launches one fresh independent reviewer and returns exactly one outcome:
+3. Call `omo-review` with args `review-work …` on the full diff with the goal, plan, QA matrix, and ledger. It launches a fresh `omo-reviewer` and a fresh `omo-security-reviewer` in parallel and returns exactly one outcome (`APPROVE` only when both approve):
    - `APPROVE`: the sole completion state.
-   - `REQUEST_CHANGES`: append the findings to the ledger, add each as a bounded fix task and todo, execute and verify it through Phases 3 to 5, then re-run this gate with a fresh reviewer. Each fix/re-review pass is the next iteration of the same Ralph state and remaining cap; no separate gate retry budget.
+   - `REQUEST_CHANGES`: append the findings to the ledger, add each as a bounded fix task and todo, execute and verify it through Phases 3 to 5, then re-run this gate with fresh reviewers. Each fix/re-review pass is the next iteration of the same Ralph state and remaining cap; no separate gate retry budget.
    - `INCONCLUSIVE`: append the missing evidence and why it is unavailable. Return accessible evidence work to Ralph for the next iteration, or stop with the unavailable evidence blocker recorded.
 4. On `APPROVE` from both, append the final ledger entry and print:
 

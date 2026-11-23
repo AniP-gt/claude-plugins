@@ -21,7 +21,7 @@ Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill
 - Path: a mode file is `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable is not expanded, append `modes/<mode>/` to this skill's Base directory. When the skill was preloaded and no Base directory is visible, call the Skill tool on `omo-guardrails` to get it. A bare `references/...` path inside a MODE.md is relative to that mode's own `modes/<mode>/` directory. A path qualified with another skill's name (`` `omo-x` `references/y.md` `` or "the `omo-x` skill's `references/y.md`") is relative to that skill's directory. A path of the form `skills/<name>/…` is relative to the plugin root.
 - Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
 
-- Ledger ownership: Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
+- Ledger ownership: Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-security-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
 - Permissions: handoff ledger/brief Write, the decision-log script run, and Orca launch are not pre-approved and use the host permission prompts. Fresh-session brief creation and Orca launch remain main-context only.
 
 | Mode | Alias | Precedence | Use when |

@@ -228,7 +228,7 @@ test("Markdown emphasis or quotes around a listed name do not hide it", () => {
 });
 
 test("every gated worker, with or without the prefix, is checked", () => {
-  for (const name of ["omo-implementer", "omo-researcher", "omo-reviewer", "omo-planner"]) {
+  for (const name of ["omo-implementer", "omo-researcher", "omo-reviewer", "omo-security-reviewer", "omo-planner"]) {
     assert.equal(decision(gate(dispatch("do x", name))).permissionDecision, "deny", name);
     assert.equal(decision(gate(dispatch("do x", `omo-orchestrator:${name}`))).permissionDecision, "deny", name);
     assert.equal(gate(dispatch("LOAD_SKILLS: none", name)), "", name);
@@ -413,7 +413,7 @@ test("a MODES line naming a mode of an implementer-only skill is denied for a re
     "LOAD_SKILLS: none\nMODES: omo-programming/debugging omo-research/security-research",
     "LOAD_SKILLS: none\nMODES: omo-research/security-research, omo-programming/debugging",
   ]) {
-    for (const worker of ["omo-researcher", "omo-orchestrator:omo-reviewer", "omo-planner"]) {
+    for (const worker of ["omo-researcher", "omo-orchestrator:omo-reviewer", "omo-orchestrator:omo-security-reviewer", "omo-planner"]) {
       const hook = decision(gate(dispatch(prompt, worker)));
       assert.equal(hook.permissionDecision, "deny", `${worker}: ${prompt}`);
       assert.match(hook.permissionDecisionReason, /MODES names skill\(s\) that are for omo-implementer only: omo-programming(\/|:)debugging\./, prompt);
@@ -424,7 +424,7 @@ test("a MODES line naming a mode of an implementer-only skill is denied for a re
 });
 
 test("a MODES line naming a main-only skill is denied for every gated worker", () => {
-  for (const worker of ["omo-implementer", "omo-researcher", "omo-reviewer", "omo-planner"]) {
+  for (const worker of ["omo-implementer", "omo-researcher", "omo-reviewer", "omo-security-reviewer", "omo-planner"]) {
     const hook = decision(gate(dispatch("LOAD_SKILLS: none\nMODES: omo-review/review-work", worker)));
     assert.equal(hook.permissionDecision, "deny", worker);
     assert.match(hook.permissionDecisionReason, /MODES names main-only skill\(s\): omo-review\/review-work\./, worker);

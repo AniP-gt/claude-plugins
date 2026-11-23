@@ -1,5 +1,5 @@
 {
-  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist, interactive-command advisory, review, goal, and LOAD_SKILLS gates, JSON argument error recovery, and an info/exclude block for .claude/omo/",
+  "description": "OMO hooks: ulw / ultrawork keyword trigger, pre-flight checklist, interactive-command advisory, review, goal, LOAD_SKILLS, TDD (test-first), and merge/close (unchecked AC/DoD) gates, JSON argument error recovery, and an info/exclude block for .claude/omo/",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -24,6 +24,21 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/non-interactive-env.ts\" || true",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/merge-close-gate.ts\" || true",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/tdd-gate.ts\" || true",
             "timeout": 5
           }
         ]

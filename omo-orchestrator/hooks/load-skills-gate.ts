@@ -15,8 +15,8 @@ import { fileURLToPath } from "node:url";
 
 const CATALOG_PATH = fileURLToPath(new URL("../skills/omo-orchestrate/references/skill-catalog.md", import.meta.url));
 const PLUGIN_PREFIX = "omo-orchestrator:";
-const READ_ONLY_WORKERS = new Set(["omo-researcher", "omo-reviewer", "omo-planner"]);
-const GATED_WORKERS = new Set(["omo-implementer", "omo-researcher", "omo-reviewer", "omo-planner"]);
+const READ_ONLY_WORKERS = new Set(["omo-researcher", "omo-reviewer", "omo-security-reviewer", "omo-planner"]);
+const GATED_WORKERS = new Set(["omo-implementer", "omo-researcher", "omo-reviewer", "omo-security-reviewer", "omo-planner"]);
 // Before the label: whitespace, heading hashes, quote marks, list markers (- * +), `N.` / `N)` numbers, emphasis and backticks.
 const LEAD_PATTERN = /^(?:[\s#>*+\-_`]|\d{1,3}[.)])*/;
 const LABEL_PATTERN = /^LOAD_SKILLS(?![A-Za-z0-9_])/i;
@@ -235,7 +235,7 @@ export function run(input: unknown, { env = process.env, catalogText }: RunOptio
     [
       ...namedLines("skill(s) that are for omo-implementer only", restricted, restrictedModes),
       "The catalog marks them `omo-implementer only` because they pre-approve unrestricted Bash or a launcher, and a skill's allowed-tools applies inside the sub-agent that loads it.",
-      "Remove them from `LOAD_SKILLS: [..]` and `MODES: ..` for omo-researcher, omo-reviewer, and omo-planner (or use `LOAD_SKILLS: none`), or dispatch the work to omo-implementer, and resend.",
+      "Remove them from `LOAD_SKILLS: [..]` and `MODES: ..` for omo-researcher, omo-reviewer, omo-security-reviewer, and omo-planner (or use `LOAD_SKILLS: none`), or dispatch the work to omo-implementer, and resend.",
       "Set OMO_LOAD_SKILLS_GATE=off to disable this gate.",
     ].join("\n"),
   );

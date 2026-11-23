@@ -45,7 +45,7 @@ Start every task at the cheapest owner that can do it. Escalate only with a one-
 | external lookup | `omo-librarian` | Upstream source, library docs |
 | media | Main context Reads PDFs/images directly (`pages` for PDFs); bulk extraction to `omo-researcher` | PDFs, images, diagrams |
 | `deep-*` / `ultrabrain` | `omo-oracle` | Hairy cross-module reasoning or a trade-off evidence cannot settle. At most one per graph for the single hardest decision everything else depends on |
-| review | `omo-reviewer` | Verification and final gate |
+| review | `omo-reviewer` | Verification and final gate (the final gate adds `omo-security-reviewer` in parallel) |
 
 The Codex lane is the protocol in `skills/omo-orchestrate/references/codex-implementer.md`; it applies inside Orca when an approved `omo-plan` exists or `omo-ultrawork` runs. Whenever an approved plan exists or ulw runs but the lane did not run (outside Orca included; a LIGHT change without a plan needs no record), dispatch `omo-implementer` and record `codex-impl: FALLBACK - <reason>`. Planned `writing` tasks (README, docs in the plan) go to the lane too; only research-lane prose-only wiki or docs writers stay with `omo-implementer` (`routing.md`). `git` stays with `omo-implementer` because Codex never makes commits. One Codex session per plan: Codex-owned tasks go to the same Codex tab in order, never parallel Codex tabs in one worktree, so they serialize even when ready together. While a Codex round runs, no task that writes to the working tree (the exempt prose-writer and git tasks included) runs in the same wave; it waits until the round ends, because Claude does not edit the tree during a Codex run and the post-run check would otherwise stop. Read-only lanes still fan out. A Codex result file is a done claim; a fresh `omo-reviewer` still verifies it.
 
@@ -70,7 +70,7 @@ A task prompt is the only thing the sub-agent sees. It has no conversation histo
 3. **SCOPE**: what it may read and write, with exact paths, as a hard boundary. Name what is out of scope when a sibling task owns it.
 4. **VERIFY**: the literal command it runs on its own work and the expected result, plus the observation behind each conclusion it reports. A conclusion comes from reading the source or file or running a tool, never from plausibility, recall, or the shape of the code.
 5. **STOP WHEN**: the single observable condition that ends the task.
-6. **LOAD_SKILLS**: for a prompt to `omo-implementer`, `omo-researcher`, `omo-reviewer`, or `omo-planner`, add a plain line `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` (not a bold label value), chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
+6. **LOAD_SKILLS**: for a prompt to `omo-implementer`, `omo-researcher`, `omo-reviewer`, `omo-security-reviewer`, or `omo-planner`, add a plain line `LOAD_SKILLS: [..]` or `LOAD_SKILLS: none` (not a bold label value), chosen from `omo-orchestrate` `references/skill-catalog.md`. A PreToolUse hook denies the dispatch without it.
 
 Rules that make prompts obeyed:
 
