@@ -21,8 +21,6 @@ Custom Claude Code plugins by miya.
 /plugin install mermaid@hidetsugu-miya
 /plugin install episodic@hidetsugu-miya
 /plugin install slack@hidetsugu-miya
-/plugin install omo-orchestrator@hidetsugu-miya
-/plugin install llm-wiki@hidetsugu-miya
 ```
 
 インストール後、Claude Codeを再起動してください。
@@ -100,24 +98,6 @@ Slack 公式 MCP サーバー（`https://mcp.slack.com/mcp`）に、公式 MCP P
 
 インストール直後は `slack-setup` skill で `~/.config/slack/bin/slack-mcp` wrapper と `~/.codex/skills/slack-*` の symlink を作成し、`slack-connect` skill で `slack-mcp login` を実行する。実行系は `slack-bridge` skill から `slack-mcp call` で MCP tool を呼ぶ。詳細は `slack/skills/slack-core/SKILL.md`。
 
-### omo-orchestrator
+### omo-orchestrator / llm-wiki
 
-OMO-inspired Claude Code orchestration plugin. Provides portable, content-only skills and agents for intent routing, approval-gated planning, dependency-aware execution and handoffs, bounded read-only research, review, guardrails, and specialist workflows such as debugging, refactoring, ultrawork, and ultraresearch.
-
-Requests are routed by hooks: change and plan requests go to `/omo-plan`, review requests to `/omo-review`, GitHub issues and PR review comments to `/omo-work-with-pr`, and `ulw` to `/omo-ultrawork`. The plugin ships 15 skills; the specialist workflows are modes inside nine parent skills and are called as `/omo-<parent> <mode> …`. `omo-research` holds the modes `ultraresearch`, `tech-debt-audit`, `security-research`, `get-unpublished-changes`, `eval-integrity`, and `ast-grep` (rewrites only under `omo-implementer`). `omo-principles` holds 24 engineering principles ported from pstack, and the user-requested modes `omo-ultrawork` `arena`, `omo-guardrails` `decision-log`, and `omo-implement` `correct-mistakes` are ported from pstack too. `omo-programming` holds `debugging` and `refactor` (dead-code removal is in its body). `omo-plan` holds `start-work` and `hyperplan`. `omo-review` holds `review-work`, `review-loop` (an implement-review-fix loop with parallel dimension reviewers and a synthesis judge), and `pre-publish-review`. `omo-ultrawork` holds `ulw-execute` and `mass-ulw`. `omo-implement` holds `visual-qa` for manual browser and terminal/TUI checks with fresh evidence. `omo-frontend` holds `visualize`; `omo-guardrails` holds `handoff`. Workers Read visual QA and planner/reviewer visualization MODE.md files by absolute paths supplied in briefs. `omo-work-with-pr` holds `github-triage`. `omo-init-deep` provides manual, content-only generation of managed hierarchical Claude Code project rules; the ast-grep research mode is ported from upstream. Typing `ulw` (or `ultrawork`) anywhere in a prompt triggers a UserPromptSubmit hook that switches Claude into ultrawork mode via `omo-ultrawork`; `ulw plan`, `ulw research`, `ulw loop`, `ulw execute`, and `mass ulw` route to the matching skill and mode. Version 2.0.0 removed the separate slash names of the merged skills; the migration table is in `omo-orchestrator/README.md`, which has the details. Version 5.0.0 also removed the standalone `/omo-{ast-grep,handoff,visual-qa}` commands; their workflows are now modes of research, guardrails, and implement, respectively.
-
-### llm-wiki
-
-LLM Wiki 手法で、リポジトリごとの知識（設計判断・機能・障害対応・用語）を Markdown の wiki に育てるプラグイン。wiki は Obsidian Vault 内など任意の場所に置ける。LLM が `raw/` の元資料を読み、`wiki/` のページと `index.md`、月別の操作ログ `log/YYYY-MM.md` を更新する（`log.md` は月別ログの一覧）。wiki の本文（ページ、`index.md`、ログ、用語集）は英語で書く。`raw/` の元資料は原文の言語のまま保存する。ユーザーへの報告はユーザーの言語で行う。
-
-- `/llm-wiki:setup`: リポジトリと wiki フォルダの対応を登録し、必要なら wiki の雛形を作る
-- `/llm-wiki:ingest`: PR・Issue・議事録・URL・context-mode の検索結果などを取り込む。要点の確認は挟まず、矛盾は判断できる範囲で直す
-- `/llm-wiki:query`: wiki を根拠に答え、良い答えや誤りの訂正は確認なしで wiki に書き戻す
-- `/llm-wiki:lint`: リンク切れ・孤立ページ・index 漏れ・根拠コードの変更を機械的に検出し、矛盾や古い記述を点検する。修正が必要と判断したものは確認なしで直す
-- コードの根拠（Grounded Claims）: コードから得た事実に `repo://<project>/<path>#L<a>-L<b>@<sha>` の参照を付ける。`llm_wiki.ts claim-ref` が今の HEAD で参照を作り、`llm_wiki.ts check-claims` が参照時点から根拠の行が変わったか（stale / missing / 行ずれ）を JSON で報告する
-- SessionStart hook: 登録済みリポジトリでは wiki の場所と目次（index.md、長い場合は先頭 6000 字）をセッションに渡し、調査・実装・レビューの前や迷ったときに wiki を読むこと、サブエージェントへ関連ページを渡すこと、wiki とコードの食い違いは確認なしで wiki を直すこと、新しい知見は ingest の手順で記録することを指示する。未登録なら何もしない
-- SessionEnd hook（任意、既定は無効）: 登録済みリポジトリのセッションが終わると、バックグラウンドで `claude -p` を1回呼び、会話から wiki に残す候補（設計判断・障害の原因・ハマりどころ）を `raw/inbox/` に保存する。hook 自体はページを更新しない。次のセッションの開始時に未整理の候補があれば、確認なしで `/llm-wiki:ingest` の手順に沿ってバックグラウンドで整理し、結果を報告する。有効化は `/llm-wiki:setup` か `llm_wiki.ts capture-config --enable`。トークンを消費する。ログは `~/.config/llm-wiki/capture.log`
-
-パスはプラグインに含めず、各ユーザーのローカル設定 `~/.config/llm-wiki/projects.json`（環境変数 `LLM_WIKI_CONFIG` で変更可）に保存する。ひな形は `llm-wiki/templates/projects.example.json`。git worktree 内でも本体リポジトリの登録に一致する。複数リポジトリで 1 つの wiki を共有できる。
-
-前提条件: [Bun](https://bun.sh) 1.x が PATH にあること（スクリプトは TypeScript、依存パッケージなし）。候補の自動抽出を使う場合は `claude` CLI が PATH にあること。
+Claude Code と Codex の両方で使えるようにするため、[AniP-gt/AI-plugin](https://github.com/AniP-gt/AI-plugin) へ移しました。インストール方法は移動先の README を参照してください。
