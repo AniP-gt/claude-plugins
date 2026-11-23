@@ -97,7 +97,3 @@ Slack 公式 MCP サーバー（`https://mcp.slack.com/mcp`）に、公式 MCP P
 - ブラウザ認証可能なデスクトップ環境（OrbStack ゲストはホスト macOS のブラウザを呼び出し可能）
 
 インストール直後は `slack-setup` skill で `~/.config/slack/bin/slack-mcp` wrapper と `~/.codex/skills/slack-*` の symlink を作成し、`slack-connect` skill で `slack-mcp login` を実行する。実行系は `slack-bridge` skill から `slack-mcp call` で MCP tool を呼ぶ。詳細は `slack/skills/slack-core/SKILL.md`。
-
-### omo-orchestrator / llm-wiki
-
-Claude Code と Codex の両方で使えるようにするため、[AniP-gt/AI-plugin](https://github.com/AniP-gt/AI-plugin) へ移しました。インストール方法は移動先の README を参照してください。
