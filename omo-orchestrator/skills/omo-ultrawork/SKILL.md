@@ -1,6 +1,6 @@
 ---
 name: omo-ultrawork
-description: "Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork. Modes: ulw-execute (ulw execute, run a written omo plan wave by wave), mass-ulw (mass ulw, mulw, fan-out where some tasks wait on others)."
+description: "Ultrawork (ulw) mode. Plans, delegates parallel waves to sub-agents, verifies on the real surface, and keeps going until done. Use when the user says ulw or ultrawork. Modes: ulw-execute (ulw execute, run a written omo plan wave by wave), mass-ulw (mass ulw, mulw, fan-out where some tasks wait on others), arena (user-requested only: arena this, competing prototypes, N candidates then graft the best)."
 argument-hint: "[mode] [goal]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill, AskUserQuestion
 user-invocable: true
@@ -30,6 +30,7 @@ Mode files live at `${CLAUDE_SKILL_DIR}/modes/<mode>/MODE.md`. If the variable i
 |---|---|---|---|
 | `ulw-execute` | - | replaces this file's flow | `ulw execute`, run a written omo plan wave by wave |
 | `mass-ulw` | `mulw` | replaces this file's flow | mass ulw, mulw, fan-out where some tasks wait on others |
+| `arena` | - | replaces the candidate phase; Bootstrap, guardrails, QA, and the Reviewer Gate still apply | only on the user's explicit request: `/omo-ultrawork arena`, "arena this", or competing prototypes the user asked for. Never chosen by trigger matching alone; for a novel design, offer it to the user instead |
 
 "Replaces" means: read the MODE.md and follow it as the procedure; the rest of this file applies only where the MODE.md names it.
 
@@ -93,7 +94,7 @@ Before the first task command, create and record one owned scratch root with `RU
 - At creation, add a cleanup TODO for every owned worktree, cache, PID, port, tmux session, browser context, container, script, and temporary path. Record its exact identity and owner. Keep these TODOs when reconciling the plan or resuming after interruption.
 - Capture durable evidence and the handoff ledger outside disposable roots. If evidence was captured inside a root, copy it to the recorded durable location and verify it is readable before deleting the original. The durable notepad is retained for handoff.
 - Tear down QA resources before recording a scenario as complete; remove the run root and eligible worktrees at task end, after owned processes exit. A teardown command's exit status alone is insufficient: record a read-back receipt, such as PID absent, port unbound, context closed, or exact temporary path absent. Distinguish absence from a permission error or failed inspection tool; an inconclusive probe leaves cleanup pending. Check the recorded launch identity before stopping a PID that could have been reused. No receipt leaves its cleanup TODO pending.
-- Remove only resources whose task ownership is established. Never wipe shared caches, user files, foreign resources, or a parent directory containing retained resources. Worktrees are created only when the user requests them; preserve a worktree needed by an open PR, another task, or an explicit handoff, record why it is retained and who owns its next action, and remove other owned worktrees only under the authorized Git lifecycle. Unknown ownership blocks that deletion, not independent work.
+- Remove only resources whose task ownership is established. Never wipe shared caches, user files, foreign resources, or a parent directory containing retained resources. Worktrees are created only when the user requests them (a user's explicit request for the `arena` mode counts as that request for its candidate worktrees); preserve a worktree needed by an open PR, another task, or an explicit handoff, record why it is retained and who owns its next action, and remove other owned worktrees only under the authorized Git lifecycle. Unknown ownership blocks that deletion, not independent work.
 
 - TODO format: `path: <action> for <scenario-id> - verify by <check>`. Exactly one `in_progress` at a time. Mark completed immediately; never batch. Rewrite vague items such as "Implement feature" or "Fix bug".
 - Bounded follow-up: if a delegated track stalls, do one follow-up pass, then record the gap and stop waiting.

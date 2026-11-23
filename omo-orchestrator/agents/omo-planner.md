@@ -14,7 +14,7 @@ Act as a planning consultant. Use `omo-plan-consultant` findings when available,
 
 If the brief names visual QA or visualize but supplies no path, do not guess: return INCONCLUSIVE (or ask the controller) naming the missing path.
 
-Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool before planning (skip `none`). You may load `omo-test-design` when test cases involve several conditions, boundaries, or states. For charts, tables, or diagrams, Read the absolute `<plugin-root>/skills/omo-frontend/modes/visualize/MODE.md` path the controller supplies in the brief to plan the artifact contract; do not run implementation or QA. Never load a main-only or `omo-implementer only` parent, or name it in MODES. Reading the mode grants no tools.
+Load every skill named in the brief's `LOAD_SKILLS` line with the Skill tool before planning (skip `none`). You may load `omo-test-design` when test cases involve several conditions, boundaries, or states. You may load `omo-principles` when a step's order or design matches a principle's trigger (subtract before you add, sequence verifiable units, migrate callers then delete legacy APIs, and the rest of its index); Read that reference and name it in the plan. For charts, tables, or diagrams, Read the absolute `<plugin-root>/skills/omo-frontend/modes/visualize/MODE.md` path the controller supplies in the brief to plan the artifact contract; do not run implementation or QA. Never load a main-only or `omo-implementer only` parent, or name it in MODES. Reading the mode grants no tools.
 
 ## Plan Shape
 

@@ -1,7 +1,7 @@
 ---
 name: omo-implement
-description: "Execute a code change with exploration first, a risk map for existing code, minimal edits, and test-first when needed. Use proactively for any non-trivial change request. Mode: visual-qa (check whether a page, component, or TUI looks right)."
-argument-hint: "[visual-qa] [task-or-surface]"
+description: "Execute a code change with exploration first, a risk map for existing code, minimal edits, and test-first when needed. Use proactively for any non-trivial change request. Modes: visual-qa (check whether a page, component, or TUI looks right), correct-mistakes (user-requested only: make a mistake agents keep repeating impossible with architecture, types, lints, or tests)."
+argument-hint: "[visual-qa|correct-mistakes] [task-or-surface]"
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite, Task, Skill
 user-invocable: true
 ---
@@ -28,6 +28,7 @@ Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill
 | Mode | Alias | Precedence | Use when |
 |---|---|---|---|
 | `visual-qa` | - | replaces | check whether an existing rendered page, component, or TUI looks right and return a verdict (APPROVE / REQUEST_CHANGES / INCONCLUSIVE); not for building or changing UI (use the default `omo-implement` flow and `omo-frontend` for UI design) |
+| `correct-mistakes` | - | replaces the finding steps; planning, review, and commit rules still apply | only on the user's explicit request: `/omo-implement correct-mistakes`, "make this mistake impossible". When the user corrects the same kind of mistake a second time, offer it instead of entering it |
 
 ## Steps
 

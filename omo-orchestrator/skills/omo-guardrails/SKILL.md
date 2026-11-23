@@ -1,7 +1,7 @@
 ---
 name: omo-guardrails
-description: "Safety rules for OMO-style work: anti-duplication, context guard, circuit breaker, error recovery, and explicit handoffs. Mode: handoff (handoff, task-linked append-only ledger, or continuation in a fresh session)."
-argument-hint: "[handoff] [situation-or-task-slug]"
+description: "Safety rules for OMO-style work: anti-duplication, context guard, circuit breaker, error recovery, and explicit handoffs. Modes: handoff (handoff, task-linked append-only ledger, or continuation in a fresh session), decision-log (user-requested: decision log, show your work, an audited trail for long or unattended runs)."
+argument-hint: "[handoff|decision-log] [situation-or-task-slug]"
 allowed-tools: Read, Grep, Glob, TodoWrite
 user-invocable: true
 ---
@@ -22,11 +22,12 @@ Modes are alternative procedures kept in `modes/<mode>/MODE.md` under this skill
 - Precedence: "replaces" means follow the MODE.md as the procedure, and apply the default flow below only where the MODE.md names it. "Adds to" means this file's policy stays in force and the MODE.md adds its procedure. "Main-only" means that inside a sub-agent you do not run the mode; return the steps it would need to the caller.
 
 - Ledger ownership: Only `omo-implementer` and the controller (main context) append to the ledger. Read-only workers (`omo-reviewer`, `omo-researcher`, `omo-planner`) return the entry text in their reply instead of writing.
-- Permissions: handoff ledger/brief Write and Orca launch are not pre-approved and use the host permission prompts. Fresh-session brief creation and Orca launch remain main-context only.
+- Permissions: handoff ledger/brief Write, the decision-log script run, and Orca launch are not pre-approved and use the host permission prompts. Fresh-session brief creation and Orca launch remain main-context only.
 
 | Mode | Alias | Precedence | Use when |
 |---|---|---|---|
 | `handoff` | - | replaces | handoff, task-linked append-only ledger, or continuation in a fresh session |
+| `decision-log` | - | adds to | only when the user or the brief asks for it: decision log, show your work, an audited one-row-per-decision trail. For a long or unattended run, offer it instead of starting it |
 
 ## Rules
 

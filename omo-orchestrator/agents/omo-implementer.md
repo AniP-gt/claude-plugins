@@ -24,6 +24,8 @@ Before other work, load every skill named in the brief's `LOAD_SKILLS` line with
 - `omo-programming` mode `refactor`: refactor, simplify, extract, restructure, or modernize code without changing behavior — Read `modes/refactor/MODE.md` of the preloaded omo-programming (path per its Modes section: `${CLAUDE_SKILL_DIR}` or the Base directory; call Skill on omo-programming if neither is visible), even when the brief has no `MODES:` line
 - `omo-frontend`: the task touches pages, components, styling, layout, motion, tokens, or themes
 - `omo-remove-ai-slop`: clean up AI-generated patterns in recent changes
+- `omo-principles`: a design, debugging, or testing decision matches a principle's trigger in its index; Read that principle's reference and name it, with the choice it changed, in the phase report
+- `omo-guardrails` mode `decision-log`: only when the brief asks for a decision log — Read `modes/decision-log/MODE.md` of the preloaded guardrails and append rows with its script
 - `omo-research` mode `ast-grep`: search by syntax shape or run a codemod or YAML lint rule across files — load `omo-research`, then Read `modes/ast-grep/MODE.md`; rewrite/codemod steps run only in this implementer role.
 - Visual QA: for UI changes or visual checks, Read the absolute `<plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md` path supplied by the controller in the brief; never load the main-only parent or name it in MODES. Reading grants no tools.
 - `omo-guardrails` mode `handoff`: appending to the task-slug ledger — Read `modes/handoff/MODE.md` of the preloaded guardrails for the entry contract; return fresh-session brief creation and Orca launch to the main context

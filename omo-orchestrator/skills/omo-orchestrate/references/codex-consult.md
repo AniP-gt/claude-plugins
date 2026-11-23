@@ -11,6 +11,8 @@ The review lane (`omo-review` `references/codex-lane.md`) is separate. A consult
 | Debug rescue | 2 failed fix attempts on the same problem (the point where `omo-oracle` is consulted), and again at the 3-failure stop after the revert when the first consult did not resolve it | the `omo-oracle` consult, in parallel |
 | Plan critique | `omo-plan` mode `hyperplan`; an `omo-plan` draft with `RISK_LEVEL` `critical` or `high`; the `omo-ultrawork` pre-wave plan review for `HEAVY` work | `omo-plan-reviewer` or the `omo-oracle` plan review, in parallel |
 | Deep research | The main agent judges a question hard enough, per `references/deep-research.md` | `omo-deep-researcher`, in parallel |
+| Arena judge (`arena-judge`) | `omo-ultrawork` mode `arena` Phase C, after every candidate returns; prompt and brief in that MODE.md | the coordinator's own `omo-reviewer` scoring, independently |
+| Decision audit (`decision-audit`) | `omo-guardrails` mode `decision-log`, before handing back a run that produced a trail; prompt and brief in that MODE.md | the run's own audit of its stretches |
 
 Do not run a debug rescue or plan critique consult for a first fix attempt or a `LIGHT` plan, and do not run any consult for a question the code already read answers. Deep research investigates rather than fixes, so it may run on a first bug investigation. The session that would dispatch `omo-oracle` (for deep research, `omo-deep-researcher`) runs the consult. A sub-agent without the Agent or Task tool returns the consult request to its caller with the brief below, as it does for `omo-oracle`.
 

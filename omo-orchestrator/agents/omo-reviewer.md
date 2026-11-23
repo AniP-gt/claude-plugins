@@ -28,6 +28,7 @@ Before other work, load every skill named in the brief's `LOAD_SKILLS` line with
 - `omo-test-design`: judging whether tests cover several conditions, boundaries, or states
 - Visual QA: for UI changes or visual checks, Read the absolute `<plugin-root>/skills/omo-implement/modes/visual-qa/MODE.md` path supplied by the controller in the brief; never load the main-only parent or name it in MODES. Reading grants no tools.
 - `omo-remove-ai-slop`: to judge slop patterns in AI-generated changes
+- `omo-principles`: a finding rests on a design principle (subtract before you add, fix root causes, test behavior not implementation, idempotent operations, and the rest of its index); Read that principle's reference and name it in the finding
 
 For charts, tables, or diagrams, Read the absolute `<plugin-root>/skills/omo-frontend/modes/visualize/MODE.md` path supplied by the controller to judge the artifact contract; do not load this implementer-only parent or name it in MODES.
 

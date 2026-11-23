@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 export const EXCLUDE_BLOCK = [
   "# >>> omo-orchestrator managed >>>",
-  ...["handoffs", "plans", "drafts", "reviews", "briefs", "codex", "goal"].map(name => `**/.claude/omo/${name}/`),
+  ...["handoffs", "plans", "drafts", "reviews", "briefs", "codex", "goal", "decisions"].map(name => `**/.claude/omo/${name}/`),
   "# <<< omo-orchestrator managed <<<",
   "",
 ].join("\n");
